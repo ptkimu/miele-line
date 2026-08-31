@@ -1,4 +1,4 @@
-<title>ミエーレ LINE自動応答デモ</title>
+<title>ミエーレ LINE 動作デモ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
@@ -7,8 +7,11 @@
   :root{
     --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
     --ink:#2B2724; --ink-soft:#5D534E; --muted:#8B7F79;
-    --rule:#E7DBD4; --accent:#98543F; --accent-wash:#F7EBE5;
-    --free:#1F7A4C; --free-fill:#1F9D57;
+    --rule:#E7DBD4; --rule-hard:#D6C6BD;
+    --accent:#98543F; --accent-wash:#F7EBE5;
+    --free:#1F7A4C; --free-fill:#1F9D57; --free-wash:#E8F3EC;
+    --cost:#8E6415; --cost-fill:#B5822A; --cost-wash:#F7EFDF;
+    --stop:#A73A2A; --stop-wash:#FBE6E2;
     --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
     --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
   }
@@ -16,15 +19,21 @@
     :root:not([data-theme="light"]){
       --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
       --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
-      --rule:#3A3331; --accent:#D9967C; --accent-wash:#33241F;
-      --free:#5CC98C; --free-fill:#2E9E63;
+      --rule:#3A3331; --rule-hard:#4C4340;
+      --accent:#D9967C; --accent-wash:#33241F;
+      --free:#5CC98C; --free-fill:#2E9E63; --free-wash:#1C2C24;
+      --cost:#DEAC57; --cost-fill:#A87A28; --cost-wash:#2E2619;
+      --stop:#E58775; --stop-wash:#33211E;
     }
   }
   :root[data-theme="dark"]{
     --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
     --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
-    --rule:#3A3331; --accent:#D9967C; --accent-wash:#33241F;
-    --free:#5CC98C; --free-fill:#2E9E63;
+    --rule:#3A3331; --rule-hard:#4C4340;
+    --accent:#D9967C; --accent-wash:#33241F;
+    --free:#5CC98C; --free-fill:#2E9E63; --free-wash:#1C2C24;
+    --cost:#DEAC57; --cost-fill:#A87A28; --cost-wash:#2E2619;
+    --stop:#E58775; --stop-wash:#33211E;
   }
 
   *{box-sizing:border-box}
@@ -32,12 +41,12 @@
        font-size:15px;line-height:1.8;-webkit-font-smoothing:antialiased}
   .wrap{max-width:1120px;margin:0 auto;padding:44px 22px 90px}
 
-  header.top{border-bottom:1px solid var(--rule);padding-bottom:26px;margin-bottom:26px}
+  header.top{border-bottom:1px solid var(--rule);padding-bottom:24px;margin-bottom:0}
   .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.2em;color:var(--accent);margin:0 0 12px}
   h1{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,4.6vw,34px);
      line-height:1.3;margin:0 0 14px;text-wrap:balance}
-  .lede{color:var(--ink-soft);margin:0 0 22px;max-width:60ch;font-size:15.5px}
-  .facts{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--rule);margin:0}
+  .lede{color:var(--ink-soft);margin:0 0 22px;max-width:62ch;font-size:15.5px}
+  .facts{display:flex;flex-wrap:wrap;border-top:1px solid var(--rule);margin:0}
   .facts div{flex:1 1 160px;padding:14px 18px 12px 0;border-right:1px solid var(--rule)}
   .facts div:last-child{border-right:0}
   .facts dt{font-size:10.5px;letter-spacing:.12em;color:var(--muted);margin:0 0 2px}
@@ -46,20 +55,40 @@
                   color:var(--muted);line-height:1.6}
 
   .warn{background:var(--accent-wash);border-left:3px solid var(--accent);
-        border-radius:0 10px 10px 0;padding:13px 18px;font-size:13.5px;margin:0 0 30px;
+        border-radius:0 10px 10px 0;padding:13px 18px;font-size:13.5px;margin:24px 0 0;
         color:var(--ink-soft)}
   .warn strong{color:var(--ink);font-weight:500}
+
+  /* タブ */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:28px 0 0;border-bottom:1px solid var(--rule);
+        padding-bottom:0}
+  .tab{appearance:none;border:1px solid var(--rule);border-bottom:0;background:transparent;
+       color:var(--muted);font:inherit;font-size:13px;font-weight:500;padding:10px 16px;
+       border-radius:10px 10px 0 0;cursor:pointer;position:relative;top:1px}
+  .tab[aria-selected="true"]{background:var(--surface);color:var(--ink);font-weight:700;
+       border-color:var(--rule);box-shadow:0 -1px 0 var(--accent) inset}
+  .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .tab .n{font-size:10.5px;color:var(--accent);margin-right:7px;font-weight:700}
+
+  .panelwrap{padding-top:28px}
+  .panelwrap[hidden]{display:none}
+  .phaseline{font-size:13px;color:var(--muted);margin:0 0 22px;max-width:66ch}
+  .phaseline b{color:var(--ink-soft);font-weight:500}
 
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
   @media (max-width:940px){.cols{grid-template-columns:1fr}}
 
   .panel{background:var(--surface);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
   .panel > h2{font-family:var(--f-display);margin:0;padding:16px 20px;font-size:15.5px;
-              border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px}
-  .badge{font-size:10.5px;font-weight:700;color:#fff;background:var(--free-fill);
-         border-radius:99px;padding:2px 10px;letter-spacing:.04em}
+              border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px;
+              flex-wrap:wrap}
+  .badge{font-size:10.5px;font-weight:700;color:#fff;border-radius:99px;padding:2px 10px;
+         letter-spacing:.04em;white-space:nowrap}
+  .badge--free{background:var(--free-fill)}
+  .badge--cost{background:var(--cost-fill)}
   .intro{padding:14px 20px 0;font-size:13px;color:var(--muted);margin:0}
   .intro b{color:var(--ink-soft);font-weight:500}
+  .pad{padding:16px 20px 20px}
 
   iframe{width:100%;height:660px;border:0;display:block;background:var(--ground);margin-top:14px}
 
@@ -79,20 +108,73 @@
 
   .chips{display:flex;flex-wrap:wrap;gap:7px;padding:14px 16px 0}
   .chip{border:1px solid var(--rule);background:var(--surface);color:var(--accent);
-        border-radius:99px;padding:6px 13px;font:inherit;font-size:12.5px;cursor:pointer}
+        border-radius:99px;padding:6px 13px;font:inherit;font-size:12.5px;cursor:pointer;
+        text-align:left}
   .chip:hover{background:var(--accent-wash)}
   .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .chip small{display:block;color:var(--muted);font-size:11px}
 
   .compose{display:flex;gap:8px;padding:14px 16px;border-top:1px solid var(--rule);margin-top:14px}
   .compose input{flex:1;min-width:0;padding:11px 14px;border:1px solid var(--rule);
                  border-radius:99px;font:inherit;font-size:14px;background:var(--ground);color:var(--ink)}
   .compose button{padding:11px 20px;border:0;border-radius:99px;background:var(--accent);
-                  color:#fff;font:inherit;font-weight:700}
-  .compose input:focus-visible,.compose button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-
+                  color:#fff;font:inherit;font-weight:700;cursor:pointer}
   .note{font-size:12.5px;color:var(--muted);padding:0 20px 18px;line-height:1.75;margin:12px 0 0}
 
-  footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
+  /* 汎用ボタン */
+  .btn{border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:700;font-size:13.5px;
+       cursor:pointer;background:var(--accent);color:#fff}
+  .btn--ghost{background:var(--surface);color:var(--accent);border:1px solid var(--rule-hard)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  /* 通数メーター */
+  .meter{margin:0 0 6px}
+  .meter .bar{height:12px;border-radius:99px;background:var(--sunk);overflow:hidden;display:flex}
+  .meter .used{background:var(--cost-fill)}
+  .meter .now{background:var(--accent)}
+  .meter .res{background:var(--rule-hard)}
+  .meterlabels{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--muted);margin-top:8px}
+  .meterlabels i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+  .num{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
+
+  .verdict{border-radius:10px;padding:12px 16px;font-size:13.5px;margin:14px 0 0;line-height:1.7}
+  .verdict--go{background:var(--free-wash);color:var(--free)}
+  .verdict--stop{background:var(--stop-wash);color:var(--stop)}
+  .verdict b{font-weight:700}
+
+  /* ステップ結果 */
+  .step{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:10px;
+        background:var(--surface)}
+  .step.zero{opacity:.5}
+  .step h3{font-family:var(--f-display);font-size:14.5px;margin:0 0 4px;display:flex;
+           align-items:center;gap:9px;flex-wrap:wrap}
+  .cnt{font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px}
+  .cnt--on{background:var(--cost-wash);color:var(--cost)}
+  .cnt--off{background:var(--sunk);color:var(--muted)}
+  .step .why{font-size:12px;color:var(--muted);margin:0 0 10px}
+  .msg{background:var(--sunk);border-radius:10px;padding:11px 14px;font-size:12.5px;
+       white-space:pre-wrap;line-height:1.75;margin-top:8px}
+  .msg .who{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
+
+  /* タグ */
+  .taglist{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .t{font-size:11.5px;background:var(--accent-wash);border:1px solid var(--rule);
+     color:var(--accent);border-radius:99px;padding:3px 10px}
+  .t .n{opacity:.7;margin-left:5px;font-variant-numeric:tabular-nums}
+  .person{border-bottom:1px solid var(--rule);padding:12px 0}
+  .person:last-child{border-bottom:0}
+  .person b{font-size:14px}
+  .empty{color:var(--muted);font-size:13px}
+
+  label.chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:7px 0;cursor:pointer}
+  label.chk input{margin-top:6px}
+  label.chk small{display:block;color:var(--muted);font-size:11.5px;line-height:1.6}
+  textarea{width:100%;min-height:110px;padding:12px 14px;border:1px solid var(--rule);
+           border-radius:10px;font:inherit;font-size:13.5px;background:var(--ground);
+           color:var(--ink);line-height:1.75;resize:vertical}
+
+  footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
 
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -102,58 +184,146 @@
 
   <header class="top">
     <p class="eyebrow">動作デモ</p>
-    <h1>LINEの自動応答と<br>来店記録のしくみ</h1>
+    <h1>LINEでできるようになること</h1>
     <p class="lede">
-      お客様からのよくある質問にLINEが自動で答え、スタッフは会計後にボタンを押すだけで来店を記録できます。
-      下の2つは<strong>実際に触って動かせます</strong>。
+      いま作っているしくみを、実際に触って確かめられます。
+      4つの段階に分けて進める予定で、下のタブがそのまま順番です。
+      <strong>いちばん下に「何通使うか」が常に出ます。</strong>
     </p>
     <dl class="facts">
-      <div><dt>追加の月額費用</dt><dd>0円<small>いまのLINEプランのまま</small></dd></div>
-      <div><dt>消費する配信通数</dt><dd>0通<small>5,000通の枠は減りません</small></dd></div>
-      <div><dt>スタッフの手間</dt><dd>会計後に1タップ<small>スマホで完結</small></dd></div>
+      <div><dt>いまのプラン</dt><dd>ライト<small>5,000通／月・追加購入不可</small></dd></div>
+      <div><dt>友だち</dt><dd>318名<small>全員に月15回まで送れる計算</small></dd></div>
+      <div><dt>追加の月額費用</dt><dd>0円<small>サーバー代は無料枠に収まる</small></dd></div>
     </dl>
+    <p class="warn">
+      <strong>これはデモです。</strong>お名前・来店日・通数はすべて架空のサンプルで、
+      実際のお客様の情報は入っていません。ここで押したボタンでLINEが送られることもありません。
+    </p>
   </header>
 
-  <p class="warn">
-    <strong>これはデモです。</strong>表示されているお名前・来店日はすべて架空のサンプルで、
-    実際のお客様の情報は入っていません。ここで押したボタンが本番に影響することもありません。
-  </p>
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-p="1" aria-selected="true"><span class="n">01</span>自動応答と来店記録</button>
+    <button class="tab" role="tab" data-p="2" aria-selected="false"><span class="n">02</span>診断とお客様の好み</button>
+    <button class="tab" role="tab" data-p="3" aria-selected="false"><span class="n">03</span>来店後のご案内</button>
+    <button class="tab" role="tab" data-p="4" aria-selected="false"><span class="n">04</span>絞り込んで送る</button>
+  </div>
 
-  <div class="cols">
+  <!-- ============ 01 ============ -->
+  <div class="panelwrap" data-panel="1">
+    <p class="phaseline">
+      <b>まず最初に作る段階です。</b>お客様のよくある質問にLINEが自動で答え、
+      スタッフは会計後にボタンを押すだけで来店を記録します。
+      ここまでは配信通数を1通も使いません。
+    </p>
+    <div class="cols">
+      <section class="panel">
+        <h2>スタッフ用ページ <span class="badge badge--free">0通</span></h2>
+        <p class="intro">
+          会計のあと、来店されたお客様を探してボタンを押します。<br>
+          <b>次回予約が取れた方は「予約あり」、取れなかった方は「未予約」。</b>
+          後日のご案内は未予約の方にだけ届きます。
+        </p>
+        <iframe id="admin" title="スタッフ用ページのデモ"></iframe>
+      </section>
 
+      <section class="panel">
+        <h2>お客様から見たLINE <span class="badge badge--free">0通</span></h2>
+        <p class="intro">
+          ボタンを押すか、下の欄に入力して送ってみてください。<br>
+          <b>自動で答えられない質問には、あえて返信しません。</b>
+          間違った案内を出すより、スタッフが直接お答えするほうが確実だからです。
+        </p>
+        <div class="phone" id="chat"></div>
+        <div class="chips" id="chips"></div>
+        <form class="compose" id="compose">
+          <input id="msg" placeholder="メッセージを入力" autocomplete="off" aria-label="メッセージを入力">
+          <button type="submit">送信</button>
+        </form>
+        <p class="note">
+          「営業時間」と「駐車場」は、まだ店舗情報を登録していないため返信しません。
+          登録すれば自動で答えるようになります。
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ 02 ============ -->
+  <div class="panelwrap" data-panel="2" hidden>
+    <p class="phaseline">
+      <b>お客様の「好み」が貯まっていく段階です。</b>
+      すでにあるコース診断をLINEにつなぐと、答えた内容がそのまま印（タグ）として残ります。
+      この印が、04の「絞り込んで送る」の材料になります。配信はしないので通数は使いません。
+    </p>
+    <div class="cols">
+      <section class="panel">
+        <h2>お客様が診断を受ける <span class="badge badge--free">0通</span></h2>
+        <p class="intro">押すと、そのお客様が診断を受けた状態になります。</p>
+        <div class="chips" id="diagBtns"></div>
+        <div class="pad" id="diagResult"></div>
+      </section>
+      <section class="panel">
+        <h2>貯まっている印（タグ） <span class="badge badge--free">0通</span></h2>
+        <p class="intro">お店側から見える一覧です。人数が多い印ほど、送る価値のある話題になります。</p>
+        <div class="pad" id="tagPanel"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ 03 ============ -->
+  <div class="panelwrap" data-panel="3" hidden>
+    <p class="phaseline">
+      <b>ここから通数を使います。</b>毎朝10時に自動で確認し、来店から日数が経った方にご案内を送ります。
+      <b>次回予約が入っている方には送りません。</b>
+      送る前に必ず残り通数を確認し、足りなければ1通も送らずに止まります。
+    </p>
     <section class="panel">
-      <h2>スタッフ用ページ <span class="badge">0通</span></h2>
-      <p class="intro">
-        会計のあと、来店されたお客様の名前を探してボタンを押します。<br>
-        <b>次回予約が取れた方は「予約あり」、取れなかった方は「未予約」。</b>
-        後日のご案内は未予約の方にだけ届くので、予約済みの方に「そろそろですね」と送ってしまうことがありません。
-      </p>
-      <iframe id="admin" title="スタッフ用ページのデモ"></iframe>
+      <h2>毎朝10時の自動確認 <span class="badge badge--cost">通数を使う</span></h2>
+      <div class="pad">
+        <div class="btnrow" style="margin-bottom:16px">
+          <button class="btn btn--ghost" id="dPrev">前の日</button>
+          <span class="num" id="dDate" style="font-size:15px"></span>
+          <button class="btn btn--ghost" id="dNext">次の日</button>
+          <button class="btn btn--ghost" id="dNearLimit">今月あと少しで上限、にする</button>
+          <button class="btn btn--ghost" id="dReset">最初に戻す</button>
+        </div>
+        <div id="deliveryOut"></div>
+      </div>
     </section>
+  </div>
 
-    <section class="panel">
-      <h2>お客様から見たLINE <span class="badge">0通</span></h2>
-      <p class="intro">
-        ボタンを押すか、下の欄に入力して送ってみてください。<br>
-        <b>自動で答えられない質問には、あえて返信しません。</b>
-        間違った案内を出すより、スタッフがLINEで直接お答えするほうが確実だからです。
-      </p>
-      <div class="phone" id="chat"></div>
-      <div class="chips" id="chips"></div>
-      <form class="compose" id="compose">
-        <input id="msg" placeholder="メッセージを入力" autocomplete="off" aria-label="メッセージを入力">
-        <button type="submit">送信</button>
-      </form>
-      <p class="note">
-        「営業時間」と「駐車場」は、まだ店舗情報を登録していないため返信しません。
-        登録すれば自動で答えるようになります。
-      </p>
-    </section>
-
+  <!-- ============ 04 ============ -->
+  <div class="panelwrap" data-panel="4" hidden>
+    <p class="phaseline">
+      <b>全員に送らない、という選び方です。</b>
+      条件を選ぶと、送る前に「何人に届いて、何通使うか」が出ます。
+      関係のない方に届かないので、通数が減るだけでなくブロックも防げます。
+    </p>
+    <div class="cols">
+      <section class="panel">
+        <h2>誰に送るか <span class="badge badge--cost">通数を使う</span></h2>
+        <p class="intro">よく使う条件を選ぶか、下の印で自由に絞り込めます。</p>
+        <div class="chips" id="presetBtns"></div>
+        <div class="pad">
+          <div id="tagFilters"></div>
+          <label class="chk"><input type="checkbox" id="fUnbooked">
+            <span>次回予約が入っていない方だけ<small>予約済みの方に営業をかけない</small></span></label>
+          <label class="chk"><input type="checkbox" id="fSleeping">
+            <span>90日以上ご来店のない方だけ<small>復帰のきっかけづくり</small></span></label>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>送る前の確認 <span class="badge badge--cost">通数を使う</span></h2>
+        <div class="pad">
+          <textarea id="segBody">ミエーレです。今週、金曜18時と土曜11時にお席が空きました。
+LINEの方に先にご案内しています。ご希望の方はこのままお返事ください。</textarea>
+          <div id="segOut" style="margin-top:16px"></div>
+        </div>
+      </section>
+    </div>
   </div>
 
   <footer>
-    ビューティサロン ミエーレ ／ LINE公式アカウント連携 フェーズ1<br>
+    ビューティサロン ミエーレ ／ LINE公式アカウント連携<br>
     このデモは実際のプログラムをそのまま動かしています。データベースだけサンプルに差し替えてあります。
   </footer>
 </div>
@@ -161,102 +331,243 @@
 <script type="module">
 /*__MODULES__*/
 
-/* ============ デモ用のサンプルデータ ============ */
+/* ==================================================================
+   デモ用のサンプルデータ
+   お名前・来店日・通数はすべて架空です
+   ================================================================== */
 
-const today = todayJst();
-const ymd = (offset) => new Date(Date.parse(today + 'T00:00:00Z') + offset * 86400000)
-  .toISOString().slice(0, 10);
+const REAL_TODAY = todayJst();
+const shift = (base, days) =>
+  new Date(Date.parse(base + 'T00:00:00Z') + days * 86400000).toISOString().slice(0, 10);
 
-const state = {
-  customers: [
-    { line_user_id:'U01', display_name:'さくら',   last_visit_at:ymd(-14), next_booked:0, followed_at:ymd(-120), status:'active' },
-    { line_user_id:'U02', display_name:'みどり',   last_visit_at:ymd(-3),  next_booked:1, followed_at:ymd(-90),  status:'active' },
-    { line_user_id:'U03', display_name:'ゆき',     last_visit_at:ymd(-19), next_booked:0, followed_at:ymd(-200), status:'active' },
-    { line_user_id:'U04', display_name:'あやの',   last_visit_at:ymd(-8),  next_booked:1, followed_at:ymd(-45),  status:'active' },
-    { line_user_id:'U05', display_name:'けんた',   last_visit_at:null,     next_booked:0, followed_at:ymd(-2),   status:'active' },
-    { line_user_id:'U06', display_name:'ひなの',   last_visit_at:ymd(-40), next_booked:0, followed_at:ymd(-300), status:'active' },
-    { line_user_id:'U07', display_name:'まりこ',   last_visit_at:null,     next_booked:0, followed_at:ymd(-1),   status:'active' },
-    { line_user_id:'U08', display_name:'たかし',   last_visit_at:ymd(-60), next_booked:0, followed_at:ymd(-400), status:'blocked' }
-  ],
-  visits: [],
-  unmatched: [
-    { body:'クレジットカードは使えますか', n:4 },
-    { body:'子ども連れでも大丈夫ですか',   n:3 },
-    { body:'施術時間はどれくらいですか',   n:2 }
-  ]
-};
+function seed() {
+  return {
+    today: REAL_TODAY,
+    quota: { limit: 5000, used: 1240 },
+    customers: [
+      { line_user_id:'U01', display_name:'さくら', followed_at:shift(REAL_TODAY,-120), status:'active', last_visit_at:shift(REAL_TODAY,-11), next_booked:0 },
+      { line_user_id:'U02', display_name:'みどり', followed_at:shift(REAL_TODAY,-90),  status:'active', last_visit_at:shift(REAL_TODAY,-11), next_booked:1 },
+      { line_user_id:'U03', display_name:'ゆき',   followed_at:shift(REAL_TODAY,-200), status:'active', last_visit_at:shift(REAL_TODAY,-21), next_booked:0 },
+      { line_user_id:'U04', display_name:'あやの', followed_at:shift(REAL_TODAY,-45),  status:'active', last_visit_at:shift(REAL_TODAY,-1),  next_booked:1 },
+      { line_user_id:'U05', display_name:'けんた', followed_at:shift(REAL_TODAY,-30),  status:'active', last_visit_at:shift(REAL_TODAY,-1),  next_booked:0 },
+      { line_user_id:'U06', display_name:'ひなの', followed_at:shift(REAL_TODAY,-300), status:'active', last_visit_at:shift(REAL_TODAY,-60), next_booked:0 },
+      { line_user_id:'U07', display_name:'まりこ', followed_at:shift(REAL_TODAY,-1),   status:'active', last_visit_at:null, next_booked:0 },
+      { line_user_id:'U08', display_name:'たかし', followed_at:shift(REAL_TODAY,-400), status:'blocked',last_visit_at:shift(REAL_TODAY,-60), next_booked:0 }
+    ],
+    visits: [
+      { line_user_id:'U01', visited_on:shift(REAL_TODAY,-11), next_booked:0 },
+      { line_user_id:'U02', visited_on:shift(REAL_TODAY,-11), next_booked:1 },
+      { line_user_id:'U03', visited_on:shift(REAL_TODAY,-21), next_booked:0 },
+      { line_user_id:'U04', visited_on:shift(REAL_TODAY,-1),  next_booked:1 },
+      { line_user_id:'U05', visited_on:shift(REAL_TODAY,-1),  next_booked:0 },
+      { line_user_id:'U06', visited_on:shift(REAL_TODAY,-60), next_booked:0 }
+    ],
+    tags: [],
+    customerTags: [],
+    deliveries: [],
+    unmatched: [
+      { body:'クレジットカードは使えますか', n:4 },
+      { body:'子ども連れでも大丈夫ですか',   n:3 },
+      { body:'施術時間はどれくらいですか',   n:2 }
+    ]
+  };
+}
 
-/* ============ D1 のふるまいを最小限だけ再現する ============ */
+let state = seed();
+
+/* 最初から少しタグが貯まっている状態にしておく */
+const PRESEED = [
+  ['U01', ['性別:女性','希望:セラピスト脱毛','予算:5,000〜10,000円','希望:キャンセル枠']],
+  ['U02', ['性別:女性','希望:毛穴・シミ・くすみ','希望:キャンセル枠']],
+  ['U03', ['性別:女性','希望:たるみ・小顔','希望:キャンセル枠']],
+  ['U06', ['性別:女性','希望:お腹・太ももの脂肪']]
+];
+
+/* ==================================================================
+   D1 のふるまいを、このデモで使う範囲だけ再現する
+   （本物のコードは一切変えずに動かすためのスタブ）
+   ================================================================== */
 
 const db = {
   prepare(sql) {
     let args = [];
     const stmt = {
       bind(...a) { args = a; return stmt; },
-      async first() { return q(sql, args).first; },
-      async all()   { return { results: q(sql, args).rows }; },
-      async run()   { q(sql, args); return { meta: { changes: 1 } }; }
+      async first() { return run(sql, args).first; },
+      async all()   { return { results: run(sql, args).rows }; },
+      async run()   { return { meta: { changes: run(sql, args).changes ?? 0 } }; }
     };
     return stmt;
   }
 };
 
-function q(sql, args) {
-  const active = () => state.customers.filter(c => c.status === 'active');
+const active = () => state.customers.filter(c => c.status === 'active');
+const tagId   = (name) => state.tags.find(t => t.name === name)?.id ?? null;
 
+function run(sql, args) {
+  /* --- 集計 --- */
   if (sql.includes('AS friends')) {
     return { first: {
       friends: active().length,
       blocked: state.customers.filter(c => c.status === 'blocked').length,
-      today_visits: state.visits.filter(v => v.visited_on === today).length
+      today_visits: state.visits.filter(v => v.visited_on === todayJst()).length
     }, rows: [] };
   }
   if (sql.includes('FROM inbound_messages')) {
-    return { first:null, rows: state.unmatched.map(u => ({ body:u.body, n:u.n, latest:today })) };
+    return { first:null, rows: state.unmatched.map(u => ({ body:u.body, n:u.n, latest:state.today })) };
   }
+
+  /* --- 来店の記録 --- */
   if (sql.includes('INSERT INTO visits')) {
-    const [userId, on, booked] = args;
-    const hit = state.visits.find(v => v.line_user_id === userId && v.visited_on === on);
-    if (hit) hit.next_booked = booked;
-    else state.visits.push({ line_user_id:userId, visited_on:on, next_booked:booked });
-    return { first:null, rows:[] };
+    const [uid, on, booked] = args;
+    const hit = state.visits.find(v => v.line_user_id === uid && v.visited_on === on);
+    if (hit) hit.next_booked = booked; else state.visits.push({ line_user_id:uid, visited_on:on, next_booked:booked });
+    return { first:null, rows:[], changes:1 };
   }
   if (sql.includes('UPDATE customers SET last_visit_at')) {
-    const [on, booked, userId] = args;
-    const c = state.customers.find(x => x.line_user_id === userId);
+    const [on, booked, uid] = args;
+    const c = state.customers.find(x => x.line_user_id === uid);
     if (c) { c.last_visit_at = on; c.next_booked = booked; }
-    return { first:null, rows:[] };
+    return { first:null, rows:[], changes:1 };
   }
+
+  /* --- タグ --- */
+  if (sql.includes('INSERT OR IGNORE INTO tags')) {
+    const [name, kind] = args;
+    if (!tagId(name)) state.tags.push({ id: state.tags.length + 1, name, kind });
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('INSERT OR IGNORE INTO customer_tags')) {
+    const [uid, , name] = args;
+    const id = tagId(name);
+    if (id && !state.customerTags.some(ct => ct.line_user_id === uid && ct.tag_id === id)) {
+      state.customerTags.push({ line_user_id: uid, tag_id: id });
+    }
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('FROM customer_tags ct JOIN tags t') && sql.includes('ct.line_user_id = ?')) {
+    const [uid] = args;
+    const rows = state.customerTags.filter(ct => ct.line_user_id === uid)
+      .map(ct => state.tags.find(t => t.id === ct.tag_id)).filter(Boolean);
+    return { first:null, rows };
+  }
+  if (sql.includes('GROUP BY t.id')) {
+    const counts = new Map();
+    state.customerTags.forEach(ct => {
+      const c = state.customers.find(x => x.line_user_id === ct.line_user_id);
+      if (!c || c.status !== 'active') return;
+      counts.set(ct.tag_id, (counts.get(ct.tag_id) ?? 0) + 1);
+    });
+    const rows = [...counts].map(([id, n]) => ({ ...state.tags.find(t => t.id === id), n }))
+      .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+    return { first:null, rows };
+  }
+
+  /* --- 配信 --- */
+  if (sql.includes('FROM visits v')) {
+    const [visitedOn, dedupe] = args;
+    const unbookedOnly = sql.includes('v.next_booked = 0');
+    const rows = state.visits
+      .filter(v => v.visited_on === visitedOn)
+      .filter(v => !unbookedOnly || v.next_booked === 0)
+      .map(v => state.customers.find(c => c.line_user_id === v.line_user_id))
+      .filter(c => c && c.status === 'active')
+      .filter(c => !state.deliveries.some(d => d.line_user_id === c.line_user_id && d.dedupe_key === dedupe))
+      .map(c => ({ line_user_id:c.line_user_id, display_name:c.display_name }));
+    return { first:null, rows };
+  }
+  if (sql.includes('INSERT OR IGNORE INTO deliveries')) {
+    const uid = args[0];
+    const dedupe = sql.includes("'segment'") ? args[1] : args[2];
+    if (state.deliveries.some(d => d.line_user_id === uid && d.dedupe_key === dedupe)) {
+      return { first:null, rows:[], changes:0 };
+    }
+    state.deliveries.push({ line_user_id:uid, dedupe_key:dedupe, status:'sending' });
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('UPDATE deliveries SET status')) {
+    const [status, , uid, dedupe] = args;
+    const d = state.deliveries.find(x => x.line_user_id === uid && x.dedupe_key === dedupe);
+    if (d) d.status = status;
+    return { first:null, rows:[], changes:1 };
+  }
+
+  /* --- お客様の抽出（一覧・絞り込み） --- */
   if (sql.includes('FROM customers')) {
     let rows = active();
+    let i = 0;
+
+    // 絞り込み配信：タグ条件（EXISTS の数だけバインド値を消費する）
+    const tagCount = (sql.match(/FROM customer_tags ct JOIN tags t/g) ?? []).length;
+    if (sql.includes('EXISTS')) {
+      for (let k = 0; k < tagCount; k++) {
+        const name = args[i++];
+        const id = tagId(name);
+        rows = rows.filter(c => id && state.customerTags.some(ct => ct.line_user_id === c.line_user_id && ct.tag_id === id));
+      }
+    }
+    if (sql.includes('c.last_visit_at <= ?')) {
+      const cutoff = args[i++];
+      rows = rows.filter(c => c.last_visit_at === null || c.last_visit_at <= cutoff);
+    }
+    if (sql.includes('c.next_booked = 0')) rows = rows.filter(c => c.next_booked === 0);
+
+    // スタッフ用ページの名前検索
     if (sql.includes('LIKE')) {
-      const needle = String(args[0] ?? '').replace(/%/g, '');
+      const needle = String(args[i++] ?? '').replace(/%/g, '');
       rows = rows.filter(c => (c.display_name ?? '').includes(needle));
-      rows.sort((a, b) => (a.last_visit_at === null) - (b.last_visit_at === null)
-                       || String(b.last_visit_at).localeCompare(String(a.last_visit_at)));
+    }
+
+    if (sql.includes('(c.last_visit_at IS NULL)') || sql.includes('(last_visit_at IS NULL)')) {
+      rows = [...rows].sort((a, b) => (a.last_visit_at === null) - (b.last_visit_at === null)
+        || String(b.last_visit_at).localeCompare(String(a.last_visit_at)));
     } else {
-      rows.sort((a, b) => String(b.followed_at).localeCompare(String(a.followed_at)));
+      rows = [...rows].sort((a, b) => String(b.followed_at).localeCompare(String(a.followed_at)));
     }
     return { first:null, rows };
   }
-  return { first:null, rows:[] };
+
+  return { first:null, rows:[], changes:0 };
 }
 
 const env = { DB: db, ADMIN_USER:'demo', ADMIN_PASS:'demo' };
 const AUTH = { Authorization: 'Basic ' + btoa('demo:demo') };
 
-/* ============ スタッフ用ページを実コードで描画する ============ */
+async function applyPreseed() {
+  for (const [uid, names] of PRESEED) {
+    await grantTags(env, uid, names.map(name => ({ kind:'preference', name })));
+  }
+}
 
-const frame = document.getElementById('admin');
+/* ==================================================================
+   共通
+   ================================================================== */
 
-/** スタッフ用ページのHTMLを、実際のコードから取得する */
+const $ = (id) => document.getElementById(id);
+const esc2 = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const nf = (n) => n.toLocaleString('ja-JP');
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab'); if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+  document.querySelectorAll('.panelwrap').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.p; });
+  if (tab.dataset.p === '2') renderTags();
+  if (tab.dataset.p === '3') renderDelivery();
+  if (tab.dataset.p === '4') renderSegment();
+});
+
+/* ==================================================================
+   01 スタッフ用ページ
+   ================================================================== */
+
+const frame = $('admin');
+
 async function pageHtml(path) {
   const req = new Request('http://demo' + path, { headers: AUTH });
   const res = await adminRequest(req, env, new URL(req.url));
   return res.text();
 }
 
-/** ボタン・検索・リンクを、ページ遷移せずにその場で処理する */
 function wire(root, render) {
   root.querySelectorAll('form').forEach(form => {
     form.addEventListener('submit', async (e) => {
@@ -264,7 +575,6 @@ function wire(root, render) {
       const action = form.getAttribute('action') || '/admin';
       const fd = new FormData(form);
       if (e.submitter?.name) fd.set(e.submitter.name, e.submitter.value);
-
       if ((form.method || 'get').toLowerCase() === 'get') {
         const qs = new URLSearchParams(fd).toString();
         return render(action + (qs ? '?' + qs : ''));
@@ -274,29 +584,21 @@ function wire(root, render) {
       render(res.status === 303 ? res.headers.get('Location') : action);
     });
   });
-
   root.querySelectorAll('a[href^="/admin"]').forEach(a => {
     a.addEventListener('click', (e) => { e.preventDefault(); render(a.getAttribute('href')); });
   });
 }
-
-/* 通常は iframe に描画する。埋め込み先の制限で中を操作できない環境では、
-   Shadow DOM に切り替えて同じ見た目・同じ操作性を保つ。 */
 
 const renderFrame = async (path = '/admin') => { frame.srcdoc = await pageHtml(path); };
 
 frame.addEventListener('load', () => {
   const doc = frame.contentDocument;
   if (doc) { wire(doc, renderFrame); return; }
-
-  // iframe の中に触れない環境 → Shadow DOM で描き直す
   const host = document.createElement('div');
   host.style.cssText = 'height:660px;overflow-y:auto;margin-top:14px;background:var(--ground)';
   frame.replaceWith(host);
-  const sh = host.attachShadow({ mode: 'open' });
-
+  const sh = host.attachShadow({ mode:'open' });
   const renderShadow = async (path = '/admin') => {
-    // Shadow DOM 内では :root と body のセレクタが効かないため読み替える
     sh.innerHTML = (await pageHtml(path))
       .replace(/:root\s*\{/g, ':host{')
       .replace(/(^|[}\s])body\s*\{/g, '$1.app{');
@@ -307,9 +609,11 @@ frame.addEventListener('load', () => {
 
 renderFrame();
 
-/* ============ LINEトークのデモ ============ */
+/* ==================================================================
+   01 LINEトーク
+   ================================================================== */
 
-const chat = document.getElementById('chat');
+const chat = $('chat');
 
 function bubble(kind, body) {
   const row = document.createElement('div');
@@ -326,33 +630,220 @@ function send(input) {
   const t = String(input ?? '').trim();
   if (!t) return;
   bubble('me', t);
-
   const hit = matchReply(t);
-  if (!hit) {
-    bubble('sys', '自動で答えられない質問 → スタッフのLINEへ');
-    return;
-  }
+  if (!hit) return bubble('sys', '自動で答えられない質問 → スタッフのLINEへ');
   hit.messages.forEach(m => bubble('bot', m.text));
   bubble('sys', '自動で返信しました（配信通数は消費しません）');
 }
 
-document.getElementById('compose').addEventListener('submit', (e) => {
+$('compose').addEventListener('submit', (e) => {
   e.preventDefault();
-  const input = document.getElementById('msg');
-  send(input.value);
-  input.value = '';
+  send($('msg').value);
+  $('msg').value = '';
 });
 
-const chips = document.getElementById('chips');
-['予約したいです', 'メニュー教えて', '場所はどこですか', '営業時間は？', '駐車場ありますか', 'こんにちは']
+['予約したいです','メニュー教えて','場所はどこですか','営業時間は？','駐車場ありますか','こんにちは']
   .forEach(s => {
     const b = document.createElement('button');
-    b.className = 'chip';
-    b.type = 'button';
-    b.textContent = s;
+    b.className = 'chip'; b.type = 'button'; b.textContent = s;
     b.addEventListener('click', () => send(s));
-    chips.appendChild(b);
+    $('chips').appendChild(b);
   });
 
 bubble('sys', '下のボタンを押すか、入力欄からお客様として話しかけてみてください');
+
+/* ==================================================================
+   02 診断とタグ
+   ================================================================== */
+
+const DIAG_CASES = [
+  { uid:'U07', name:'まりこ', label:'まりこさんが診断を受ける',
+    sub:'女性／セラピスト脱毛／1万円まで／短期集中',
+    answers:{ gender:'f', concerns:['セラピスト脱毛'], budget:'5,000〜10,000円', pace:'短期集中で結果を出したい', courses:['セラピスト脱毛 60分（全身可）'] } },
+  { uid:'U05', name:'けんた', label:'けんたさんが診断を受ける',
+    sub:'男性／セラピスト脱毛／1万5千円まで／短期集中',
+    answers:{ gender:'m', concerns:['セラピスト脱毛'], budget:'10,000〜15,000円', pace:'短期集中で結果を出したい', courses:['セラピスト全身脱毛（顔あり・VIO無し）90分'] } },
+  { uid:'U04', name:'あやの', label:'あやのさんが診断を受ける',
+    sub:'女性／毛穴・シミ／5千円まで／30分以内',
+    answers:{ gender:'f', concerns:['毛穴・シミ・くすみ'], budget:'〜5,000円', pace:'30分以内でサッと', courses:['ミルキーフェイシャル 30分'] } }
+];
+
+DIAG_CASES.forEach(c => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button';
+  b.innerHTML = esc2(c.label) + '<small>' + esc2(c.sub) + '</small>';
+  b.addEventListener('click', async () => {
+    const tags = tagsFromDiagnosis(c.answers);
+    await grantTags(env, c.uid, tags);
+    $('diagResult').innerHTML =
+      '<div class="person"><b>' + esc2(c.name) + 'さん</b>に印が付きました' +
+      '<div class="taglist">' + tags.map(t => '<span class="t">' + esc2(t.name) + '</span>').join('') + '</div></div>' +
+      '<p class="note" style="padding:0">この時点では配信していません。次にこの方へ送るとき、内容を選ぶ材料になります。</p>';
+    renderTags();
+  });
+  $('diagBtns').appendChild(b);
+});
+
+async function renderTags() {
+  const counts = await tagCounts(env);
+  const people = [];
+  for (const c of active()) {
+    const t = await tagsOf(env, c.line_user_id);
+    if (t.length) people.push({ name:c.display_name, tags:t });
+  }
+  $('tagPanel').innerHTML =
+    (counts.length
+      ? '<div class="taglist">' + counts.map(t =>
+          '<span class="t">' + esc2(t.name) + '<span class="n">' + t.n + '</span></span>').join('') + '</div>'
+      : '<p class="empty">まだ印がありません。</p>') +
+    '<p class="note" style="padding:14px 0 0">お客様ごと</p>' +
+    people.map(p =>
+      '<div class="person"><b>' + esc2(p.name) + '</b><div class="taglist">' +
+      p.tags.map(t => '<span class="t">' + esc2(t.name) + '</span>').join('') + '</div></div>').join('');
+}
+
+/* ==================================================================
+   03 来店後のご案内
+   ================================================================== */
+
+let runDate = REAL_TODAY;
+
+$('dPrev').addEventListener('click', () => { runDate = shift(runDate, -1); renderDelivery(); });
+$('dNext').addEventListener('click', () => { runDate = shift(runDate,  1); renderDelivery(); });
+$('dNearLimit').addEventListener('click', () => { state.quota = { limit:5000, used:4800 }; renderDelivery(); });
+$('dReset').addEventListener('click', async () => {
+  state = seed(); runDate = REAL_TODAY; await applyPreseed(); renderDelivery(); renderTags(); renderSegment();
+});
+
+function meter(q) {
+  const pct = (n) => Math.max(0, Math.min(100, (n / q.limit) * 100));
+  return `
+    <div class="meter">
+      <div class="bar">
+        <div class="used" style="width:${pct(q.used)}%"></div>
+        <div class="now"  style="width:${pct(q.planned)}%"></div>
+        <div class="res"  style="width:${pct(q.reserve)}%"></div>
+      </div>
+      <div class="meterlabels">
+        <span><i style="background:var(--cost-fill)"></i>今月すでに使った <span class="num">${nf(q.used)}</span> 通</span>
+        <span><i style="background:var(--accent)"></i>今回送る <span class="num">${nf(q.planned)}</span> 通</span>
+        <span><i style="background:var(--rule-hard)"></i>いざという時のために残す <span class="num">${nf(q.reserve)}</span> 通</span>
+        <span>上限 <span class="num">${nf(q.limit)}</span> 通</span>
+      </div>
+    </div>`;
+}
+
+async function renderDelivery() {
+  const report = await runDailyDelivery(env, { today: runDate, dryRun: true, quota: state.quota });
+  $('dDate').textContent = runDate + ' の朝10時';
+
+  const steps = report.steps.map(s => `
+    <div class="step${s.count ? '' : ' zero'}">
+      <h3>${esc2(s.label)}
+        <span class="cnt ${s.count ? 'cnt--on' : 'cnt--off'}">${s.count ? s.count + '名に送る' : '対象なし'}</span>
+      </h3>
+      <p class="why">来店から${s.offsetDays}日後（${s.visitedOn} にご来店の方）${
+        s.audience === 'unbooked' ? '／次回予約が入っていない方だけ' : '／ご来店の方全員'}</p>
+      ${s.samples.map(m => `<div class="msg"><span class="who">${esc2(m.name)}さんへ</span>${esc2(m.body)}</div>`).join('')}
+    </div>`).join('');
+
+  const q = report.quota;
+  const verdict = q.allowed
+    ? `<div class="verdict verdict--go"><b>送ります。</b>この配信で ${nf(report.planned)} 通を使い、
+       残りは ${nf(q.remaining - report.planned)} 通になります。</div>`
+    : `<div class="verdict verdict--stop"><b>送りません。</b>${esc2(q.reason ?? '')}。
+       1通も送らずに止まり、オーナーのLINEに知らせます。月末に必要な配信を守るためです。</div>`;
+
+  $('deliveryOut').innerHTML = meter({ ...q, planned: report.planned }) + verdict +
+    '<div style="margin-top:18px">' + steps + '</div>';
+}
+
+/* ==================================================================
+   04 絞り込んで送る
+   ================================================================== */
+
+let segSpec = { tags: [] };
+
+PRESETS.forEach(p => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button';
+  b.innerHTML = esc2(p.label) + '<small>' + esc2(p.note) + '</small>';
+  b.addEventListener('click', () => {
+    segSpec = JSON.parse(JSON.stringify(p.spec));
+    syncFilters();
+    renderSegment();
+  });
+  $('presetBtns').appendChild(b);
+});
+
+function syncFilters() {
+  $('fUnbooked').checked = !!segSpec.unbookedOnly;
+  $('fSleeping').checked = segSpec.notVisitedDays === 90;
+  document.querySelectorAll('#tagFilters input').forEach(i => {
+    i.checked = (segSpec.tags ?? []).includes(i.value);
+  });
+}
+
+function readFilters() {
+  segSpec = {
+    tags: [...document.querySelectorAll('#tagFilters input:checked')].map(i => i.value),
+    unbookedOnly: $('fUnbooked').checked,
+    notVisitedDays: $('fSleeping').checked ? 90 : undefined
+  };
+}
+
+$('fUnbooked').addEventListener('change', () => { readFilters(); renderSegment(); });
+$('fSleeping').addEventListener('change', () => { readFilters(); renderSegment(); });
+$('segBody').addEventListener('input', renderSegment);
+
+async function renderSegment() {
+  const counts = await tagCounts(env);
+  $('tagFilters').innerHTML = counts.map(t =>
+    `<label class="chk"><input type="checkbox" value="${esc2(t.name)}">
+       <span>${esc2(t.name)}<small>${t.n}名</small></span></label>`).join('')
+    || '<p class="empty">印がまだありません。02のタブで診断を受けてもらうと増えます。</p>';
+
+  syncFilters();
+  document.querySelectorAll('#tagFilters input').forEach(i =>
+    i.addEventListener('change', () => { readFilters(); renderSegment(); }));
+
+  const preview = await previewSegment(env, segSpec, { today: REAL_TODAY, quota: state.quota });
+  const q = preview.quota;
+
+  const verdict = preview.planned === 0
+    ? '<div class="verdict verdict--stop"><b>対象が0名です。</b>条件を緩めてください。</div>'
+    : q.allowed
+      ? `<div class="verdict verdict--go"><b>${nf(preview.planned)} 名に届きます。${nf(preview.planned)} 通を使います。</b>
+         送信後の残りは ${nf(q.remaining - preview.planned)} 通です。</div>`
+      : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(q.reason ?? '')}</div>`;
+
+  $('segOut').innerHTML =
+    meter({ ...q, planned: preview.planned }) + verdict +
+    '<p class="note" style="padding:14px 0 0">届く方</p>' +
+    (preview.targets.length
+      ? '<div class="taglist">' + preview.targets.map(c =>
+          '<span class="t">' + esc2(c.display_name) + '</span>').join('') + '</div>'
+      : '<p class="empty">該当なし</p>') +
+    `<div class="btnrow" style="margin-top:18px">
+       <button class="btn" id="segSend" ${q.allowed && preview.planned ? '' : 'disabled'}>この内容で送る</button>
+     </div>
+     <p class="note" style="padding:8px 0 0">デモなので、押しても実際には送信されません。</p>`;
+
+  const btn = $('segSend');
+  if (btn) btn.addEventListener('click', async () => {
+    const res = await sendSegment(env, segSpec, $('segBody').value,
+      { today: REAL_TODAY, quota: state.quota, dryRun: true });
+    btn.textContent = `${nf(res.planned)}名に送信しました（デモ）`;
+    btn.disabled = true;
+  });
+}
+
+/* ==================================================================
+   起動
+   ================================================================== */
+
+await applyPreseed();
+renderTags();
+renderDelivery();
+renderSegment();
 </script>

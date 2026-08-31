@@ -64,3 +64,39 @@ CREATE TABLE IF NOT EXISTS inbound_messages (
 
 CREATE INDEX IF NOT EXISTS idx_inbound_created ON inbound_messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_inbound_matched ON inbound_messages(matched);
+
+-- ============ フェーズ2以降で使うテーブル ============
+
+-- コース診断の回答。タグの元になった内容を残しておく
+CREATE TABLE IF NOT EXISTS diagnoses (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  line_user_id TEXT NOT NULL,
+  gender       TEXT,
+  concerns     TEXT,                              -- JSON配列
+  budget       TEXT,
+  pace         TEXT,
+  results      TEXT,                              -- 提案したコース（JSON配列）
+  created_at   TEXT NOT NULL,
+  FOREIGN KEY (line_user_id) REFERENCES customers(line_user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_diagnoses_user ON diagnoses(line_user_id, created_at DESC);
+
+-- 配信の記録。
+-- UNIQUE(line_user_id, dedupe_key) により、バッチが再実行されても
+-- 同じ人に同じ案内が二度届くことがデータベース側で起こり得ない。
+CREATE TABLE IF NOT EXISTS deliveries (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  line_user_id TEXT    NOT NULL,
+  step_id      TEXT    NOT NULL,
+  dedupe_key   TEXT    NOT NULL,                  -- 例 'next_cycle:2026-08-20'
+  status       TEXT    NOT NULL,                  -- sending | sent | failed
+  messages     INTEGER NOT NULL DEFAULT 1,        -- 消費した通数
+  error        TEXT,
+  sent_at      TEXT    NOT NULL,
+  UNIQUE (line_user_id, dedupe_key),
+  FOREIGN KEY (line_user_id) REFERENCES customers(line_user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_deliveries_sent ON deliveries(sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_deliveries_step ON deliveries(step_id, status);

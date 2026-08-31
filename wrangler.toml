@@ -2,8 +2,10 @@ name = "miele-line"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
 
-# 通数を消費する処理はフェーズ3で追加する。
-# フェーズ1の時点では cron は使わない。
+# 毎朝10時（JST）＝ 01:00 UTC に来店後のご案内を送る。
+# 通数を消費する唯一の入口で、必ず通数ガードを通る。
+[triggers]
+crons = ["0 1 * * *"]
 
 [[d1_databases]]
 binding = "DB"
@@ -20,3 +22,5 @@ enabled = true
 #   CHANNEL_ACCESS_TOKEN  LINE Developers > Messaging API > チャネルアクセストークン（長期）
 #   ADMIN_USER            スタッフ用管理ページのユーザー名
 #   ADMIN_PASS            スタッフ用管理ページのパスワード
+#   LIFF_CHANNEL_ID       LINE Developers > LIFF を作成したチャネルのチャネルID
+#                         （コース診断ツールからの投稿を検証するために使う）
