@@ -30,3 +30,7 @@ cp preview/index.html out/index.html
 printf 'User-agent: *\nDisallow: /\n' > out/robots.txt
 
 echo "built: preview/index.html, out/index.html, out/robots.txt"
+
+# 説明書（オーナー・スタッフ向け）。モジュールを埋め込む必要はないのでそのまま配置する
+cp preview/guide.html out/guide.html
+echo "built: out/guide.html"
