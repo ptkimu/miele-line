@@ -1,0 +1,358 @@
+<title>ミエーレ LINE自動応答デモ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
+    --ink:#2B2724; --ink-soft:#5D534E; --muted:#8B7F79;
+    --rule:#E7DBD4; --accent:#98543F; --accent-wash:#F7EBE5;
+    --free:#1F7A4C; --free-fill:#1F9D57;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+      --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
+      --rule:#3A3331; --accent:#D9967C; --accent-wash:#33241F;
+      --free:#5CC98C; --free-fill:#2E9E63;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+    --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
+    --rule:#3A3331; --accent:#D9967C; --accent-wash:#33241F;
+    --free:#5CC98C; --free-fill:#2E9E63;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
+       font-size:15px;line-height:1.8;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:44px 22px 90px}
+
+  header.top{border-bottom:1px solid var(--rule);padding-bottom:26px;margin-bottom:26px}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.2em;color:var(--accent);margin:0 0 12px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,4.6vw,34px);
+     line-height:1.3;margin:0 0 14px;text-wrap:balance}
+  .lede{color:var(--ink-soft);margin:0 0 22px;max-width:60ch;font-size:15.5px}
+  .facts{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--rule);margin:0}
+  .facts div{flex:1 1 160px;padding:14px 18px 12px 0;border-right:1px solid var(--rule)}
+  .facts div:last-child{border-right:0}
+  .facts dt{font-size:10.5px;letter-spacing:.12em;color:var(--muted);margin:0 0 2px}
+  .facts dd{margin:0;font-family:var(--f-display);font-weight:700;font-size:18px;line-height:1.4}
+  .facts dd small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;
+                  color:var(--muted);line-height:1.6}
+
+  .warn{background:var(--accent-wash);border-left:3px solid var(--accent);
+        border-radius:0 10px 10px 0;padding:13px 18px;font-size:13.5px;margin:0 0 30px;
+        color:var(--ink-soft)}
+  .warn strong{color:var(--ink);font-weight:500}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  @media (max-width:940px){.cols{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
+  .panel > h2{font-family:var(--f-display);margin:0;padding:16px 20px;font-size:15.5px;
+              border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px}
+  .badge{font-size:10.5px;font-weight:700;color:#fff;background:var(--free-fill);
+         border-radius:99px;padding:2px 10px;letter-spacing:.04em}
+  .intro{padding:14px 20px 0;font-size:13px;color:var(--muted);margin:0}
+  .intro b{color:var(--ink-soft);font-weight:500}
+
+  iframe{width:100%;height:660px;border:0;display:block;background:var(--ground);margin-top:14px}
+
+  /* LINE風トーク */
+  .phone{background:#8CABD8;padding:16px;height:452px;overflow-y:auto;margin-top:14px}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .phone{background:#3E5470}}
+  :root[data-theme="dark"] .phone{background:#3E5470}
+  .row{display:flex;margin-bottom:11px}
+  .row.me{justify-content:flex-end}
+  .bub{max-width:80%;padding:9px 14px;border-radius:17px;font-size:13.5px;line-height:1.7;
+       white-space:pre-wrap;word-break:break-word}
+  .row.me .bub{background:#8DE055;color:#16260F;border-bottom-right-radius:4px}
+  .row.bot .bub{background:#FFFFFF;color:#1E1E1E;border-bottom-left-radius:4px}
+  .row.sys{justify-content:center}
+  .row.sys .bub{background:rgba(0,0,0,.34);color:#fff;font-size:11.5px;border-radius:99px;
+                padding:4px 13px;white-space:normal;max-width:92%;text-align:center}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px;padding:14px 16px 0}
+  .chip{border:1px solid var(--rule);background:var(--surface);color:var(--accent);
+        border-radius:99px;padding:6px 13px;font:inherit;font-size:12.5px;cursor:pointer}
+  .chip:hover{background:var(--accent-wash)}
+  .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .compose{display:flex;gap:8px;padding:14px 16px;border-top:1px solid var(--rule);margin-top:14px}
+  .compose input{flex:1;min-width:0;padding:11px 14px;border:1px solid var(--rule);
+                 border-radius:99px;font:inherit;font-size:14px;background:var(--ground);color:var(--ink)}
+  .compose button{padding:11px 20px;border:0;border-radius:99px;background:var(--accent);
+                  color:#fff;font:inherit;font-weight:700}
+  .compose input:focus-visible,.compose button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .note{font-size:12.5px;color:var(--muted);padding:0 20px 18px;line-height:1.75;margin:12px 0 0}
+
+  footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--muted);line-height:1.9}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">動作デモ</p>
+    <h1>LINEの自動応答と<br>来店記録のしくみ</h1>
+    <p class="lede">
+      お客様からのよくある質問にLINEが自動で答え、スタッフは会計後にボタンを押すだけで来店を記録できます。
+      下の2つは<strong>実際に触って動かせます</strong>。
+    </p>
+    <dl class="facts">
+      <div><dt>追加の月額費用</dt><dd>0円<small>いまのLINEプランのまま</small></dd></div>
+      <div><dt>消費する配信通数</dt><dd>0通<small>5,000通の枠は減りません</small></dd></div>
+      <div><dt>スタッフの手間</dt><dd>会計後に1タップ<small>スマホで完結</small></dd></div>
+    </dl>
+  </header>
+
+  <p class="warn">
+    <strong>これはデモです。</strong>表示されているお名前・来店日はすべて架空のサンプルで、
+    実際のお客様の情報は入っていません。ここで押したボタンが本番に影響することもありません。
+  </p>
+
+  <div class="cols">
+
+    <section class="panel">
+      <h2>スタッフ用ページ <span class="badge">0通</span></h2>
+      <p class="intro">
+        会計のあと、来店されたお客様の名前を探してボタンを押します。<br>
+        <b>次回予約が取れた方は「予約あり」、取れなかった方は「未予約」。</b>
+        後日のご案内は未予約の方にだけ届くので、予約済みの方に「そろそろですね」と送ってしまうことがありません。
+      </p>
+      <iframe id="admin" title="スタッフ用ページのデモ"></iframe>
+    </section>
+
+    <section class="panel">
+      <h2>お客様から見たLINE <span class="badge">0通</span></h2>
+      <p class="intro">
+        ボタンを押すか、下の欄に入力して送ってみてください。<br>
+        <b>自動で答えられない質問には、あえて返信しません。</b>
+        間違った案内を出すより、スタッフがLINEで直接お答えするほうが確実だからです。
+      </p>
+      <div class="phone" id="chat"></div>
+      <div class="chips" id="chips"></div>
+      <form class="compose" id="compose">
+        <input id="msg" placeholder="メッセージを入力" autocomplete="off" aria-label="メッセージを入力">
+        <button type="submit">送信</button>
+      </form>
+      <p class="note">
+        「営業時間」と「駐車場」は、まだ店舗情報を登録していないため返信しません。
+        登録すれば自動で答えるようになります。
+      </p>
+    </section>
+
+  </div>
+
+  <footer>
+    ビューティサロン ミエーレ ／ LINE公式アカウント連携 フェーズ1<br>
+    このデモは実際のプログラムをそのまま動かしています。データベースだけサンプルに差し替えてあります。
+  </footer>
+</div>
+
+<script type="module">
+/*__MODULES__*/
+
+/* ============ デモ用のサンプルデータ ============ */
+
+const today = todayJst();
+const ymd = (offset) => new Date(Date.parse(today + 'T00:00:00Z') + offset * 86400000)
+  .toISOString().slice(0, 10);
+
+const state = {
+  customers: [
+    { line_user_id:'U01', display_name:'さくら',   last_visit_at:ymd(-14), next_booked:0, followed_at:ymd(-120), status:'active' },
+    { line_user_id:'U02', display_name:'みどり',   last_visit_at:ymd(-3),  next_booked:1, followed_at:ymd(-90),  status:'active' },
+    { line_user_id:'U03', display_name:'ゆき',     last_visit_at:ymd(-19), next_booked:0, followed_at:ymd(-200), status:'active' },
+    { line_user_id:'U04', display_name:'あやの',   last_visit_at:ymd(-8),  next_booked:1, followed_at:ymd(-45),  status:'active' },
+    { line_user_id:'U05', display_name:'けんた',   last_visit_at:null,     next_booked:0, followed_at:ymd(-2),   status:'active' },
+    { line_user_id:'U06', display_name:'ひなの',   last_visit_at:ymd(-40), next_booked:0, followed_at:ymd(-300), status:'active' },
+    { line_user_id:'U07', display_name:'まりこ',   last_visit_at:null,     next_booked:0, followed_at:ymd(-1),   status:'active' },
+    { line_user_id:'U08', display_name:'たかし',   last_visit_at:ymd(-60), next_booked:0, followed_at:ymd(-400), status:'blocked' }
+  ],
+  visits: [],
+  unmatched: [
+    { body:'クレジットカードは使えますか', n:4 },
+    { body:'子ども連れでも大丈夫ですか',   n:3 },
+    { body:'施術時間はどれくらいですか',   n:2 }
+  ]
+};
+
+/* ============ D1 のふるまいを最小限だけ再現する ============ */
+
+const db = {
+  prepare(sql) {
+    let args = [];
+    const stmt = {
+      bind(...a) { args = a; return stmt; },
+      async first() { return q(sql, args).first; },
+      async all()   { return { results: q(sql, args).rows }; },
+      async run()   { q(sql, args); return { meta: { changes: 1 } }; }
+    };
+    return stmt;
+  }
+};
+
+function q(sql, args) {
+  const active = () => state.customers.filter(c => c.status === 'active');
+
+  if (sql.includes('AS friends')) {
+    return { first: {
+      friends: active().length,
+      blocked: state.customers.filter(c => c.status === 'blocked').length,
+      today_visits: state.visits.filter(v => v.visited_on === today).length
+    }, rows: [] };
+  }
+  if (sql.includes('FROM inbound_messages')) {
+    return { first:null, rows: state.unmatched.map(u => ({ body:u.body, n:u.n, latest:today })) };
+  }
+  if (sql.includes('INSERT INTO visits')) {
+    const [userId, on, booked] = args;
+    const hit = state.visits.find(v => v.line_user_id === userId && v.visited_on === on);
+    if (hit) hit.next_booked = booked;
+    else state.visits.push({ line_user_id:userId, visited_on:on, next_booked:booked });
+    return { first:null, rows:[] };
+  }
+  if (sql.includes('UPDATE customers SET last_visit_at')) {
+    const [on, booked, userId] = args;
+    const c = state.customers.find(x => x.line_user_id === userId);
+    if (c) { c.last_visit_at = on; c.next_booked = booked; }
+    return { first:null, rows:[] };
+  }
+  if (sql.includes('FROM customers')) {
+    let rows = active();
+    if (sql.includes('LIKE')) {
+      const needle = String(args[0] ?? '').replace(/%/g, '');
+      rows = rows.filter(c => (c.display_name ?? '').includes(needle));
+      rows.sort((a, b) => (a.last_visit_at === null) - (b.last_visit_at === null)
+                       || String(b.last_visit_at).localeCompare(String(a.last_visit_at)));
+    } else {
+      rows.sort((a, b) => String(b.followed_at).localeCompare(String(a.followed_at)));
+    }
+    return { first:null, rows };
+  }
+  return { first:null, rows:[] };
+}
+
+const env = { DB: db, ADMIN_USER:'demo', ADMIN_PASS:'demo' };
+const AUTH = { Authorization: 'Basic ' + btoa('demo:demo') };
+
+/* ============ スタッフ用ページを実コードで描画する ============ */
+
+const frame = document.getElementById('admin');
+
+/** スタッフ用ページのHTMLを、実際のコードから取得する */
+async function pageHtml(path) {
+  const req = new Request('http://demo' + path, { headers: AUTH });
+  const res = await adminRequest(req, env, new URL(req.url));
+  return res.text();
+}
+
+/** ボタン・検索・リンクを、ページ遷移せずにその場で処理する */
+function wire(root, render) {
+  root.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const action = form.getAttribute('action') || '/admin';
+      const fd = new FormData(form);
+      if (e.submitter?.name) fd.set(e.submitter.name, e.submitter.value);
+
+      if ((form.method || 'get').toLowerCase() === 'get') {
+        const qs = new URLSearchParams(fd).toString();
+        return render(action + (qs ? '?' + qs : ''));
+      }
+      const req = new Request('http://demo' + action, { method:'POST', body:fd, headers:AUTH });
+      const res = await adminRequest(req, env, new URL(req.url));
+      render(res.status === 303 ? res.headers.get('Location') : action);
+    });
+  });
+
+  root.querySelectorAll('a[href^="/admin"]').forEach(a => {
+    a.addEventListener('click', (e) => { e.preventDefault(); render(a.getAttribute('href')); });
+  });
+}
+
+/* 通常は iframe に描画する。埋め込み先の制限で中を操作できない環境では、
+   Shadow DOM に切り替えて同じ見た目・同じ操作性を保つ。 */
+
+const renderFrame = async (path = '/admin') => { frame.srcdoc = await pageHtml(path); };
+
+frame.addEventListener('load', () => {
+  const doc = frame.contentDocument;
+  if (doc) { wire(doc, renderFrame); return; }
+
+  // iframe の中に触れない環境 → Shadow DOM で描き直す
+  const host = document.createElement('div');
+  host.style.cssText = 'height:660px;overflow-y:auto;margin-top:14px;background:var(--ground)';
+  frame.replaceWith(host);
+  const sh = host.attachShadow({ mode: 'open' });
+
+  const renderShadow = async (path = '/admin') => {
+    // Shadow DOM 内では :root と body のセレクタが効かないため読み替える
+    sh.innerHTML = (await pageHtml(path))
+      .replace(/:root\s*\{/g, ':host{')
+      .replace(/(^|[}\s])body\s*\{/g, '$1.app{');
+    wire(sh, renderShadow);
+  };
+  renderShadow();
+});
+
+renderFrame();
+
+/* ============ LINEトークのデモ ============ */
+
+const chat = document.getElementById('chat');
+
+function bubble(kind, body) {
+  const row = document.createElement('div');
+  row.className = 'row ' + kind;
+  const b = document.createElement('div');
+  b.className = 'bub';
+  b.textContent = body;
+  row.appendChild(b);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function send(input) {
+  const t = String(input ?? '').trim();
+  if (!t) return;
+  bubble('me', t);
+
+  const hit = matchReply(t);
+  if (!hit) {
+    bubble('sys', '自動で答えられない質問 → スタッフのLINEへ');
+    return;
+  }
+  hit.messages.forEach(m => bubble('bot', m.text));
+  bubble('sys', '自動で返信しました（配信通数は消費しません）');
+}
+
+document.getElementById('compose').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const input = document.getElementById('msg');
+  send(input.value);
+  input.value = '';
+});
+
+const chips = document.getElementById('chips');
+['予約したいです', 'メニュー教えて', '場所はどこですか', '営業時間は？', '駐車場ありますか', 'こんにちは']
+  .forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.type = 'button';
+    b.textContent = s;
+    b.addEventListener('click', () => send(s));
+    chips.appendChild(b);
+  });
+
+bubble('sys', '下のボタンを押すか、入力欄からお客様として話しかけてみてください');
+</script>

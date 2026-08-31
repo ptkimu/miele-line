@@ -206,12 +206,12 @@ function checkAuth(request, env) {
   if (i < 0) return false;
 
   return (
-    safeEqual(decoded.slice(0, i), env.ADMIN_USER ?? '') &&
-    safeEqual(decoded.slice(i + 1), env.ADMIN_PASS ?? '')
+    credsEqual(decoded.slice(0, i), env.ADMIN_USER ?? '') &&
+    credsEqual(decoded.slice(i + 1), env.ADMIN_PASS ?? '')
   );
 }
 
-function safeEqual(a, b) {
+function credsEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
   if (a.length !== b.length) return false;
   let diff = 0;
