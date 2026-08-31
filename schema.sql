@@ -100,3 +100,18 @@ CREATE TABLE IF NOT EXISTS deliveries (
 
 CREATE INDEX IF NOT EXISTS idx_deliveries_sent ON deliveries(sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_deliveries_step ON deliveries(step_id, status);
+
+-- 売上。オーナー管理のシステムから書き出したCSVを取り込む。
+-- お客様個人とは結び付けず、日付・メニュー・金額の集計だけを持つ。
+CREATE TABLE IF NOT EXISTS sales (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  sold_on     TEXT    NOT NULL,                  -- YYYY-MM-DD
+  menu        TEXT    NOT NULL,                  -- 書き出したままのメニュー名
+  category    TEXT,                              -- 脱毛 / 韓国肌管理 など（自動判定）
+  amount      INTEGER NOT NULL,
+  is_new      INTEGER NOT NULL DEFAULT 0,        -- 1 = 新規
+  imported_at TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sales_month ON sales(sold_on);
+CREATE INDEX IF NOT EXISTS idx_sales_cat   ON sales(category, sold_on);

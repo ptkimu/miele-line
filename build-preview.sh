@@ -10,7 +10,7 @@
 set -e
 cd "$(dirname "$0")"
 
-MODULES="src/salon.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/scenarios.js src/delivery.js src/segments.js src/admin.js"
+MODULES="src/salon.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/scenarios.js src/delivery.js src/segments.js src/insights.js src/admin.js"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
