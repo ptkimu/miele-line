@@ -1,0 +1,20 @@
+{
+  "name": "miele-line",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ビューティサロン ミエーレ LINE公式アカウント連携（フェーズ1：受け口）",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "db:create": "wrangler d1 create miele",
+    "db:init": "wrangler d1 execute miele --remote --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute miele --local --file=./schema.sql",
+    "db:friends": "wrangler d1 execute miele --remote --command \"SELECT COUNT(*) AS friends FROM customers WHERE status='active'\"",
+    "db:unmatched": "wrangler d1 execute miele --remote --command \"SELECT body, COUNT(*) AS n FROM inbound_messages WHERE matched IS NULL GROUP BY body ORDER BY n DESC LIMIT 30\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

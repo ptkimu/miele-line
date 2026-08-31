@@ -1,0 +1,22 @@
+name = "miele-line"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# 通数を消費する処理はフェーズ3で追加する。
+# フェーズ1の時点では cron は使わない。
+
+[[d1_databases]]
+binding = "DB"
+database_name = "miele"
+# ↓ `npx wrangler d1 create miele` の出力に表示される UUID を貼る
+database_id = "PASTE_DATABASE_ID_HERE"
+
+[observability]
+enabled = true
+
+# --- シークレット（wrangler.toml には書かない） --------------------------
+# 以下は `npx wrangler secret put <NAME>` で登録する。
+#   CHANNEL_SECRET        LINE Developers > Messaging API > チャネルシークレット
+#   CHANNEL_ACCESS_TOKEN  LINE Developers > Messaging API > チャネルアクセストークン（長期）
+#   ADMIN_USER            スタッフ用管理ページのユーザー名
+#   ADMIN_PASS            スタッフ用管理ページのパスワード
