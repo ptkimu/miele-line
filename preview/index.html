@@ -294,9 +294,10 @@
   <!-- ============ 04 ============ -->
   <div class="panelwrap" data-panel="4" hidden>
     <p class="phaseline">
-      <b>全員に送らない、という選び方です。</b>
+      <b>新メニューやキャンペーンのお知らせを送るところです。</b>
       条件を選ぶと、送る前に「何人に届いて、何通使うか」が出ます。
-      関係のない方に届かないので、通数が減るだけでなくブロックも防げます。
+      通数には十分な余裕があるので、ここで気にするのは金額ではなく
+      <b>関係のない方に送ってブロックされないか</b>のほうです。
     </p>
     <div class="cols">
       <section class="panel">
@@ -309,6 +310,8 @@
             <span>次回予約が入っていない方だけ<small>予約済みの方に営業をかけない</small></span></label>
           <label class="chk"><input type="checkbox" id="fSleeping">
             <span>90日以上ご来店のない方だけ<small>復帰のきっかけづくり</small></span></label>
+          <label class="chk"><input type="checkbox" id="fRecent">
+            <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span></label>
         </div>
       </section>
       <section class="panel">
@@ -1058,10 +1061,14 @@ async function findTargets(env, step, visitedOn) {
 
 /**
  * @typedef {object} SegmentSpec
- * @property {string[]} [tags]          このタグを「すべて」持つ人
- * @property {number}   [notVisitedDays] 最終来店からn日以上経っている人
- * @property {boolean}  [unbookedOnly]  次回予約が入っていない人だけ
+ * @property {string[]} [tags]              このタグを「すべて」持つ人
+ * @property {number}   [notVisitedDays]     最終来店からn日以上経っている人
+ * @property {boolean}  [unbookedOnly]      次回予約が入っていない人だけ
+ * @property {number}   [excludeRecentDays] 直近n日以内に配信を受け取った人を外す
  */
+
+/** 「最近送ったばかり」の目安。これより短い間隔で届くと配信疲れになりやすい */
+const RECENT_DAYS = 7;
 
 function buildQuery(spec, today) {
   const where = ["c.status = 'active'"];
@@ -1084,14 +1091,31 @@ function buildQuery(spec, today) {
 
   if (spec.unbookedOnly) where.push('c.next_booked = 0');
 
+  if (spec.excludeRecentDays != null) {
+    where.push(`NOT EXISTS (
+      SELECT 1 FROM deliveries d
+       WHERE d.line_user_id = c.line_user_id AND d.status = 'sent' AND d.sent_at >= ?)`);
+    binds.push(cutoffIso(today, spec.excludeRecentDays));
+  }
+
   return { sql: where.join(' AND '), binds };
 }
 
-/** 対象者の一覧 */
+function cutoffIso(today, days) {
+  return new Date(Date.parse(today + 'T00:00:00Z') - days * 86400000).toISOString();
+}
+
+/**
+ * 対象者の一覧。
+ * last_sent_at も一緒に返すので、「最近送ったばかりの人が何人いるか」を
+ * 送信前に画面へ出せる。
+ */
 async function listSegment(env, spec, today = todayJst()) {
   const { sql, binds } = buildQuery(spec, today);
   const res = await env.DB.prepare(
-    `SELECT c.line_user_id, c.display_name, c.last_visit_at, c.next_booked
+    `SELECT c.line_user_id, c.display_name, c.last_visit_at, c.next_booked,
+            (SELECT MAX(d.sent_at) FROM deliveries d
+              WHERE d.line_user_id = c.line_user_id AND d.status = 'sent') AS last_sent_at
        FROM customers c
       WHERE ${sql}
       ORDER BY (c.last_visit_at IS NULL), c.last_visit_at DESC
@@ -1111,7 +1135,15 @@ async function previewSegment(env, spec, options = {}) {
   const targets = await listSegment(env, spec, today);
   const planned = targets.length;
   const quota = await checkQuota(env, planned, options.quota ?? null);
-  return { spec, today, targets, planned, quota };
+
+  // 通数より先に限界が来るのは、お客様の受信箱のほう。
+  // 最近送ったばかりの人が何人混じっているかを、送信前に示す。
+  const recentCutoff = cutoffIso(today, RECENT_DAYS);
+  const recentlyContacted = targets.filter(
+    (c) => c.last_sent_at && c.last_sent_at >= recentCutoff
+  ).length;
+
+  return { spec, today, targets, planned, quota, recentlyContacted, recentDays: RECENT_DAYS };
 }
 
 /** 実際に送る。previewSegment で確認した内容と同じ条件で呼ぶ */
@@ -1148,8 +1180,30 @@ async function sendSegment(env, spec, body, options = {}) {
   return { ...preview, sent, campaignId: key };
 }
 
-/** よく使う条件のひな形 */
+/**
+ * よく使う条件のひな形。
+ * ミエーレの一斉配信は、主に新メニューとキャンペーンのときです。
+ * その2つを「全員」と「関心のある方だけ」に分けられるようにしています。
+ */
 const PRESETS = [
+  {
+    id: 'announce_all',
+    label: '新メニュー・キャンペーン（全員）',
+    note: '内容が全員に関係する場合。直近1週間に送った方は外す',
+    spec: { excludeRecentDays: RECENT_DAYS }
+  },
+  {
+    id: 'campaign_hair',
+    label: '脱毛のキャンペーン',
+    note: '診断で脱毛を選んだ方だけ。関心のない方に届かない',
+    spec: { tags: ['希望:セラピスト脱毛'] }
+  },
+  {
+    id: 'campaign_skin',
+    label: '肌の悩みで通われている方',
+    note: '毛穴・シミ・くすみを選んだ方。肌管理の新メニュー向け',
+    spec: { tags: ['希望:毛穴・シミ・くすみ'] }
+  },
   {
     id: 'open_slot',
     label: 'キャンセル枠のお知らせ',
@@ -1157,22 +1211,10 @@ const PRESETS = [
     spec: { tags: ['希望:キャンセル枠'] }
   },
   {
-    id: 'hair_thera',
-    label: 'セラピスト脱毛に関心がある方',
-    note: '診断でセラピスト脱毛を選んだ方',
-    spec: { tags: ['希望:セラピスト脱毛'] }
-  },
-  {
     id: 'sleeping',
     label: '3か月以上ご来店のない方',
     note: '復帰のきっかけづくり。特典をつけるならここ',
     spec: { notVisitedDays: 90, unbookedOnly: true }
-  },
-  {
-    id: 'all',
-    label: '友だち全員',
-    note: '通数を最も使う。友だち数ぶんの通数が一度に減る',
-    spec: {}
   }
 ];
 
@@ -1510,7 +1552,11 @@ function seed() {
     ],
     tags: [],
     customerTags: [],
-    deliveries: [],
+    // 先週すでにキャンペーンを受け取った方がいる、という状態にしておく
+    deliveries: [
+      { line_user_id:'U01', dedupe_key:'campaign:先週', status:'sent', sent_at:shift(REAL_TODAY,-2) + 'T01:00:00.000Z' },
+      { line_user_id:'U03', dedupe_key:'campaign:先週', status:'sent', sent_at:shift(REAL_TODAY,-2) + 'T01:00:00.000Z' }
+    ],
     unmatched: [
       { body:'クレジットカードは使えますか', n:4 },
       { body:'子ども連れでも大丈夫ですか',   n:3 },
@@ -1628,13 +1674,13 @@ function run(sql, args) {
     if (state.deliveries.some(d => d.line_user_id === uid && d.dedupe_key === dedupe)) {
       return { first:null, rows:[], changes:0 };
     }
-    state.deliveries.push({ line_user_id:uid, dedupe_key:dedupe, status:'sending' });
+    state.deliveries.push({ line_user_id:uid, dedupe_key:dedupe, status:'sending', sent_at:new Date().toISOString() });
     return { first:null, rows:[], changes:1 };
   }
   if (sql.includes('UPDATE deliveries SET status')) {
-    const [status, , uid, dedupe] = args;
+    const [status, at, uid, dedupe] = args;
     const d = state.deliveries.find(x => x.line_user_id === uid && x.dedupe_key === dedupe);
-    if (d) d.status = status;
+    if (d) { d.status = status; d.sent_at = at; }
     return { first:null, rows:[], changes:1 };
   }
 
@@ -1658,10 +1704,27 @@ function run(sql, args) {
     }
     if (sql.includes('c.next_booked = 0')) rows = rows.filter(c => c.next_booked === 0);
 
+    // 直近に配信を受け取った方を外す
+    if (sql.includes('FROM deliveries d')) {
+      const since = args[i++];
+      rows = rows.filter(c => !state.deliveries.some(
+        d => d.line_user_id === c.line_user_id && d.status === 'sent' && d.sent_at >= since));
+    }
+
     // スタッフ用ページの名前検索
     if (sql.includes('LIKE')) {
       const needle = String(args[i++] ?? '').replace(/%/g, '');
       rows = rows.filter(c => (c.display_name ?? '').includes(needle));
+    }
+
+    // 最後に配信を受け取った日時（絞り込み画面で「最近送ったばかり」を出すため）
+    if (sql.includes('MAX(d.sent_at)')) {
+      rows = rows.map(c => ({
+        ...c,
+        last_sent_at: state.deliveries
+          .filter(d => d.line_user_id === c.line_user_id && d.status === 'sent')
+          .map(d => d.sent_at).sort().pop() ?? null
+      }));
     }
 
     if (sql.includes('(c.last_visit_at IS NULL)') || sql.includes('(last_visit_at IS NULL)')) {
@@ -1925,6 +1988,7 @@ PRESETS.forEach(p => {
 function syncFilters() {
   $('fUnbooked').checked = !!segSpec.unbookedOnly;
   $('fSleeping').checked = segSpec.notVisitedDays === 90;
+  $('fRecent').checked = segSpec.excludeRecentDays != null;
   document.querySelectorAll('#tagFilters input').forEach(i => {
     i.checked = (segSpec.tags ?? []).includes(i.value);
   });
@@ -1934,12 +1998,13 @@ function readFilters() {
   segSpec = {
     tags: [...document.querySelectorAll('#tagFilters input:checked')].map(i => i.value),
     unbookedOnly: $('fUnbooked').checked,
-    notVisitedDays: $('fSleeping').checked ? 90 : undefined
+    notVisitedDays: $('fSleeping').checked ? 90 : undefined,
+    excludeRecentDays: $('fRecent').checked ? RECENT_DAYS : undefined
   };
 }
 
-$('fUnbooked').addEventListener('change', () => { readFilters(); renderSegment(); });
-$('fSleeping').addEventListener('change', () => { readFilters(); renderSegment(); });
+['fUnbooked','fSleeping','fRecent'].forEach(id =>
+  $(id).addEventListener('change', () => { readFilters(); renderSegment(); }));
 $('segBody').addEventListener('input', renderSegment);
 
 async function renderSegment() {
@@ -1963,8 +2028,15 @@ async function renderSegment() {
          送信後の残りは ${nf(q.remaining - preview.planned)} 通です。</div>`
       : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(q.reason ?? '')}</div>`;
 
+  const recentWarn = preview.recentlyContacted
+    ? `<div class="verdict verdict--stop" style="margin-top:10px">
+         このうち <b>${preview.recentlyContacted}名</b> は、直近${preview.recentDays}日以内に別の配信を受け取っています。
+         続けて届くとブロックされやすくなります。上の「直近1週間に送った方は外す」で除けます。
+       </div>`
+    : '';
+
   $('segOut').innerHTML =
-    meter({ ...q, planned: preview.planned }) + verdict +
+    meter({ ...q, planned: preview.planned }) + verdict + recentWarn +
     '<p class="note" style="padding:14px 0 0">届く方</p>' +
     (preview.targets.length
       ? '<div class="taglist">' + preview.targets.map(c =>

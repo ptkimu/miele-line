@@ -294,9 +294,10 @@
   <!-- ============ 04 ============ -->
   <div class="panelwrap" data-panel="4" hidden>
     <p class="phaseline">
-      <b>全員に送らない、という選び方です。</b>
+      <b>新メニューやキャンペーンのお知らせを送るところです。</b>
       条件を選ぶと、送る前に「何人に届いて、何通使うか」が出ます。
-      関係のない方に届かないので、通数が減るだけでなくブロックも防げます。
+      通数には十分な余裕があるので、ここで気にするのは金額ではなく
+      <b>関係のない方に送ってブロックされないか</b>のほうです。
     </p>
     <div class="cols">
       <section class="panel">
@@ -309,6 +310,8 @@
             <span>次回予約が入っていない方だけ<small>予約済みの方に営業をかけない</small></span></label>
           <label class="chk"><input type="checkbox" id="fSleeping">
             <span>90日以上ご来店のない方だけ<small>復帰のきっかけづくり</small></span></label>
+          <label class="chk"><input type="checkbox" id="fRecent">
+            <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span></label>
         </div>
       </section>
       <section class="panel">
@@ -364,7 +367,11 @@ function seed() {
     ],
     tags: [],
     customerTags: [],
-    deliveries: [],
+    // 先週すでにキャンペーンを受け取った方がいる、という状態にしておく
+    deliveries: [
+      { line_user_id:'U01', dedupe_key:'campaign:先週', status:'sent', sent_at:shift(REAL_TODAY,-2) + 'T01:00:00.000Z' },
+      { line_user_id:'U03', dedupe_key:'campaign:先週', status:'sent', sent_at:shift(REAL_TODAY,-2) + 'T01:00:00.000Z' }
+    ],
     unmatched: [
       { body:'クレジットカードは使えますか', n:4 },
       { body:'子ども連れでも大丈夫ですか',   n:3 },
@@ -482,13 +489,13 @@ function run(sql, args) {
     if (state.deliveries.some(d => d.line_user_id === uid && d.dedupe_key === dedupe)) {
       return { first:null, rows:[], changes:0 };
     }
-    state.deliveries.push({ line_user_id:uid, dedupe_key:dedupe, status:'sending' });
+    state.deliveries.push({ line_user_id:uid, dedupe_key:dedupe, status:'sending', sent_at:new Date().toISOString() });
     return { first:null, rows:[], changes:1 };
   }
   if (sql.includes('UPDATE deliveries SET status')) {
-    const [status, , uid, dedupe] = args;
+    const [status, at, uid, dedupe] = args;
     const d = state.deliveries.find(x => x.line_user_id === uid && x.dedupe_key === dedupe);
-    if (d) d.status = status;
+    if (d) { d.status = status; d.sent_at = at; }
     return { first:null, rows:[], changes:1 };
   }
 
@@ -512,10 +519,27 @@ function run(sql, args) {
     }
     if (sql.includes('c.next_booked = 0')) rows = rows.filter(c => c.next_booked === 0);
 
+    // 直近に配信を受け取った方を外す
+    if (sql.includes('FROM deliveries d')) {
+      const since = args[i++];
+      rows = rows.filter(c => !state.deliveries.some(
+        d => d.line_user_id === c.line_user_id && d.status === 'sent' && d.sent_at >= since));
+    }
+
     // スタッフ用ページの名前検索
     if (sql.includes('LIKE')) {
       const needle = String(args[i++] ?? '').replace(/%/g, '');
       rows = rows.filter(c => (c.display_name ?? '').includes(needle));
+    }
+
+    // 最後に配信を受け取った日時（絞り込み画面で「最近送ったばかり」を出すため）
+    if (sql.includes('MAX(d.sent_at)')) {
+      rows = rows.map(c => ({
+        ...c,
+        last_sent_at: state.deliveries
+          .filter(d => d.line_user_id === c.line_user_id && d.status === 'sent')
+          .map(d => d.sent_at).sort().pop() ?? null
+      }));
     }
 
     if (sql.includes('(c.last_visit_at IS NULL)') || sql.includes('(last_visit_at IS NULL)')) {
@@ -779,6 +803,7 @@ PRESETS.forEach(p => {
 function syncFilters() {
   $('fUnbooked').checked = !!segSpec.unbookedOnly;
   $('fSleeping').checked = segSpec.notVisitedDays === 90;
+  $('fRecent').checked = segSpec.excludeRecentDays != null;
   document.querySelectorAll('#tagFilters input').forEach(i => {
     i.checked = (segSpec.tags ?? []).includes(i.value);
   });
@@ -788,12 +813,13 @@ function readFilters() {
   segSpec = {
     tags: [...document.querySelectorAll('#tagFilters input:checked')].map(i => i.value),
     unbookedOnly: $('fUnbooked').checked,
-    notVisitedDays: $('fSleeping').checked ? 90 : undefined
+    notVisitedDays: $('fSleeping').checked ? 90 : undefined,
+    excludeRecentDays: $('fRecent').checked ? RECENT_DAYS : undefined
   };
 }
 
-$('fUnbooked').addEventListener('change', () => { readFilters(); renderSegment(); });
-$('fSleeping').addEventListener('change', () => { readFilters(); renderSegment(); });
+['fUnbooked','fSleeping','fRecent'].forEach(id =>
+  $(id).addEventListener('change', () => { readFilters(); renderSegment(); }));
 $('segBody').addEventListener('input', renderSegment);
 
 async function renderSegment() {
@@ -817,8 +843,15 @@ async function renderSegment() {
          送信後の残りは ${nf(q.remaining - preview.planned)} 通です。</div>`
       : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(q.reason ?? '')}</div>`;
 
+  const recentWarn = preview.recentlyContacted
+    ? `<div class="verdict verdict--stop" style="margin-top:10px">
+         このうち <b>${preview.recentlyContacted}名</b> は、直近${preview.recentDays}日以内に別の配信を受け取っています。
+         続けて届くとブロックされやすくなります。上の「直近1週間に送った方は外す」で除けます。
+       </div>`
+    : '';
+
   $('segOut').innerHTML =
-    meter({ ...q, planned: preview.planned }) + verdict +
+    meter({ ...q, planned: preview.planned }) + verdict + recentWarn +
     '<p class="note" style="padding:14px 0 0">届く方</p>' +
     (preview.targets.length
       ? '<div class="taglist">' + preview.targets.map(c =>
