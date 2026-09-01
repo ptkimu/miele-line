@@ -1,8 +1,8 @@
 /**
  * タグ
  *
- * 診断の回答や希望条件をタグとして貯めます。
- * このタグが、フェーズ4の絞り込み配信の材料になります。
+ * 空き枠のお知らせを受け取りたいか、どちらのお部屋を希望されるか。
+ * このタグが、お送りする方を絞る材料になります。
  */
 
 import { nowIso } from './handlers.js';
@@ -15,20 +15,6 @@ import { nowIso } from './handlers.js';
  * 「空き枠のお知らせを受け取る」から付けられるようにしています（通数0）。
  */
 export const OPEN_SLOT_TAG = '希望:空き枠のお知らせ';
-
-/** 診断ツールの回答を、そのままタグの名前に変換する */
-export function tagsFromDiagnosis(answers) {
-  const out = [];
-  const push = (kind, label) => label && out.push({ kind, name: label });
-
-  push('gender', answers.gender === 'm' ? '性別:男性' : '性別:女性');
-  (answers.concerns ?? []).forEach((c) => push('concern', '希望:' + c));
-  push('budget', '予算:' + (answers.budget ?? ''));
-  push('pace', '通い方:' + (answers.pace ?? ''));
-  (answers.courses ?? []).slice(0, 1).forEach((c) => push('course', '関心:' + c));
-
-  return out.filter((t) => t.name && !t.name.endsWith(':'));
-}
 
 /** タグを作って（無ければ）お客様に付ける */
 export async function grantTags(env, lineUserId, tags) {

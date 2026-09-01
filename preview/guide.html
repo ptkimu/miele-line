@@ -1,4 +1,4 @@
-<title>ミエーレ LINE運用ガイド</title>
+<title>空き枠のお知らせ 運用ガイド</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
@@ -140,8 +140,8 @@
 
 <header class="cover">
   <p class="eyebrow">トータル・ビューティー・サロン ミエーレ</p>
-  <h1>LINE運用ガイド</h1>
-  <p>お客様とのLINEでのやりとりを、一部自動にするしくみのご説明です。</p>
+  <h1>空き枠のお知らせ 運用ガイド</h1>
+  <p>空いてしまった枠を、LINEとInstagramでお知らせして埋めるしくみのご説明です。</p>
   <p>オーナー様とスタッフの皆さまで知りたいことが違うため、3部に分けています。
      ご自身に関係のある部分だけお読みいただければ大丈夫です。</p>
 </header>
@@ -150,19 +150,16 @@
   <h2>もくじ</h2>
   <ol>
     <li><a href="#owner">導入のご判断に</a><span class="who">オーナー様</span></li>
-    <li><a href="#can">できるようになること</a></li>
+    <li><a href="#what">何をするしくみか</a></li>
     <li><a href="#cost">かかる費用のすべて</a></li>
     <li><a href="#care">お客様に嫌がられないための工夫</a></li>
     <li><a href="#privacy">お客様の情報の扱い</a></li>
     <li><a href="#staff">毎日の使い方</a><span class="who">スタッフの皆さま</span></li>
-    <li><a href="#daily">会計のあと、1タップだけ</a></li>
-    <li><a href="#why">なぜこの一手間が要るのか</a></li>
-    <li><a href="#reply">お客様からメッセージが来たら</a></li>
+    <li><a href="#regular">月曜と木曜の流れ</a></li>
+    <li><a href="#sudden">急な空きが出たとき</a></li>
+    <li><a href="#menu">メニューのチェックについて</a></li>
     <li><a href="#qa">よくある質問</a></li>
-    <li><a href="#grow">LINE登録を増やす</a><span class="who">オーナー様</span></li>
-    <li><a href="#mine">まだ使っていない鉱脈</a></li>
-    <li><a href="#howto">具体的にやること</a></li>
-    <li><a href="#measure">その前に、測れるようにする</a></li>
+    <li><a href="#setup">LINE公式アカウント側の設定</a><span class="who">設定される方</span></li>
   </ol>
 </nav>
 
@@ -174,215 +171,170 @@
   <p class="sub">何ができて、いくらかかり、何に気をつけるか</p>
 
   <p>
-    いまLINEでつながっているお客様は<strong>318名</strong>です。
-    このしくみは、その318名との関係を<strong>手間をかけずに続けるためのもの</strong>です。
-    新しくお客様を増やす道具ではありません。
+    いまLINEでつながっているお客様は<strong>318名</strong>、Instagramのフォロワーは
+    <strong>1,019名</strong>です。このしくみは、その方々に向けて
+    <strong>空いてしまった枠をお知らせし、当日・数日先の予約を埋めるためのもの</strong>です。
   </p>
 
-  <h3 id="can">できるようになること</h3>
+  <h3 id="what">何をするしくみか</h3>
 
-  <p>大きく3つです。</p>
+  <figure>
+    <svg viewBox="0 0 720 250" role="img"
+         aria-label="空きが出てからお客様に届くまでの流れ。スタッフが枠を選び、希望された方にだけLINEで届き、30分後にInstagramへ出す">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+                orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="8"   y="30" width="150" height="66" rx="10"/>
+        <rect x="208" y="30" width="150" height="66" rx="10"/>
+        <rect x="408" y="8"  width="150" height="66" rx="10" stroke="#98543F" stroke-width="2.5"/>
+        <rect x="408" y="112" width="150" height="66" rx="10"/>
+        <line x1="158" y1="63" x2="200" y2="63" marker-end="url(#ar)"/>
+        <line x1="358" y1="55" x2="400" y2="41" marker-end="url(#ar)"/>
+        <line x1="358" y1="75" x2="400" y2="145" marker-end="url(#ar)"/>
+      </g>
+      <g font-family="'Noto Sans JP',sans-serif" fill="currentColor">
+        <text x="83"  y="58"  font-size="13" font-weight="500" text-anchor="middle">空きが出る</text>
+        <text x="83"  y="80"  font-size="11" text-anchor="middle" opacity=".7">サロンボードで確認</text>
+        <text x="283" y="58"  font-size="13" font-weight="500" text-anchor="middle">スタッフが枠を選ぶ</text>
+        <text x="283" y="80"  font-size="11" text-anchor="middle" opacity=".7">出す枠・メニューを決める</text>
+        <text x="483" y="36"  font-size="13" font-weight="500" text-anchor="middle" fill="#98543F">LINE</text>
+        <text x="483" y="56"  font-size="11" text-anchor="middle" fill="#98543F">お知らせを希望された方だけ</text>
+        <text x="483" y="140" font-size="13" font-weight="500" text-anchor="middle">Instagram ストーリーズ</text>
+        <text x="483" y="160" font-size="11" text-anchor="middle" opacity=".7">30分あけてから</text>
+        <text x="380" y="118" font-size="11" text-anchor="middle" opacity=".7">30分</text>
+        <text x="360" y="215" font-size="12" text-anchor="middle" opacity=".85">
+          「LINEの方には30分前にお知らせ済みです」と書き添える
+        </text>
+        <text x="360" y="234" font-size="12" text-anchor="middle" opacity=".85">
+          ＝ LINEに登録していただく理由になる
+        </text>
+      </g>
+    </svg>
+    <figcaption>
+      Instagramを先に出すと、LINEに登録する理由がなくなります。順番と30分の差が、このしくみの要です。
+    </figcaption>
+  </figure>
 
   <div class="card">
-    <h4>1. よくある質問に、24時間自動で答える</h4>
+    <h4>1. 空きを、欲しい方にだけお届けする</h4>
     <p>
-      「予約したい」「場所はどこ」「メニューを知りたい」といったご質問に、その場で自動返信します。
-      営業時間外でもお待たせしません。<strong>答えられない内容には、あえて返信しません。</strong>
-      間違った案内を出すより、スタッフが直接お答えするほうが確実だからです。
+      全員には送りません。<strong>リッチメニューから「空き枠のお知らせを受け取る」を
+      押してくださった方だけ</strong>にお送りします。さらに、セルフブースと施術ルームの
+      どちらを希望されたかで分けるので、関係のないお知らせは届きません。
     </p>
   </div>
 
   <div class="card">
-    <h4>2. 次回予約が取れなかった方に、頃合いを見てご案内する</h4>
+    <h4>2. 送り忘れを防ぐ</h4>
     <p>
-      ミエーレは2〜3週間サイクルで、会計時に次回予約をお取りいただいています。
-      その場で取れなかった方にだけ、<strong>11日後に「そろそろの時期です」とお送りします。</strong>
-      予約が取れている方には送りません。
+      月曜と木曜の朝、スタッフのLINEに「本日は空き枠のお知らせの日です」と1通届きます。
+      あわせて、店舗のパソコンでスタッフ用ページを開くと、同じことが画面いっぱいに出ます。
+      <strong>枠を自動で送ることはしません。</strong>
+      移動や休憩、あえて残している枠が混ざるためです。出す枠は必ず人が決めます。
     </p>
   </div>
 
   <div class="card">
-    <h4>3. 送る内容を、勘ではなく売上から決める</h4>
+    <h4>3. Instagram の文面と画像まで作る</h4>
     <p>
-      昨年の同じ月に強かったメニュー、昨年より落ちているメニュー、
-      お客様が希望しているのに売れていないメニュー。
-      この3つから<strong>「今月はこれを送るとよさそう」を根拠つきで出します。</strong>
-      オーナー様の売上システムから書き出したデータを読み込ませる形です。
+      枠を入れると、ストーリーズ用の画像（1080×1920）がその場で出来上がります。
+      ダウンロードして投稿するだけです。文字入れの手間はありません。
     </p>
-  </div>
-
-  <p>
-    導入は<strong>4つの段階に分けます。</strong>最初の2つは配信をしないので、
-    費用も、お客様へのご迷惑も一切発生しません。
-  </p>
-
-  <div class="scroll">
-    <table>
-      <thead><tr><th>段階</th><th>内容</th><th class="n">送る回数</th></tr></thead>
-      <tbody>
-        <tr><td>1</td><td>自動返信と、来店の記録</td><td class="n">0回</td></tr>
-        <tr><td>2</td><td>コース診断の結果を貯める</td><td class="n">0回</td></tr>
-        <tr><td>3</td><td>来店後のご案内を自動で送る</td><td class="n">月150〜400回</td></tr>
-        <tr><td>4</td><td>新メニュー・キャンペーンのお知らせ</td><td class="n">月300〜700回</td></tr>
-      </tbody>
-    </table>
   </div>
 
   <h3 id="cost">かかる費用のすべて</h3>
 
-  <div class="callout callout--ok">
-    <p style="font-size:17px"><strong>いまのLINE料金 月5,000円のみです。それ以外は0円です。</strong></p>
-    <p style="margin-top:10px">
-      新たに契約するものはありません。導入費用も、月額の上乗せもありません。
-    </p>
-  </div>
-
-  <h4>システムを動かす費用</h4>
-
-  <p>
-    しくみ自体は、無料で使える範囲に収まります。規模的に、用意されている無料枠の
-    <strong>1%も使いません</strong>。友だちが数千名になっても、この部分は0円のままです。
-  </p>
-
   <div class="scroll">
     <table>
-      <thead><tr><th>項目</th><th class="n">費用</th></tr></thead>
+      <thead>
+        <tr><th>項目</th><th>内容</th><th class="n">月額</th></tr>
+      </thead>
       <tbody>
-        <tr><td>サーバー</td><td class="n">0円</td></tr>
-        <tr><td>データの保存場所</td><td class="n">0円</td></tr>
-        <tr><td>ページのアドレス</td><td class="n">0円</td></tr>
-        <tr><td>LINEとの連携機能の利用料</td><td class="n">0円</td></tr>
-        <tr><td><strong>合計</strong></td><td class="n"><span class="big">0円</span></td></tr>
+        <tr><td>LINE公式アカウント</td><td>ライトプラン（すでにご契約中）</td><td class="n">¥5,000</td></tr>
+        <tr><td>システムの動作費用</td><td>Cloudflare Workers ＋ D1（無料の範囲で収まります）</td><td class="n">¥0</td></tr>
+        <tr><td>Instagram</td><td>投稿は手動</td><td class="n">¥0</td></tr>
+        <tr><td><strong>追加でかかる費用</strong></td><td>ありません</td><td class="n"><strong>¥0</strong></td></tr>
       </tbody>
     </table>
   </div>
 
-  <h4>LINEの月5,000円に含まれるもの</h4>
+  <h4>通数について</h4>
 
   <p>
-    ライトプランの<strong>月5,000円は定額</strong>です。1通いくらの従量課金ではありません。
-    この中に<strong>5,000通</strong>が含まれていて、その範囲なら何通送っても5,000円のままです。
+    ライトプランは<strong>5,000通/月で、追加購入ができません</strong>。
+    使い切ると月末まで一切送れなくなります。そのため送信の前に必ず残数を確かめ、
+    <strong>予備の500通は常に残す</strong>ようにしています。
   </p>
 
   <p>
-    ここで数える「通数」は、<strong>こちらから能動的に送ったものだけ</strong>です。
-    一斉送信に限らず、来店後のご案内も含まれます。逆に、次のものは何通でも無料です。
+    通数を使うのは<strong>空き枠のお知らせ</strong>と<strong>朝のスタッフへの声かけ</strong>だけです。
+    自動応答・あいさつメッセージ・LINEチャットでのやりとりは、何通でも無料です。
   </p>
 
   <div class="scroll">
     <table>
-      <thead><tr><th>種類</th><th>通数に数えるか</th></tr></thead>
+      <thead>
+        <tr><th>送るもの</th><th>頻度</th><th class="n">月の目安</th></tr>
+      </thead>
       <tbody>
-        <tr><td>新メニュー・キャンペーンのお知らせ</td><td>数える</td></tr>
-        <tr><td>来店後のご案内（11日後など）</td><td>数える</td></tr>
-        <tr><td>友だち追加時のあいさつメッセージ</td><td><strong>数えない</strong></td></tr>
-        <tr><td>よくある質問への自動返信</td><td><strong>数えない</strong></td></tr>
-        <tr><td>スタッフからの手動のお返事</td><td><strong>数えない</strong></td></tr>
+        <tr><td>空き枠のお知らせ</td><td>週2回・希望された方へ（仮に50名）</td><td class="n">400通</td></tr>
+        <tr><td>朝のスタッフへの声かけ</td><td>月・木の朝・1人1通</td><td class="n">8通</td></tr>
+        <tr><td>受け取り申込への返信</td><td>自動応答のため無料</td><td class="n">0通</td></tr>
+        <tr><td><strong>合計</strong></td><td></td><td class="n"><strong>約410通</strong></td></tr>
       </tbody>
     </table>
   </div>
 
   <p>
-    通数は送った<em>回数</em>ではなく<strong>メッセージ数 × 人数</strong>で数えます。
-    318名全員に1回送れば318通です。いまの想定では次のようになります。
-  </p>
-
-  <div class="scroll">
-    <table>
-      <thead><tr><th>内容</th><th class="n">月の通数</th></tr></thead>
-      <tbody>
-        <tr><td>あいさつメッセージ・自動返信・手動のお返事</td><td class="n">0</td></tr>
-        <tr><td>来店後のご案内</td><td class="n">約235</td></tr>
-        <tr><td>新メニュー・キャンペーン（月1〜2回）</td><td class="n">318〜636</td></tr>
-        <tr><td><strong>合計</strong></td><td class="n"><span class="big">553〜871</span></td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <p>
-    上限5,000通に対して<strong>11〜17%</strong>です。
-    通数を気にして施策を削る必要はありません。
-  </p>
-
-  <div class="callout callout--warn">
-    <p>
-      <strong>ライトプランは、5,000通を超えても追加購入ができません。</strong>
-      超えた時点で、その月は一切送れなくなります。
-      月初に使い切ると月末のご連絡ができなくなるため、
-      常に500通を残して自動で止まるようにしてあります。
-    </p>
-  </div>
-
-  <h4>将来かかる可能性があるもの</h4>
-
-  <p>どちらも当面は不要です。必要になった時点でご相談します。</p>
-
-  <div class="scroll">
-    <table>
-      <thead><tr><th>きっかけ</th><th>費用</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>友だちが増えて月5,000通を超えるとき</td>
-          <td>スタンダードプラン 月15,000円（30,000通）</td>
-        </tr>
-        <tr>
-          <td>店名入りのアドレスを使いたいとき</td>
-          <td>年1,500円程度</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <p>
-    プランの切り替えを考えるのは、<strong>友だちが600名を超えて、かつ週2回以上お送りしたくなったとき</strong>です。
-    月1〜2回の配信であれば、1,000名を超えてもライトプランで足ります。
+    5,000通に対して十分な余裕があります。新メニューやキャンペーンの一斉配信をなさる場合も、
+    残数を圧迫しません。
   </p>
 
   <h3 id="care">お客様に嫌がられないための工夫</h3>
 
   <div class="callout callout--warn">
-    <p><strong>本当に気をつけるべきは、費用ではなくブロックです。</strong>
-      通数には十分な余裕があります。通数は翌月に戻りますが、
-      ブロックされたお客様は戻ってきません。そのため次のような歯止めを入れています。</p>
+    <p>
+      空き枠のお知らせは、やりすぎると<strong>「いつも空いている店」</strong>という印象になり、
+      かえって予約が後回しにされます。歯止めを2つ入れています。
+    </p>
   </div>
 
   <ul>
-    <li><strong>次回予約が取れている方には送りません。</strong>
-      予約済みの方に「そろそろですね」と送ると失礼にあたるためです。
-      これがスタッフの1タップが必要な理由です</li>
-    <li><strong>直近1週間に送った方には、続けて送りません。</strong>
-      短い間隔で届くと、内容が良くてもブロックされやすくなります</li>
-    <li><strong>関心のある方だけに絞って送れます。</strong>
-      脱毛のキャンペーンを、肌のお手入れで通われている方に送らずに済みます</li>
-    <li><strong>送る前に必ず「何名に届くか」を表示します。</strong>
-      数字を見てから決められます</li>
-    <li><strong>上限に近づいたら、自動で送信を止めます。</strong>
-      月末の必要なご連絡を守るため、常に500通を残します</li>
+    <li><strong>同じお部屋のお知らせは、直近7日で3回まで</strong>。
+      定期の2回に、突発の1回ぶんの余地を足した回数です。
+      超えると画面に警告が出ます（セルフブースと施術ルームは送り先が別なので、別々に数えます）</li>
+    <li><strong>「キャンセル」という言葉を使いません</strong>。
+      文面は「空き枠のお知らせ」で統一しています。理由は次のとおりです</li>
   </ul>
+
+  <div class="card">
+    <h4>キャンセルされたご本人にも届いてしまう問題</h4>
+    <p>
+      LINEの表示名はニックネームのことが多く、サロンボードの予約者と突き合わせられません。
+      つまり「その枠をキャンセルされた方だけを外して送る」ことは技術的にできません。
+    </p>
+    <p>
+      そこで文面から「キャンセル」の語を外しました。
+      <strong>ご本人に届いても、ご自身のことだとは分かりません。</strong>
+      外せない機能を無理に作るより、届いても角が立たない文面にするほうが確実です。
+    </p>
+  </div>
 
   <h3 id="privacy">お客様の情報の扱い</h3>
 
   <p>
-    このしくみが保存するのは<strong>LINEの表示名と、来店した日付だけ</strong>です。
-    お名前・電話番号・ご住所は保存しません。予約情報はホットペッパー側に置いたままです。
+    保存するのは<strong>LINEのユーザーIDと表示名だけ</strong>です。
+    氏名・電話番号・住所・施術履歴は保存しません。予約の情報はサロンボード側に置いたままです。
   </p>
 
   <p>
-    <strong>持たないことが一番の対策</strong>という考え方です。
-    万一の際も、漏れて困る情報がそもそもありません。
+    お客様が「受け取りをやめる」を押されたら、その場でお知らせが止まります。
+    ブロックされた場合も自動で対象から外れます。
   </p>
-
-  <div class="card">
-    <h4>導入にあたって、ご用意いただきたいもの</h4>
-    <ul>
-      <li>LINE公式アカウントの管理権限（設定を1か所変更します）</li>
-      <li>営業時間・定休日・電話番号・駐車場のご案内文（自動返信に使います）</li>
-      <li>スタッフの皆さまへの周知（会計後の1タップをお願いします）</li>
-    </ul>
-    <p style="margin-top:12px;font-size:14px;color:var(--muted)">
-      新しい機器の購入や、パソコンへのインストールは必要ありません。
-    </p>
-  </div>
 </section>
 
 <!-- ================= 第2部 ================= -->
@@ -390,315 +342,206 @@
 <section class="part" id="staff">
   <span class="part-label">第2部　スタッフの皆さまへ</span>
   <h2>毎日の使い方</h2>
-  <p class="sub">お願いするのは、会計後の1タップだけです</p>
+  <p class="sub">操作は、店舗のパソコンで1画面だけです</p>
+
+  <div class="callout">
+    <p>
+      <strong>店舗のパソコンのホームページを、スタッフ用ページに設定してください。</strong>
+      ブラウザを開いた時点で「本日は空き枠のお知らせの日です」が目に入ります。
+      これが、送り忘れを防ぐいちばん確実な方法です。
+    </p>
+  </div>
+
+  <h3 id="regular">月曜と木曜の流れ</h3>
+
+  <ol class="steps">
+    <li>
+      <b>朝、スタッフ用ページを開く</b>
+      <p>送信日なら、上部に大きく出ます。送信日でない日は「本日は送信日ではありません」と出るので、
+         そのまま閉じて構いません。</p>
+    </li>
+    <li>
+      <b>サロンボードで、2〜3日先の空きを見る</b>
+      <p>月曜なら水・木、木曜なら土・日あたりが対象です。画面にも日付が出ます。</p>
+    </li>
+    <li>
+      <b>お部屋を選ぶ</b>
+      <p>セルフブースと施術ルームは別々にお知らせします。セラピストが埋まっていても
+         セルフブースの枠は出せます。</p>
+    </li>
+    <li>
+      <b>空いている枠を入れる</b>
+      <p>日付・時間・枠の長さ（30／45／60／90分）を選びます。
+         1日に複数の枠を入れても、複数の日にまたがっても大丈夫です。</p>
+    </li>
+    <li>
+      <b>メニューのチェックを確認する</b>
+      <p>その長さに入るメニューが自動で並びます。<strong>できないものはチェックを外してください。</strong></p>
+    </li>
+    <li>
+      <b>「送る前に確認する」を押す</b>
+      <p>お送りする人数・今月の残り通数・実際に届く文面が出ます。おかしければ戻れます。</p>
+    </li>
+    <li>
+      <b>送信する</b>
+      <p>希望された方にだけ届きます。</p>
+    </li>
+    <li>
+      <b>30分あけて、Instagram に投稿する</b>
+      <p>画像がすでに出来ています。ダウンロードしてストーリーズに上げるだけです。
+         <strong>先に投稿しないでください。</strong>LINEが先である必要があります。</p>
+    </li>
+  </ol>
+
+  <h3 id="sudden">急な空きが出たとき</h3>
 
   <p>
-    難しい操作はありません。<strong>お客様のお会計が終わったら、スマホで1回タップする。</strong>
-    これだけです。新しいアプリを入れる必要もありません。
+    当日のキャンセルなど、月曜・木曜以外でも同じ画面からそのままお送りいただけます。
+    送信日かどうかは関係ありません。
+  </p>
+
+  <div class="callout callout--warn">
+    <p>
+      ただし<strong>直近7日で3回を超えると警告が出ます</strong>。
+      その週にすでに何度も出している場合は、Instagram だけにするなどご調整ください。
+    </p>
+  </div>
+
+  <h3 id="menu">メニューのチェックについて</h3>
+
+  <p>
+    枠の長さを選ぶと、その時間に収まるメニューが自動で並び、いくつかにチェックが入った状態になります。
+    ここで<strong>機材の不調や材料切れのメニューは、チェックを外してください</strong>。
+    チェックを外したメニューは、お客様に届く文面にも Instagram の画像にも出ません。
+  </p>
+
+  <p>
+    枠の長さを短くすると、入らなくなったメニューは自動で外れます。
+    60分の枠を30分に変えれば、60分のメニューは候補から消えます。
   </p>
 
   <div class="callout callout--ok">
     <p>
-      <strong>いまの仕事のやり方は変わりません。</strong>
-      LINEでのご予約のやりとりも、サロンボードへの入力も、これまで通りです。
-      増えるのは会計後の1タップだけで、空き枠のお知らせを打つ手間は
-      <strong>逆に減ります</strong>（日時を選べば文面ができます）。
-    </p>
-  </div>
-
-  <h3 id="daily">会計のあと、1タップだけ</h3>
-
-  <ol class="steps">
-    <li>
-      <b>スマホでページを開く</b>
-      <p>ホーム画面に置いてあるショートカットから開きます。IDとパスワードは店舗で共有しているものです。</p>
-    </li>
-    <li>
-      <b>お客様のお名前を探す</b>
-      <p>最近ご来店の方から順に並んでいます。見つからないときは、上の検索欄にお名前の一部を入れてください。</p>
-    </li>
-    <li>
-      <b>ボタンを押す</b>
-      <p>次回のご予約が取れた方は<strong>「来店・予約あり」</strong>、取れなかった方は<strong>「来店・未予約」</strong>。
-         どちらかを押して終わりです。</p>
-    </li>
-  </ol>
-
-  <div class="callout">
-    <p><strong>迷ったら「来店・未予約」で構いません。</strong>
-      その日のうちなら、同じ方をもう一度押せば上書きできます。
-      押し忘れよりも、押してから直すほうが確実です。</p>
-  </div>
-
-  <h3 id="why">なぜこの一手間が要るのか</h3>
-
-  <p>
-    このボタンの結果で、<strong>その後お客様に届くご案内が変わります。</strong>
-  </p>
-
-  <figure>
-    <svg viewBox="0 0 900 268" role="img" aria-label="会計後のタップで分岐する図。予約ありの方には何も送らず、未予約の方にだけ11日後・21日後・60日後にご案内が届く">
-      <defs>
-        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
-        </marker>
-        <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0 L10 5 L0 10 z" fill="#1F9D57"/>
-        </marker>
-      </defs>
-      <g font-family="'Noto Sans JP',sans-serif" fill="currentColor">
-
-        <rect x="6" y="100" width="140" height="60" rx="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
-        <text x="76" y="126" font-size="13.5" text-anchor="middle">会計のあと</text>
-        <text x="76" y="145" font-size="13.5" text-anchor="middle">1タップ</text>
-
-        <path d="M148 130 C 190 130, 190 58, 228 58" fill="none" stroke="#1F9D57" stroke-width="1.5" marker-end="url(#a2)"/>
-        <path d="M148 130 C 190 130, 190 202, 228 202" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#a1)"/>
-
-        <rect x="232" y="30" width="118" height="56" rx="10" fill="none" stroke="#1F9D57" stroke-width="1.5"/>
-        <text x="291" y="63" font-size="13.5" text-anchor="middle" fill="#1F9D57">予約あり</text>
-        <line x1="354" y1="58" x2="382" y2="58" stroke="#1F9D57" stroke-width="1.5" marker-end="url(#a2)"/>
-        <rect x="386" y="30" width="206" height="56" rx="10" fill="none" stroke="#1F9D57" stroke-width="1.5"/>
-        <text x="489" y="63" font-size="13.5" text-anchor="middle" fill="#1F9D57">ご案内は送りません</text>
-
-        <rect x="232" y="174" width="118" height="56" rx="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
-        <text x="291" y="207" font-size="13.5" text-anchor="middle">未予約</text>
-
-        <line x1="354" y1="202" x2="382" y2="202" stroke="currentColor" stroke-width="1.5" marker-end="url(#a1)"/>
-        <rect x="386" y="174" width="140" height="56" rx="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
-        <text x="456" y="197" font-size="12.5" text-anchor="middle">11日後</text>
-        <text x="456" y="216" font-size="12" text-anchor="middle" opacity=".72">次回のご案内</text>
-
-        <line x1="530" y1="202" x2="558" y2="202" stroke="currentColor" stroke-width="1.5" marker-end="url(#a1)"/>
-        <rect x="562" y="174" width="140" height="56" rx="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
-        <text x="632" y="197" font-size="12.5" text-anchor="middle">21日後</text>
-        <text x="632" y="216" font-size="12" text-anchor="middle" opacity=".72">空き枠のご案内</text>
-
-        <line x1="706" y1="202" x2="734" y2="202" stroke="currentColor" stroke-width="1.5" marker-end="url(#a1)"/>
-        <rect x="738" y="174" width="156" height="56" rx="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
-        <text x="816" y="197" font-size="12.5" text-anchor="middle">60日後</text>
-        <text x="816" y="216" font-size="12" text-anchor="middle" opacity=".72">お久しぶりのご挨拶</text>
-
-        <text x="6" y="258" font-size="12" opacity=".7">※ 途中でご予約が入れば、そこから先のご案内は止まります</text>
-      </g>
-    </svg>
-    <figcaption>
-      「予約あり」を押した方には何も届きません。押し忘れると、<strong>ご予約済みのお客様に「そろそろですね」と届いてしまいます。</strong>
-      それを防ぐための1タップです。
-    </figcaption>
-  </figure>
-
-  <h3 id="reply">お客様からメッセージが来たら</h3>
-
-  <p>
-    自動で答えられるものは、こちらが何もしなくても返信されます。
-    <strong>それ以外は自動返信されないので、いつも通りLINEでお返事してください。</strong>
-  </p>
-
-  <div class="scroll">
-    <table>
-      <thead><tr><th>お客様のメッセージ</th><th>どうなるか</th></tr></thead>
-      <tbody>
-        <tr><td>予約したい／空いてますか</td><td>予約ページのご案内が自動で届きます</td></tr>
-        <tr><td>営業時間は／何時まで</td><td>営業時間が自動で届きます</td></tr>
-        <tr><td>場所はどこ／駐車場は</td><td>地図と駐車場のご案内が自動で届きます</td></tr>
-        <tr><td>メニュー／料金</td><td>メニューページのご案内が自動で届きます</td></tr>
-        <tr><td><strong>上記以外すべて</strong></td><td><strong>自動返信されません。お返事をお願いします</strong></td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="callout">
-    <p>
-      <strong>ご予約のやりとりは、これまでと何も変わりません。</strong>
-      LINEでご希望をうかがって、サロンボードに入力する。いま通りで大丈夫です。
-    </p>
-    <p style="margin-top:10px">
-      スタッフの皆さまからのお返事は、何通送っても料金がかかりません。
-      いつも通り、ていねいにやりとりしていただいて大丈夫です。
+      メニューを複数チェックすると、文面は
+      「<strong>いずれかをお選びいただけます</strong>」という書き方になります。
+      お客様がその場で決められなくても大丈夫なように、
+      「メニューはご来店時に決めていただいても大丈夫です」と添えてあります。
     </p>
   </div>
 
   <h3 id="qa">よくある質問</h3>
 
   <div class="qa">
-    <h4>押し間違えてしまいました</h4>
-    <p>その日のうちなら、同じお客様のもう一方のボタンを押せば上書きされます。翌日以降に気づいた場合はオーナー様にお伝えください。</p>
+    <h4>サロンボードと自動でつながらないのですか</h4>
+    <p>つながりません。サロンボードには外部から予約状況を取る公式の手段がないためです。
+       仮に取れたとしても、「空いている枠」がすべて「出していい枠」とは限りません。
+       移動・休憩・あえて残している枠が混ざるので、最後は人が選ぶ必要があります。</p>
   </div>
 
   <div class="qa">
-    <h4>お客様の名前が見つかりません</h4>
-    <p>そのお客様がまだLINEで友だちになっていない可能性があります。その場合は記録できません。この機会にLINEのご登録をご案内してみてください。</p>
+    <h4>予約が入ったら、システムに入力するのですか</h4>
+    <p>いいえ。これまでどおりサロンボードに入力してください。
+       このしくみは<strong>お知らせを出すだけ</strong>で、予約は管理しません。</p>
   </div>
 
   <div class="qa">
-    <h4>LINEの表示名が本名と違って分かりません</h4>
-    <p>ニックネームで登録されている方は多いです。来店の時間帯や前回来店日を手がかりに探してください。それでも分からなければ、無理に記録しなくて構いません。</p>
+    <h4>LINEのトークで返信が来たら</h4>
+    <p>これまでどおり、LINEチャットからお答えください。送受信は何通でも無料です。
+       予約・営業時間・アクセスなど、よくあるご質問には自動で返信が出ます。
+       答えられない内容には<strong>あえて返信しません</strong>。
+       間違った案内を出すより、直接お答えするほうが確実だからです。</p>
   </div>
 
   <div class="qa">
-    <h4>お客様に間違ったご案内が届いてしまいました</h4>
-    <p>すぐにオーナー様にお伝えください。文面は1か所を直せば全体に反映されます。同じ間違いが続くことはありません。</p>
+    <h4>間違った枠を送ってしまいました</h4>
+    <p>送信済みのメッセージは取り消せません。LINEチャットで訂正をお送りください。
+       送信前の確認画面で、必ず文面をお読みいただくようお願いします。</p>
   </div>
 
   <div class="qa">
-    <h4>自分のスマホを使うのに抵抗があります</h4>
-    <p>店舗のタブレットやパソコンからでも同じページを開けます。特定の機器に紐づいてはいません。</p>
-  </div>
-
-  <div class="qa">
-    <h4>忙しくて押せない日がありました</h4>
-    <p>問題ありません。その方にご案内が届かないだけです。お客様に迷惑がかかることはないので、余裕のあるときにお願いします。</p>
-  </div>
-
-  <div class="callout callout--warn">
-    <p>
-      <strong>ページのURLとパスワードは、外部に出さないようお願いします。</strong>
-      お客様のお名前（LINEの表示名）と来店日が見える画面です。
-      SNSへの投稿や、写真に写り込むことのないようご注意ください。
-    </p>
+    <h4>お知らせを希望される方がまだいません</h4>
+    <p>稼働の初日は0名です。リッチメニューの「空き枠のお知らせ」ボタンと、
+       友だち追加時のあいさつメッセージから増えていきます。
+       どうしても最初に呼び水が必要な場合は「希望していない方にも送る」
+       というチェック欄がありますが、<strong>ブロックされやすくなります</strong>。
+       稼働の直後だけにしてください。</p>
   </div>
 </section>
 
 <!-- ================= 第3部 ================= -->
 
-<section class="part" id="grow">
-  <span class="part-label">第3部　オーナー様へ</span>
-  <h2>LINE登録を増やす</h2>
-  <p class="sub">広告費をかけずに、確実に積み上げる方法</p>
+<section class="part" id="setup">
+  <span class="part-label">第3部　設定される方へ</span>
+  <h2>LINE公式アカウント側の設定</h2>
+  <p class="sub">システム側だけでは完結しません。管理画面での設定が3つあります</p>
+
+  <h3>1. リッチメニュー</h3>
 
   <p>
-    正直に申し上げると、<strong>魔法のような一手はありません。</strong>
-    ただ、ミエーレさんには<strong>まだ使っていない大きな鉱脈が1つ</strong>あります。
+    LINE公式アカウント管理画面の <strong>ホーム ▸ リッチメニュー</strong> で作成します。
+    画像は 2500×1686 のものをご用意しています。
   </p>
-
-  <h3 id="mine">Instagram の 1,019名です</h3>
-
-  <div class="scroll">
-    <table>
-      <thead><tr><th>つながり方</th><th class="n">人数</th></tr></thead>
-      <tbody>
-        <tr><td>LINE 友だち</td><td class="n"><span class="big">318</span> 名</td></tr>
-        <tr><td>Instagram フォロワー</td><td class="n"><span class="big">1,019</span> 名</td></tr>
-        <tr><td><strong>Instagramにいて、LINEにいない方</strong></td><td class="n"><span class="big">最低 700</span> 名</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <p>
-    仮にLINE友だち318名の全員がInstagramもフォローしているとしても、
-    差し引き700名がInstagramだけにいる計算です。実際はもっと多いはずです。
-  </p>
-
-  <p>
-    店頭とWebのご案内は完成しているので、<strong>いま最も確度が高いのはここ</strong>です。
-    しかもすでに関心を持って、こちらを追いかけてくださっている方々です。
-  </p>
-
-  <h3>効かせ方は「LINEだけが先に知る」を見せ続けること</h3>
-
-  <p>
-    「LINE登録してね」と書いても人は動きません。
-    <strong>動く理由を目の前で見せる</strong>必要があります。
-  </p>
-
-  <div class="card">
-    <h4>Instagram のストーリーズで</h4>
-    <p style="font-size:15px">
-      「本日15時〜、キャンセルが出ました。<br>
-      　LINEの方には30分前にお知らせ済みです」
-    </p>
-    <p style="margin-top:14px;color:var(--muted);font-size:14px">
-      見た方が開いたときには、もう埋まっていることもある。
-      これを月2〜4回くり返すと、<strong>「入っていないと間に合わない」が体感で伝わります。</strong>
-    </p>
-  </div>
-
-  <div class="callout callout--ok">
-    <p>
-      告知はInstagramで、<strong>枠が取れるのはLINEだけ。</strong>
-      クーポンより登録の理由として強く、しかも埋まらない枠が埋まるので
-      店側にも実利があります。他店が真似しにくく、費用もかかりません。
-    </p>
-  </div>
-
-  <h3 id="howto">具体的にやること</h3>
-
-  <div class="scroll">
-    <table>
-      <thead><tr><th>場所</th><th>やること</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>プロフィール</td>
-          <td>LINEのリンクを追加。<strong>最大5つ置けます</strong>ので、
-              ホットペッパー予約を残したまま並べられます</td>
-        </tr>
-        <tr>
-          <td>ハイライト</td>
-          <td>「LINE」の枠を常設。ストーリーズは24時間で消えますが、
-              ここに入れておけばいつでも辿れます</td>
-        </tr>
-        <tr>
-          <td>ストーリーズ</td>
-          <td>リンクスタンプ。<strong>フォロワー数の制限は撤廃済み</strong>で、
-              どのアカウントでも使えます。実際に動くのはここです</td>
-        </tr>
-        <tr>
-          <td>投稿の末尾</td>
-          <td>プロフィールへ誘導する固定文</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="callout">
-    <p>
-      <strong>4か所それぞれに、別々のURLを発行してください。</strong>
-      LINE公式アカウントの「友だち追加経路」という機能で作れます。
-      無料で、設定は5分ほどです。どこから登録されたかが管理画面で分かります。
-    </p>
-  </div>
-
-  <h3 id="measure">その前に、測れるようにする</h3>
 
   <div class="callout callout--warn">
     <p>
-      <strong>いまの店頭・Webのご案内に、この経路の設定はされていますか。</strong>
-      されていない場合、完成した2つの導線が実際に効いているのか測れていない状態です。
-      318名がどこから来たのか分からないまま3つ目を足すと、
-      <strong>何が効いたのか分からなくなります。</strong>
-      Instagramを足す前に、まずここを埋めることをお勧めします。
+      管理画面でボタンに設定できる種類は、<strong>リンク／クーポン／テキスト／ショップカード／
+      設定しない</strong> の5つだけです。開発者向けの postback は選べません。
+    </p>
+    <p>
+      そのため空き枠のボタンは <strong>「テキスト」</strong> にしてください。
+      お客様が押すと決まった言葉が送信され、システムがそれを拾って
+      「受け取りますか」のボタンをお返しします。ここは自動応答なので通数は0通です。
     </p>
   </div>
 
-  <h3>効果の見立て</h3>
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>ボタン</th><th>種類</th><th>設定する内容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>空き枠のお知らせ</td><td>テキスト</td><td><code>空き枠のお知らせ</code></td></tr>
+        <tr><td>ご予約・ご相談</td><td>テキスト</td><td><code>予約したい</code></td></tr>
+        <tr><td>メニュー・料金</td><td>テキスト</td><td><code>メニューを知りたい</code></td></tr>
+        <tr><td>コース診断</td><td>リンク</td><td>診断ツールのURL（発行後）</td></tr>
+        <tr><td>アクセス</td><td>テキスト</td><td><code>場所はどこ</code></td></tr>
+        <tr><td>営業時間</td><td>テキスト</td><td><code>営業時間</code></td></tr>
+      </tbody>
+    </table>
+  </div>
 
   <p>
-    Instagramだけの方を700名として、3か月で5〜10%が動けば<strong>35〜70名</strong>。
-    318名が350〜390名になります。
+    文言やボタンの数は、デモの編集ページで変えられます。
+    変えた内容がそのまま設定手順に反映されるので、画面を見ながら管理画面に写してください。
   </p>
+
+  <h3>2. あいさつメッセージ</h3>
 
   <p>
-    派手な数字ではありません。ただ<strong>広告費ゼロで、確実に積み上がります。</strong>
-    そして増えた友だちは、そのまま第1部・第2部のしくみが働く対象になります。
+    <strong>ホーム ▸ あいさつメッセージ</strong> をオンにしてください。通数は無料です。
+    ここに「空き枠のお知らせを受け取れます」の一文を入れておくと、
+    友だち追加のたびに希望者が増えていきます。文面はオーナー様・スタッフの皆さまで
+    自由に編集していただけます。
   </p>
 
-  <h4>あえてやらないほうがよいこと</h4>
+  <h3>3. 応答メッセージ</h3>
 
-  <ul>
-    <li><strong>複数のページを作って反応を比べる（A/Bテスト）</strong> ——
-      月20名前後の増加ペースでは、どちらが良いか統計的に判定できません。
-      差がないのに差があるように見えて、誤った判断をする危険のほうが大きいです</li>
-    <li><strong>リターゲティング広告</strong> ——
-      母数が小さすぎて広告の配信が最適化されません。
-      同じ予算なら店頭やInstagramに回すほうが確実です</li>
-    <li><strong>紹介キャンペーンの仕組み作り</strong> ——
-      効果は見込めますが、紹介が生まれる前提としてまず友だちを増やす必要があります。順番は後です</li>
-  </ul>
+  <p>
+    <strong>ホーム ▸ 応答設定</strong> で、応答メッセージを<strong>オフ</strong>、
+    Webhookを<strong>オン</strong>にしてください。
+    両方オンにすると、同じ質問に二重で返信してしまいます。
+  </p>
+
+  <div class="callout">
+    <p>
+      LINEチャット（手動での返信）は、これまでどおりお使いいただけます。
+      Webhookをオンにしても、スタッフの返信が妨げられることはありません。
+    </p>
+  </div>
 </section>
 
 <footer>
-  トータル・ビューティー・サロン ミエーレ ／ LINE運用ガイド<br>
+  トータル・ビューティー・サロン ミエーレ ／ 空き枠のお知らせ 運用ガイド<br>
   〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分<br>
   ご不明な点は店内でお尋ねください。内容は運用に合わせて更新します。
 </footer>

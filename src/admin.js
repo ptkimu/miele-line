@@ -1,18 +1,37 @@
 /**
  * スタッフ用ページ（Basic認証）
  *
- * 会計後に、その日来店されたお客様を名前で探してボタンを押すだけ。
- * スマホでの操作を前提にしています。
+ * 空き枠をお知らせするための画面です。ここでやることは3つだけ。
+ *   1. 今日が送信日かどうかを見る
+ *   2. サロンボードで見た空きを入力する
+ *   3. 文面と人数を確かめてから送る
  *
- * なぜ管理ページが必要か：
- *   LINEのWebhookに届くのは「お客様から届いたメッセージ」だけで、
- *   スタッフが管理画面から送った返信はイベントとして飛んできません。
- *   そのため、来店の記録はLINEのトーク上では行えません。
+ * ブラウザのホームページにこのURLを設定しておくと、
+ * 店舗のパソコンを開いた時点で送信日かどうかが目に入ります。
+ *
+ * サロンボードから空きを自動で取る手段は公開されていません。
+ * また「空いている」枠がすべて「出していい」枠とは限らない（移動・休憩・
+ * あえて残している枠が混ざる）ため、どの枠を出すかは人が決めます。
  */
 
-import { todayJst, nowIso } from './handlers.js';
-
-const REMIND_AFTER_DAYS = 11; // 2〜3週サイクルの手前で声をかける想定
+import { todayJst } from './handlers.js';
+import {
+  ROOMS,
+  DURATIONS,
+  WEEKDAYS,
+  DEFAULT_SCHEDULE,
+  MAX_PER_WEEK,
+  INSTAGRAM_DELAY_MIN,
+  isSendDay,
+  nextSendDay,
+  scheduleDates,
+  weekdayOf,
+  formatDate,
+  recentSendCount,
+  previewOpenSlot,
+  sendOpenSlot
+} from './openslot.js';
+import { OPEN_SLOT_TAG } from './tags.js';
 
 export async function adminRequest(request, env, url) {
   if (!checkAuth(request, env)) {
@@ -22,142 +41,311 @@ export async function adminRequest(request, env, url) {
     });
   }
 
-  if (url.pathname === '/admin/visit' && request.method === 'POST') {
-    return recordVisit(request, env);
+  if (url.pathname === '/admin/preview' && request.method === 'POST') {
+    return previewPage(request, env);
+  }
+  if (url.pathname === '/admin/send' && request.method === 'POST') {
+    return sendPage(request, env);
   }
   if (url.pathname === '/admin/questions') {
     return questionsPage(env);
   }
-  return listPage(env, url.searchParams.get('q') ?? '');
+  return slotPage(env);
 }
 
 /* ------------------------------------------------------------------ *
- * 来店の記録
+ * 1. 入力
  * ------------------------------------------------------------------ */
 
-async function recordVisit(request, env) {
-  const form = await request.formData();
-  const userId = String(form.get('user_id') ?? '');
-  const booked = form.get('next_booked') === '1' ? 1 : 0;
-  const back = String(form.get('q') ?? '');
+async function slotPage(env) {
   const today = todayJst();
-
-  if (userId) {
-    // 同じ人の同じ日は UNIQUE 制約で二重に入らない。押し間違いは上書きで直せる
-    await env.DB.prepare(
-      `INSERT INTO visits (line_user_id, visited_on, next_booked, created_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(line_user_id, visited_on)
-       DO UPDATE SET next_booked = excluded.next_booked`
-    )
-      .bind(userId, today, booked, nowIso())
-      .run();
-
-    await env.DB.prepare(
-      'UPDATE customers SET last_visit_at = ?, next_booked = ? WHERE line_user_id = ?'
-    )
-      .bind(today, booked, userId)
-      .run();
-  }
-
-  return new Response(null, {
-    status: 303,
-    headers: { Location: '/admin' + (back ? '?q=' + encodeURIComponent(back) : '') }
-  });
-}
-
-/* ------------------------------------------------------------------ *
- * 一覧
- * ------------------------------------------------------------------ */
-
-async function listPage(env, q) {
-  const today = todayJst();
+  const days = DEFAULT_SCHEDULE.days;
+  const sendDay = isSendDay(today, days);
+  const dates = scheduleDates(today);
 
   const stats = await env.DB.prepare(
     `SELECT
-       (SELECT COUNT(*) FROM customers WHERE status = 'active')      AS friends,
-       (SELECT COUNT(*) FROM customers WHERE status = 'blocked')     AS blocked,
-       (SELECT COUNT(*) FROM visits    WHERE visited_on = ?)         AS today_visits`
+       (SELECT COUNT(*) FROM customers WHERE status = 'active') AS friends,
+       (SELECT COUNT(*)
+          FROM customer_tags ct
+          JOIN tags t      ON t.id = ct.tag_id
+          JOIN customers c ON c.line_user_id = ct.line_user_id
+         WHERE t.name = ? AND c.status = 'active')              AS wants`
   )
-    .bind(today)
+    .bind(OPEN_SLOT_TAG)
     .first();
 
-  const rows = q
-    ? await env.DB.prepare(
-        `SELECT line_user_id, display_name, last_visit_at, next_booked
-           FROM customers
-          WHERE status = 'active' AND display_name LIKE ?
-          ORDER BY (last_visit_at IS NULL), last_visit_at DESC, followed_at DESC
-          LIMIT 60`
-      )
-        .bind('%' + q + '%')
-        .all()
-    : await env.DB.prepare(
-        `SELECT line_user_id, display_name, last_visit_at, next_booked
-           FROM customers
-          WHERE status = 'active'
-          ORDER BY followed_at DESC
-          LIMIT 40`
-      ).all();
+  const week = await recentSendCount(env, today);
 
-  const cards = (rows.results ?? []).map((c) => customerCard(c, today, q)).join('');
+  /* 送信日かどうかを、開いた瞬間に分かる大きさで出す。
+     これが「送り忘れないための仕組み」の本体です */
+  const banner = sendDay
+    ? `<div class="banner banner--on">
+         <b>本日は空き枠のお知らせの日です</b>
+         <span>${esc(dates.map(formatDate).join('・'))} の空きをご確認ください</span>
+       </div>`
+    : `<div class="banner">
+         <b>本日は送信日ではありません</b>
+         <span>次は ${esc(WEEKDAYS[nextSendDay(today, days)])}曜日です。
+         急な空きが出たときは、そのままお使いいただけます</span>
+       </div>`;
 
-  return html(`
+  return admPage(`
     <header>
-      <h1>ミエーレ スタッフ用</h1>
-      <p class="date">${esc(today)}</p>
+      <h1>空き枠のお知らせ</h1>
+      <p class="date">${esc(today)}（${esc(WEEKDAYS[weekdayOf(today)])}）</p>
     </header>
+
+    ${banner}
 
     <dl class="stats">
       <div><dt>友だち</dt><dd>${stats?.friends ?? 0}</dd></div>
-      <div><dt>本日の記録</dt><dd>${stats?.today_visits ?? 0}</dd></div>
-      <div><dt>ブロック</dt><dd>${stats?.blocked ?? 0}</dd></div>
+      <div><dt>お知らせ希望</dt><dd>${stats?.wants ?? 0}</dd></div>
+      <div><dt>直近7日の送信</dt><dd>${week}<small>/${MAX_PER_WEEK}</small></dd></div>
     </dl>
 
-    <form class="search" method="get" action="/admin">
-      <input type="search" name="q" value="${esc(q)}" placeholder="お名前で検索" autocomplete="off">
-      <button type="submit">検索</button>
+    <form method="post" action="/admin/preview" id="f">
+      <section>
+        <h2>1. どちらのお部屋ですか</h2>
+        <div class="rooms">
+          ${ROOMS.map(
+            (r) => `<button type="button" class="room" data-room="${esc(r.id)}">
+                      <b>${esc(r.label)}</b><span>${esc(r.note)}</span>
+                    </button>`
+          ).join('')}
+        </div>
+      </section>
+
+      <section>
+        <h2>2. 空いている枠</h2>
+        <div id="rows"></div>
+        <button type="button" id="add" class="ghost">＋ 枠を増やす</button>
+      </section>
+
+      <section>
+        <h2>3. 送り方</h2>
+        <label class="check">
+          <input type="checkbox" name="narrow" value="1" checked>
+          <span>そのお部屋を希望された方だけに送る<small>関係のない案内を減らせます</small></span>
+        </label>
+        <label class="check">
+          <input type="checkbox" name="exclude_recent" value="1">
+          <span>直近7日に受け取った方を外す<small>続けて届くのを避けます</small></span>
+        </label>
+        <label class="check check--warn">
+          <input type="checkbox" name="everyone" value="1">
+          <span>希望していない方にも送る<small>ブロックされやすくなります。稼働の直後だけにしてください</small></span>
+        </label>
+      </section>
+
+      <input type="hidden" name="slots" id="slots">
+      <button type="submit" class="primary">送る前に確認する</button>
     </form>
 
-    <p class="hint">会計のあとに、来店されたお客様のボタンを押してください。<br>
-    次回予約が取れた方は「予約あり」、取れなかった方は「未予約」です。<br>
-    未予約の方にだけ、後日おすすめのタイミングでご案内が届くようになります（フェーズ3で稼働）。</p>
-
-    ${cards || '<p class="empty">該当する方が見つかりませんでした。</p>'}
-
     <p class="foot"><a href="/admin/questions">自動応答できていない質問を見る</a></p>
+
+    <script>
+      const ROOMS = ${JSON.stringify(ROOMS)};
+      const DURATIONS = ${JSON.stringify(DURATIONS)};
+      const DATES = ${JSON.stringify(dates)};
+      ${admClient}
+    </script>
   `);
 }
 
-function customerCard(c, today, q) {
-  const days = c.last_visit_at ? daysBetween(c.last_visit_at, today) : null;
-  const isToday = c.last_visit_at === today;
+/* 入力欄の組み立て。枠の長さを変えると、収まらなくなったメニューは自動で外れる */
+const admClient = `
+  let room = ROOMS[0].id;
+  let rows = [{ date: DATES[0], time: '', minutes: 60, menus: null }];
 
-  let state = '<span class="tag tag--none">来店記録なし</span>';
-  if (isToday) {
-    state = c.next_booked
-      ? '<span class="tag tag--ok">本日記録済み・予約あり</span>'
-      : '<span class="tag tag--wait">本日記録済み・未予約</span>';
-  } else if (c.last_visit_at) {
-    const due = !c.next_booked && days >= REMIND_AFTER_DAYS;
-    state =
-      `<span class="tag ${due ? 'tag--due' : 'tag--past'}">` +
-      `前回 ${esc(c.last_visit_at)}・${days}日前` +
-      (c.next_booked ? '・予約あり' : '・未予約') +
-      '</span>';
+  const fits = (minutes) =>
+    (ROOMS.find((r) => r.id === room)?.menus ?? []).filter((m) => m.minutes <= minutes);
+
+  /* 既定のチェック。枠の長さぴったりのものを優先し、多くても3つまで。
+     並べすぎると、お客様がどれを選べばよいか分からなくなります */
+  function defaultMenus(minutes) {
+    const f = fits(minutes);
+    const exact = f.filter((m) => m.minutes === minutes);
+    return (exact.length ? exact : f).slice(0, 3).map((m) => m.name);
   }
 
-  return `
-    <article class="card${isToday ? ' card--done' : ''}">
-      <h2>${esc(c.display_name || '(表示名なし)')}</h2>
-      <div class="state">${state}</div>
-      <form method="post" action="/admin/visit">
-        <input type="hidden" name="user_id" value="${esc(c.line_user_id)}">
-        <input type="hidden" name="q" value="${esc(q)}">
-        <button type="submit" name="next_booked" value="1" class="b b--ok">来店・予約あり</button>
-        <button type="submit" name="next_booked" value="0" class="b b--wait">来店・未予約</button>
-      </form>
-    </article>`;
+  function render() {
+    document.querySelectorAll('.room').forEach((b) =>
+      b.setAttribute('aria-pressed', String(b.dataset.room === room))
+    );
+
+    document.getElementById('rows').innerHTML = rows
+      .map((s, i) => {
+        const chosen = s.menus ?? defaultMenus(s.minutes);
+        const picks = fits(s.minutes)
+          .map(
+            (m) =>
+              '<label><input type="checkbox" data-i="' + i + '" data-menu="' + m.name + '"' +
+              (chosen.includes(m.name) ? ' checked' : '') + '>' +
+              '<span>' + m.name + '<small>' + m.minutes + '分</small></span></label>'
+          )
+          .join('');
+        return (
+          '<div class="row">' +
+          '<div class="when">' +
+          '<input type="date" data-i="' + i + '" data-f="date" value="' + s.date + '">' +
+          '<input type="time" data-i="' + i + '" data-f="time" value="' + s.time + '" step="900">' +
+          '<select data-i="' + i + '" data-f="minutes">' +
+          DURATIONS.map(
+            (d) => '<option value="' + d + '"' + (d === s.minutes ? ' selected' : '') + '>' + d + '分</option>'
+          ).join('') +
+          '</select>' +
+          (rows.length > 1 ? '<button type="button" class="del" data-i="' + i + '">消す</button>' : '') +
+          '</div>' +
+          '<p class="note">この時間にご案内できるメニューです。' +
+          '<b>機材の不調や材料切れのときは、チェックを外してください。</b></p>' +
+          '<div class="menupick">' + (picks || '<span class="none">この長さに入るメニューがありません</span>') + '</div>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  document.addEventListener('click', (e) => {
+    const r = e.target.closest('.room');
+    if (r) { room = r.dataset.room; rows.forEach((s) => (s.menus = null)); render(); return; }
+    const d = e.target.closest('.del');
+    if (d) { rows.splice(Number(d.dataset.i), 1); render(); return; }
+    if (e.target.id === 'add') {
+      const last = rows[rows.length - 1];
+      rows.push({ date: last ? last.date : DATES[0], time: '', minutes: 60, menus: null });
+      render();
+    }
+  });
+
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.dataset.f) {
+      const s = rows[Number(t.dataset.i)];
+      if (t.dataset.f === 'minutes') {
+        const minutes = Number(t.value);
+        /* 長さを短くしたら、入らなくなったメニューは落とす */
+        const keep = new Set(fits(minutes).map((m) => m.name));
+        const chosen = (s.menus ?? defaultMenus(s.minutes)).filter((n) => keep.has(n));
+        s.minutes = minutes;
+        s.menus = chosen.length ? chosen : null;
+        render();
+      } else {
+        s[t.dataset.f] = t.value;
+      }
+      return;
+    }
+    if (t.dataset.menu) {
+      const s = rows[Number(t.dataset.i)];
+      const chosen = new Set(s.menus ?? defaultMenus(s.minutes));
+      if (t.checked) chosen.add(t.dataset.menu);
+      else chosen.delete(t.dataset.menu);
+      s.menus = [...chosen];
+    }
+  });
+
+  document.getElementById('f').addEventListener('submit', (e) => {
+    const out = rows
+      .filter((s) => s.date && s.time)
+      .map((s) => ({
+        date: s.date,
+        time: s.time,
+        minutes: s.minutes,
+        menus: s.menus ?? defaultMenus(s.minutes)
+      }));
+    if (!out.length) { e.preventDefault(); alert('日付と時間を入れてください。'); return; }
+    document.getElementById('slots').value = JSON.stringify(out);
+  });
+
+  render();
+`;
+
+/* ------------------------------------------------------------------ *
+ * 2. 確認
+ * ------------------------------------------------------------------ */
+
+async function previewPage(request, env) {
+  const form = await request.formData();
+  const slots = parseSlots(form.get('slots'));
+  if (!slots.length) return redirectToTop();
+
+  const opts = optsFrom(form);
+  const p = await previewOpenSlot(env, slots, opts);
+
+  const notes = p.notes
+    .map((n) => `<p class="alert alert--${esc(n.kind)}">${esc(n.text)}</p>`)
+    .join('');
+
+  const blocked = !p.quota.allowed || !p.planned;
+
+  return admPage(`
+    <header>
+      <h1>送る前の確認</h1>
+      <p class="date">${esc(p.roomLabel)}・${p.slots.length}枠</p>
+    </header>
+
+    ${notes}
+
+    <dl class="stats">
+      <div><dt>お送りする方</dt><dd>${p.planned}</dd></div>
+      <div><dt>今月の残り</dt><dd>${p.quota.usable}</dd></div>
+      <div><dt>直近7日の送信</dt><dd>${p.weekCount}<small>/${p.maxPerWeek}</small></dd></div>
+    </dl>
+
+    <section>
+      <h2>LINEに届く文面</h2>
+      <pre class="msg">${esc(p.lineText)}</pre>
+    </section>
+
+    <section>
+      <h2>Instagram ストーリーズ</h2>
+      <p class="note">LINEにお送りしてから <b>${INSTAGRAM_DELAY_MIN}分あけて</b> ご投稿ください。
+      LINEのほうが早いという事実が、登録していただく理由になります。</p>
+      <pre class="msg">${esc(p.instagramText)}</pre>
+    </section>
+
+    <form method="post" action="/admin/send">
+      <input type="hidden" name="slots" value="${esc(JSON.stringify(p.slots))}">
+      ${opts.narrow ? '<input type="hidden" name="narrow" value="1">' : ''}
+      ${opts.excludeRecent ? '<input type="hidden" name="exclude_recent" value="1">' : ''}
+      ${opts.everyone ? '<input type="hidden" name="everyone" value="1">' : ''}
+      <button type="submit" class="primary"${blocked ? ' disabled' : ''}>
+        ${blocked ? '送信できません' : `${p.planned}名に送信する`}
+      </button>
+    </form>
+
+    <p class="foot"><a href="/admin">入力に戻る</a></p>
+  `);
+}
+
+/* ------------------------------------------------------------------ *
+ * 3. 送信
+ * ------------------------------------------------------------------ */
+
+async function sendPage(request, env) {
+  const form = await request.formData();
+  const slots = parseSlots(form.get('slots'));
+  if (!slots.length) return redirectToTop();
+
+  const r = await sendOpenSlot(env, slots, optsFrom(form));
+
+  return admPage(`
+    <header>
+      <h1>${r.stopped ? '送信を止めました' : '送信しました'}</h1>
+      <p class="date">${esc(r.roomLabel)}・${r.slots.length}枠</p>
+    </header>
+
+    ${
+      r.stopped
+        ? `<p class="alert alert--too-often">${esc(r.stopped)}</p>`
+        : `<p class="done"><b>${r.sent}名</b>にお届けしました。</p>
+           <p class="note">このあと <b>${INSTAGRAM_DELAY_MIN}分</b> あけてから、
+           Instagram のストーリーズにご投稿ください。</p>
+           <pre class="msg">${esc(r.instagramText)}</pre>`
+    }
+
+    <p class="foot"><a href="/admin">最初に戻る</a></p>
+  `);
 }
 
 /* ------------------------------------------------------------------ *
@@ -178,19 +366,52 @@ async function questionsPage(env) {
     .map((r) => `<li><b>${r.n}回</b> ${esc(r.body ?? '')}</li>`)
     .join('');
 
-  return html(`
+  return admPage(`
     <header>
       <h1>自動応答できていない質問</h1>
       <p class="date">よく聞かれるものは、キーワード応答に追加できます</p>
     </header>
     <ul class="qs">${items || '<li class="empty">まだありません。</li>'}</ul>
-    <p class="foot"><a href="/admin">一覧に戻る</a></p>
+    <p class="foot"><a href="/admin">最初に戻る</a></p>
   `);
 }
 
 /* ------------------------------------------------------------------ *
- * 認証・共通
+ * 入力の受け取り・認証・共通
  * ------------------------------------------------------------------ */
+
+/** 画面から届いた JSON を、信じずに組み立て直す */
+function parseSlots(raw) {
+  let list;
+  try {
+    list = JSON.parse(String(raw ?? ''));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(list)) return [];
+
+  return list
+    .slice(0, 12)
+    .map((s) => ({
+      date: String(s?.date ?? ''),
+      time: String(s?.time ?? ''),
+      minutes: Number(s?.minutes) || 60,
+      menus: (Array.isArray(s?.menus) ? s.menus : []).map(String).filter(Boolean)
+    }))
+    .filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s.date) && /^\d{2}:\d{2}$/.test(s.time));
+}
+
+function optsFrom(form) {
+  return {
+    narrow: form.get('narrow') === '1',
+    excludeRecent: form.get('exclude_recent') === '1',
+    everyone: form.get('everyone') === '1'
+  };
+}
+
+function redirectToTop() {
+  return new Response(null, { status: 303, headers: { Location: '/admin' } });
+}
 
 function checkAuth(request, env) {
   const header = request.headers.get('Authorization') ?? '';
@@ -219,11 +440,6 @@ function credsEqual(a, b) {
   return diff === 0;
 }
 
-function daysBetween(fromYmd, toYmd) {
-  const ms = Date.parse(toYmd + 'T00:00:00Z') - Date.parse(fromYmd + 'T00:00:00Z');
-  return Math.max(0, Math.round(ms / 86400000));
-}
-
 function esc(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -232,51 +448,75 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-function html(inner) {
+function admPage(inner) {
   return new Response(
     `<!doctype html><html lang="ja"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>ミエーレ スタッフ用</title>
+<title>ミエーレ 空き枠のお知らせ</title>
 <style>
   :root{--bg:#FAF7F5;--card:#fff;--ink:#2B2724;--sub:#8B7F79;--line:#E7DBD4;
-        --accent:#98543F;--ok:#1F7A4C;--wait:#8E6415;--due:#A73A2A}
+        --accent:#98543F;--ok:#1F7A4C;--warn:#8E6415;--due:#A73A2A}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.7;
        font-family:"Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif}
-  .app{max-width:560px;margin:0 auto;padding:20px 16px 60px}
+  .app{max-width:620px;margin:0 auto;padding:20px 16px 60px}
   header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
-  h1{font-size:18px;margin:0}
+  h1{font-size:19px;margin:0}
+  h2{font-size:14px;margin:0 0 10px;color:var(--sub);font-weight:700}
   .date{margin:2px 0 0;font-size:13px;color:var(--sub)}
-  .stats{display:flex;gap:0;margin:0 0 18px;padding:0;border:1px solid var(--line);
+  .banner{border:1px solid var(--line);border-radius:12px;background:var(--card);
+          padding:14px 16px;margin-bottom:16px}
+  .banner b{display:block;font-size:16px}
+  .banner span{display:block;font-size:13px;color:var(--sub);margin-top:3px}
+  .banner--on{border-color:var(--accent);border-width:2px}
+  .banner--on b{color:var(--accent)}
+  .stats{display:flex;margin:0 0 18px;padding:0;border:1px solid var(--line);
          border-radius:10px;background:var(--card);overflow:hidden}
   .stats div{flex:1;padding:10px 12px;border-right:1px solid var(--line);text-align:center}
   .stats div:last-child{border-right:0}
   .stats dt{font-size:11px;color:var(--sub);margin:0}
   .stats dd{margin:0;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
-  .search{display:flex;gap:8px;margin:0 0 14px}
-  .search input{flex:1;min-width:0;padding:11px 12px;border:1px solid var(--line);
-                border-radius:9px;font:inherit;background:var(--card);color:inherit}
-  .search button{padding:11px 16px;border:0;border-radius:9px;background:var(--accent);
-                 color:#fff;font:inherit;font-weight:700}
-  .hint{font-size:12.5px;color:var(--sub);margin:0 0 18px;line-height:1.75}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
-        padding:14px 16px;margin-bottom:10px}
-  .card--done{opacity:.55}
-  .card h2{font-size:15.5px;margin:0 0 6px}
-  .state{margin-bottom:10px}
-  .tag{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px}
-  .tag--none{background:#F0E9E5;color:var(--sub)}
-  .tag--past{background:#F0E9E5;color:var(--sub)}
-  .tag--ok{background:#E4F1EA;color:var(--ok)}
-  .tag--wait{background:#F7EFDF;color:var(--wait)}
-  .tag--due{background:#FBE6E2;color:var(--due)}
-  .card form{display:flex;gap:8px}
-  .b{flex:1;padding:12px 8px;border:0;border-radius:9px;font:inherit;font-weight:700;
-     font-size:13.5px;color:#fff}
-  .b--ok{background:var(--ok)}
-  .b--wait{background:var(--wait)}
+  .stats small{font-size:12px;font-weight:400;color:var(--sub)}
+  section{margin-bottom:22px}
+  .rooms{display:flex;gap:8px}
+  .room{flex:1;text-align:left;padding:12px 14px;border:1px solid var(--line);
+        border-radius:11px;background:var(--card);color:inherit;font:inherit}
+  .room[aria-pressed="true"]{border-color:var(--accent);border-width:2px;padding:11px 13px}
+  .room b{display:block;font-size:14.5px}
+  .room span{display:block;font-size:11.5px;color:var(--sub);margin-top:2px}
+  .row{background:var(--card);border:1px solid var(--line);border-radius:12px;
+       padding:12px 14px;margin-bottom:10px}
+  .when{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .when input,.when select{padding:9px 10px;border:1px solid var(--line);border-radius:9px;
+                           font:inherit;background:var(--bg);color:inherit}
+  .del{margin-left:auto;padding:8px 12px;border:1px solid var(--line);border-radius:9px;
+       background:none;color:var(--sub);font:inherit;font-size:13px}
+  .note{font-size:12.5px;color:var(--sub);margin:10px 0 8px;line-height:1.7}
+  .note b{color:var(--due)}
+  .menupick{display:grid;gap:6px}
+  .menupick label{display:flex;gap:8px;align-items:flex-start;font-size:13.5px}
+  .menupick small{color:var(--sub);margin-left:6px;font-size:11.5px}
+  .menupick .none{font-size:13px;color:var(--sub)}
+  .check{display:flex;gap:10px;align-items:flex-start;background:var(--card);
+         border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:8px}
+  .check span{font-size:14px}
+  .check small{display:block;font-size:12px;color:var(--sub);margin-top:2px}
+  .check--warn{border-color:#E7C8BF}
+  .ghost{padding:11px 14px;border:1px dashed var(--line);border-radius:10px;
+         background:none;color:var(--accent);font:inherit;width:100%}
+  .primary{width:100%;padding:15px;border:0;border-radius:11px;background:var(--accent);
+           color:#fff;font:inherit;font-weight:700;font-size:15.5px;margin-top:6px}
+  .primary[disabled]{background:var(--line);color:var(--sub)}
+  .msg{background:var(--card);border:1px solid var(--line);border-radius:11px;
+       padding:14px 16px;margin:0;font:inherit;font-size:13.5px;white-space:pre-wrap;
+       word-break:break-word}
+  .alert{border-radius:11px;padding:12px 14px;font-size:13px;margin:0 0 10px;
+         background:#F7EFDF;color:var(--warn)}
+  .alert--everyone,.alert--too-often{background:#FBE6E2;color:var(--due)}
+  .done{font-size:16px;margin:0 0 10px}
+  .done b{color:var(--ok)}
   .qs{list-style:none;padding:0;margin:0}
   .qs li{background:var(--card);border:1px solid var(--line);border-radius:9px;
          padding:10px 14px;margin-bottom:8px;font-size:14px}
@@ -286,12 +526,11 @@ function html(inner) {
   a{color:var(--accent)}
   @media (prefers-color-scheme:dark){
     :root{--bg:#1B1817;--card:#242020;--ink:#EFE8E4;--sub:#9C8F89;--line:#3A3331;
-          --accent:#D9967C;--ok:#5CC98C;--wait:#DEAC57;--due:#E58775}
-    .tag--none,.tag--past{background:#2F2A28}
-    .tag--ok{background:#1C2C24}
-    .tag--wait{background:#2E2619}
-    .tag--due{background:#33211E}
-    .b{color:#1B1817}
+          --accent:#D9967C;--ok:#5CC98C;--warn:#DEAC57;--due:#E58775}
+    .alert{background:#2E2619}
+    .alert--everyone,.alert--too-often{background:#33211E}
+    .check--warn{border-color:#4A3630}
+    .primary{color:#1B1817}
   }
 </style></head><body><div class="app">${inner}</div></body></html>`,
     { headers: { 'Content-Type': 'text/html; charset=utf-8' } }

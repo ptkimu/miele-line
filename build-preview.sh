@@ -10,7 +10,7 @@
 set -e
 cd "$(dirname "$0")"
 
-MODULES="src/salon.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/segments.js src/openslot.js src/story.js src/richmenu.js src/admin.js"
+MODULES="src/salon.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/segments.js src/openslot.js src/story.js src/richmenu.js"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
@@ -107,7 +107,6 @@ awk -v css="$TMP.css" -v sec="$TMP.sec" -v js="$TMP.js" -v mod="$TMP" '
 sed "s|/\*__RICHMENU_PNG__\*/|data:image/png;base64,${B64}|" "$TMP.all" > preview/all.html
 rm -f "$TMP.css" "$TMP.sec" "$TMP.js" "$TMP.all"
 cp preview/all.html out/all.html
-cp preview/all.html out/index.html
 cp preview/all.html out/index.html
 check_dupes preview/all.html
 echo "built: out/all.html"

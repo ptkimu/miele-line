@@ -352,7 +352,7 @@ export async function recentSendCount(env, today = todayJst(), room = null) {
  */
 export async function previewOpenSlot(env, slots, opts = {}) {
   const today = opts.today ?? todayJst();
-  const room = opts.room ?? roomOfMenu(slots?.[0]?.menu);
+  const room = opts.room ?? roomOfSlot(slots?.[0]);
 
   // 既定では、そのメニューに関心のある方だけに絞る
   const narrowTag = opts.narrow === false ? null : tagForSlots(slots);

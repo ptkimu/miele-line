@@ -1,26 +1,24 @@
--- ミエーレ LINE配信システム / D1 スキーマ
+-- ミエーレ 空き枠のお知らせ / D1 スキーマ
 -- 実行: npm run db:init
 
 -- 友だち一覧。保存するのは LINE のユーザーIDと表示名だけ。
--- 氏名・電話番号・住所は保存しない（予約情報はホットペッパー側に置いたまま）
+-- 氏名・電話番号・住所は保存しない（予約情報はサロンボード側に置いたまま）
 CREATE TABLE IF NOT EXISTS customers (
   line_user_id  TEXT PRIMARY KEY,
   display_name  TEXT,
   followed_at   TEXT NOT NULL,
   unfollowed_at TEXT,
-  last_visit_at TEXT,                              -- 最終来店日 YYYY-MM-DD
-  next_booked   INTEGER NOT NULL DEFAULT 0,        -- 1 = 次回予約が入っている
   status        TEXT NOT NULL DEFAULT 'active'     -- active | blocked
 );
 
 CREATE INDEX IF NOT EXISTS idx_customers_status ON customers(status, followed_at DESC);
-CREATE INDEX IF NOT EXISTS idx_customers_visit  ON customers(last_visit_at);
 
--- タグ。診断結果や希望条件を貯めていく（フェーズ2以降で本格利用）
+-- タグ。空き枠のお知らせを希望されたか、どちらのお部屋を希望されたか。
+--   希望:空き枠のお知らせ / 希望:セルフ脱毛 / 希望:セラピスト施術
 CREATE TABLE IF NOT EXISTS tags (
   id   INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
-  kind TEXT                                        -- diagnosis | preference | lifecycle
+  kind TEXT                                        -- preference
 );
 
 CREATE TABLE IF NOT EXISTS customer_tags (
@@ -31,20 +29,6 @@ CREATE TABLE IF NOT EXISTS customer_tags (
   FOREIGN KEY (line_user_id) REFERENCES customers(line_user_id) ON DELETE CASCADE,
   FOREIGN KEY (tag_id)       REFERENCES tags(id)                ON DELETE CASCADE
 );
-
--- 来店記録。次回予約の有無でリマインド対象を分ける
--- UNIQUE により、同じ人の同じ日を二重に記録できない
-CREATE TABLE IF NOT EXISTS visits (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  line_user_id TEXT    NOT NULL,
-  visited_on   TEXT    NOT NULL,                   -- YYYY-MM-DD
-  next_booked  INTEGER NOT NULL DEFAULT 0,
-  created_at   TEXT    NOT NULL,
-  UNIQUE (line_user_id, visited_on),
-  FOREIGN KEY (line_user_id) REFERENCES customers(line_user_id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_visits_date ON visits(visited_on DESC);
 
 -- Webhook の再送で同じイベントを二度処理しないための記録
 CREATE TABLE IF NOT EXISTS processed_events (
@@ -65,31 +49,14 @@ CREATE TABLE IF NOT EXISTS inbound_messages (
 CREATE INDEX IF NOT EXISTS idx_inbound_created ON inbound_messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_inbound_matched ON inbound_messages(matched);
 
--- ============ フェーズ2以降で使うテーブル ============
-
--- コース診断の回答。タグの元になった内容を残しておく
-CREATE TABLE IF NOT EXISTS diagnoses (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  line_user_id TEXT NOT NULL,
-  gender       TEXT,
-  concerns     TEXT,                              -- JSON配列
-  budget       TEXT,
-  pace         TEXT,
-  results      TEXT,                              -- 提案したコース（JSON配列）
-  created_at   TEXT NOT NULL,
-  FOREIGN KEY (line_user_id) REFERENCES customers(line_user_id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_diagnoses_user ON diagnoses(line_user_id, created_at DESC);
-
--- 配信の記録。
--- UNIQUE(line_user_id, dedupe_key) により、バッチが再実行されても
+-- 送信の記録。
+-- UNIQUE(line_user_id, dedupe_key) により、途中で失敗して送り直しても
 -- 同じ人に同じ案内が二度届くことがデータベース側で起こり得ない。
 CREATE TABLE IF NOT EXISTS deliveries (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   line_user_id TEXT    NOT NULL,
-  step_id      TEXT    NOT NULL,
-  dedupe_key   TEXT    NOT NULL,                  -- 例 'next_cycle:2026-08-20'
+  step_id      TEXT    NOT NULL,                  -- open_slot
+  dedupe_key   TEXT    NOT NULL,                  -- 例 'slot:2026-09-01T09:12:33'
   status       TEXT    NOT NULL,                  -- sending | sent | failed
   messages     INTEGER NOT NULL DEFAULT 1,        -- 消費した通数
   error        TEXT,
@@ -101,13 +68,12 @@ CREATE TABLE IF NOT EXISTS deliveries (
 CREATE INDEX IF NOT EXISTS idx_deliveries_sent ON deliveries(sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_deliveries_step ON deliveries(step_id, status);
 
-
--- 空き枠・キャンセル枠のお知らせを出した履歴。
--- 「直近7日で何回出したか」を数えて、出しすぎを止めるために使う。
+-- 空き枠のお知らせを出した履歴。
+-- 「直近7日で何回出したか」をお部屋ごとに数えて、出しすぎを止めるために使う。
 CREATE TABLE IF NOT EXISTS open_slots (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   kind       TEXT    NOT NULL,               -- 部屋 self = セルフブース / room = 施術ルーム
-  slots      TEXT    NOT NULL,               -- 日時・メニュー（JSON）
+  slots      TEXT    NOT NULL,               -- 日時・所要時間・メニュー（JSON）
   sent_count INTEGER NOT NULL DEFAULT 0,
   created_at TEXT    NOT NULL
 );

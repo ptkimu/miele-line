@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "ビューティサロン ミエーレ LINE公式アカウント連携（フェーズ1：受け口）",
+  "description": "トータル・ビューティー・サロン ミエーレ 空き枠のお知らせ（LINE + Instagram）",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
