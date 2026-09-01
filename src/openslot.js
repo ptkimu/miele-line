@@ -299,6 +299,7 @@ export async function recentSendCount(env, today = todayJst(), room = null) {
  * @param {object}   opts
  * @param {boolean}  opts.narrow        メニューに関心のある方だけに絞るか（既定は絞る）
  * @param {boolean}  opts.excludeRecent 直近7日に配信を受け取った方を外すか
+ * @param {boolean}  opts.everyone      受け取りを希望していない方にも送るか（既定は送らない）
  */
 export async function previewOpenSlot(env, slots, opts = {}) {
   const today = opts.today ?? todayJst();
@@ -307,17 +308,31 @@ export async function previewOpenSlot(env, slots, opts = {}) {
   // 既定では、そのメニューに関心のある方だけに絞る
   const narrowTag = opts.narrow === false ? null : tagForSlots(slots);
 
+  /* 通常は「受け取りを希望した方」だけ。
+     everyone を立てると、希望していない方にも送る。
+     稼働直後で希望者がいないときの呼び水に使えるが、
+     頼んでいない案内が届くのでブロックされやすい。 */
+  const everyone = !!opts.everyone;
+  const baseTag = everyone ? [] : [OPEN_SLOT_TAG];
+
   const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
   const pick = (tags) => listSegment(env, { ...base, tags }, today);
 
-  const targets = await pick(narrowTag ? [OPEN_SLOT_TAG, narrowTag] : [OPEN_SLOT_TAG]);
+  const targets = await pick(narrowTag ? [...baseTag, narrowTag] : baseTag);
   // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
-  const wide = narrowTag ? await pick([OPEN_SLOT_TAG]) : targets;
+  const wide = narrowTag ? await pick(baseTag) : targets;
 
   const quota = await checkQuota(env, targets.length, opts.quota ?? null);
   const weekCount = await recentSendCount(env, today, room);
 
   const notes = [];
+  if (everyone) {
+    notes.push({
+      kind: 'everyone',
+      text: '受け取りを希望していない方にも送ります。頼んでいない案内が届くため、' +
+            'ブロックされやすくなります。稼働の直後など、必要なときだけにしてください。'
+    });
+  }
   if (narrowTag && !targets.length && wide.length) {
     notes.push({
       kind: 'narrow-empty',
@@ -344,6 +359,7 @@ export async function previewOpenSlot(env, slots, opts = {}) {
     today,
     slots,
     room,
+    everyone,
     roomLabel: ROOMS.find((r) => r.id === room)?.label ?? '',
     narrowTag,
     wideCount: wide.length,

@@ -281,6 +281,79 @@ const SALON = {
 /** TODO のままの項目を使った案内は出さない */
 const has = (value) => typeof value === 'string' && value.length > 0;
 
+/* ---------- src/menu.js ---------- */
+/**
+ * リッチメニューのボタン
+ *
+ * ここが1か所の定義です。編集すると、
+ *   - メニュー画像（design / 作成ページ）
+ *   - お客様がタップしたときのキーワード
+ *   - デモの表示
+ * のすべてに反映されます。
+ *
+ * 管理画面で設定するアクションは「テキスト」で、送る内容が keyword です。
+ * ポストバックは管理画面から選べないため、テキストで受けています。
+ */
+
+/** アイコン。SVG の path（100×100 の座標系、線で描く） */
+const ICONS = {
+  calendar:
+    'M18 26 h64 a6 6 0 0 1 6 6 v50 a6 6 0 0 1 -6 6 h-64 a6 6 0 0 1 -6 -6 v-50 a6 6 0 0 1 6 -6 z ' +
+    'M12 44 h76 M32 18 v16 M68 18 v16 M38 62 l8 9 18 -20',
+  chat:
+    'M18 24 h64 a6 6 0 0 1 6 6 v34 a6 6 0 0 1 -6 6 h-40 l-16 14 v-14 h-8 ' +
+    'a6 6 0 0 1 -6 -6 v-34 a6 6 0 0 1 6 -6 z M32 40 h36 M32 54 h24',
+  doc:
+    'M24 12 h52 a6 6 0 0 1 6 6 v64 a6 6 0 0 1 -6 6 h-52 a6 6 0 0 1 -6 -6 v-64 a6 6 0 0 1 6 -6 z ' +
+    'M36 34 h28 M36 50 h28 M36 66 h18',
+  search:
+    'M72 45 a27 27 0 1 1 -54 0 a27 27 0 1 1 54 0 M64 64 L86 86 M45 33 v9 M45 52 v1',
+  pin:
+    'M50 88 C50 88 76 62 76 42 A26 26 0 0 0 24 42 C24 62 50 88 50 88 z ' +
+    'M60 42 a10 10 0 1 1 -20 0 a10 10 0 1 1 20 0',
+  clock:
+    'M84 50 a34 34 0 1 1 -68 0 a34 34 0 1 1 68 0 M50 28 v24 l17 9',
+  gift:
+    'M14 44 h72 v14 h-72 z M20 58 h60 v30 h-60 z M50 44 v44 ' +
+    'M50 44 c-14 0 -22 -6 -22 -14 a10 10 0 0 1 22 -2 a10 10 0 0 1 22 2 c0 8 -8 14 -22 14 z',
+  star:
+    'M50 16 l10 22 24 3 -18 17 5 24 -21 -12 -21 12 5 -24 -18 -17 24 -3 z'
+};
+
+/** 画像の大きさと区切り方。管理画面のテンプレートに対応する */
+const LAYOUTS = [
+  { id: 'large-6', label: '大・3列×2段（6ボタン）', w: 2500, h: 1686, cols: 3, rows: 2 },
+  { id: 'large-4', label: '大・2列×2段（4ボタン）', w: 2500, h: 1686, cols: 2, rows: 2 },
+  { id: 'small-4', label: '小・4列×1段（4ボタン）', w: 2500, h: 843,  cols: 4, rows: 1 },
+  { id: 'small-2', label: '小・2列×1段（2ボタン）', w: 2500, h: 843,  cols: 2, rows: 1 }
+];
+
+/**
+ * 既定のボタン。
+ *   label   画像に出る文字
+ *   sub     その下の小さい文字
+ *   icon    ICONS の名前
+ *   keyword 管理画面の「テキスト」に入れる内容。空なら応答なし
+ *   lead    地色を変えて目立たせるボタン（1つだけ）
+ *   link    リンクにする場合の説明（keyword の代わり）
+ */
+const MENU = [
+  { id:'open_slot', label:'空き枠のお知らせ', sub:'受け取り設定はこちら', icon:'calendar', keyword:'空き枠', lead:true, badge:'NEW' },
+  { id:'booking',   label:'ご予約・ご相談',   sub:'LINEで承ります',       icon:'chat',     keyword:'予約' },
+  { id:'menu',      label:'メニュー・料金',   sub:'新規価格でご案内',     icon:'doc',      keyword:'メニュー' },
+  { id:'diagnosis', label:'コース診断',       sub:'1分でおすすめを提案',  icon:'search',   link:'LIFFのURL' },
+  { id:'access',    label:'アクセス',         sub:'古河駅 徒歩8分',       icon:'pin',      keyword:'場所' },
+  { id:'hours',     label:'営業時間',         sub:'定休日のご案内',       icon:'clock',    keyword:'営業時間' }
+];
+
+/** レイアウトに合わせて必要な数だけ切り出す */
+function cellsFor(menu, layout) {
+  const need = layout.cols * layout.rows;
+  return menu.slice(0, need);
+}
+
+const layoutById = (id) => LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0];
+
 /* ---------- src/line.js ---------- */
 /**
  * LINE Messaging API クライアント
@@ -1448,6 +1521,7 @@ async function recentSendCount(env, today = todayJst(), room = null) {
  * @param {object}   opts
  * @param {boolean}  opts.narrow        メニューに関心のある方だけに絞るか（既定は絞る）
  * @param {boolean}  opts.excludeRecent 直近7日に配信を受け取った方を外すか
+ * @param {boolean}  opts.everyone      受け取りを希望していない方にも送るか（既定は送らない）
  */
 async function previewOpenSlot(env, slots, opts = {}) {
   const today = opts.today ?? todayJst();
@@ -1456,17 +1530,31 @@ async function previewOpenSlot(env, slots, opts = {}) {
   // 既定では、そのメニューに関心のある方だけに絞る
   const narrowTag = opts.narrow === false ? null : tagForSlots(slots);
 
+  /* 通常は「受け取りを希望した方」だけ。
+     everyone を立てると、希望していない方にも送る。
+     稼働直後で希望者がいないときの呼び水に使えるが、
+     頼んでいない案内が届くのでブロックされやすい。 */
+  const everyone = !!opts.everyone;
+  const baseTag = everyone ? [] : [OPEN_SLOT_TAG];
+
   const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
   const pick = (tags) => listSegment(env, { ...base, tags }, today);
 
-  const targets = await pick(narrowTag ? [OPEN_SLOT_TAG, narrowTag] : [OPEN_SLOT_TAG]);
+  const targets = await pick(narrowTag ? [...baseTag, narrowTag] : baseTag);
   // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
-  const wide = narrowTag ? await pick([OPEN_SLOT_TAG]) : targets;
+  const wide = narrowTag ? await pick(baseTag) : targets;
 
   const quota = await checkQuota(env, targets.length, opts.quota ?? null);
   const weekCount = await recentSendCount(env, today, room);
 
   const notes = [];
+  if (everyone) {
+    notes.push({
+      kind: 'everyone',
+      text: '受け取りを希望していない方にも送ります。頼んでいない案内が届くため、' +
+            'ブロックされやすくなります。稼働の直後など、必要なときだけにしてください。'
+    });
+  }
   if (narrowTag && !targets.length && wide.length) {
     notes.push({
       kind: 'narrow-empty',
@@ -1493,6 +1581,7 @@ async function previewOpenSlot(env, slots, opts = {}) {
     today,
     slots,
     room,
+    everyone,
     roomLabel: ROOMS.find((r) => r.id === room)?.label ?? '',
     narrowTag,
     wideCount: wide.length,
@@ -1672,6 +1761,159 @@ function rule(ctx, cx, y, half) {
   ctx.moveTo(cx - half, y);
   ctx.lineTo(cx + half, y);
   ctx.stroke();
+}
+
+/* ---------- src/richmenu.js ---------- */
+/**
+ * リッチメニューの画像
+ *
+ * Canvas に描くので、ブラウザ上で文字を変えてその場で作り直せます。
+ * 画像とキーワードの定義は menu.js の1か所にまとまっています。
+ */
+
+
+const RM = {
+  ground: '#FAF7F5',
+  ink: '#2B2724',
+  muted: '#8B7F79',
+  accent: '#98543F',
+  rule: '#E7DBD4',
+  onLead: '#FFFFFF',
+  onLeadSub: '#EBD6CD'
+};
+
+const RM_DISPLAY = '"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",sans-serif';
+const RM_BODY = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",sans-serif';
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object[]} cells   ボタン（label / sub / icon / lead / badge）
+ * @param {object} layout    { w, h, cols, rows }
+ */
+function drawRichMenu(ctx, cells, layout) {
+  const { w, h, cols, rows } = layout;
+  const cw = w / cols;
+  const ch = h / rows;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = RM.ground;
+  ctx.fillRect(0, 0, w, h);
+
+  /* 1マスの高さで、文字とアイコンの大きさを決める。
+     小さいレイアウトでも詰まって見えないようにする */
+  const s = Math.min(cw / 833, ch / 843);
+  const iconSize = 150 * s;
+  const labelSize = Math.max(38, 74 * s);
+  const subSize = Math.max(24, 40 * s);
+  const gap = 44 * s;
+
+  cells.forEach((cell, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = col * cw;
+    const y = row * ch;
+    const lead = !!cell.lead;
+
+    if (lead) {
+      ctx.fillStyle = RM.accent;
+      ctx.fillRect(x, y, cw, ch);
+    }
+
+    /* 区切り線。外周には引かない */
+    ctx.strokeStyle = lead ? RM.accent : RM.rule;
+    ctx.lineWidth = 3;
+    if (col < cols - 1) rmLine(ctx, x + cw, y, x + cw, y + ch);
+    if (row < rows - 1) rmLine(ctx, x, y + ch, x + cw, y + ch);
+
+    const hasSub = !!cell.sub;
+    const blockH = iconSize + gap + labelSize + (hasSub ? gap * 0.5 + subSize : 0);
+    let cy = y + (ch - blockH) / 2;
+
+    if (cell.icon && ICONS[cell.icon]) {
+      drawIcon(ctx, ICONS[cell.icon], x + cw / 2, cy, iconSize, lead ? RM.onLead : RM.accent);
+      cy += iconSize + gap;
+    }
+
+    rmCenter(ctx, cell.label ?? '', x + cw / 2, cy + labelSize * 0.78,
+           `700 ${labelSize}px ${RM_DISPLAY}`, lead ? RM.onLead : RM.ink, labelSize * 0.02);
+
+    if (hasSub) {
+      cy += labelSize + gap * 0.5;
+      rmCenter(ctx, cell.sub, x + cw / 2, cy + subSize * 0.78,
+             `500 ${subSize}px ${RM_BODY}`, lead ? RM.onLeadSub : RM.muted, subSize * 0.04);
+    }
+
+    if (cell.badge) {
+      badge(ctx, cell.badge, x + cw - 56 * s, y + 52 * s, s, lead);
+    }
+  });
+}
+
+function rmLine(ctx, x1, y1, x2, y2) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+
+function drawIcon(ctx, pathData, cx, top, size, color) {
+  const p = new Path2D(pathData);
+  ctx.save();
+  ctx.translate(cx - size / 2, top);
+  ctx.scale(size / 100, size / 100);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke(p);
+  ctx.restore();
+}
+
+/** 字間を空けて中央に置く。日本語は1文字ずつ測る */
+function rmCenter(ctx, textValue, cx, baseline, font, color, spacing = 0) {
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  const chars = [...String(textValue)];
+  if (!chars.length) return;
+  const width = chars.reduce((n, ch) => n + ctx.measureText(ch).width + spacing, 0) - spacing;
+  let x = cx - width / 2;
+  for (const ch of chars) {
+    ctx.fillText(ch, x, baseline);
+    x += ctx.measureText(ch).width + spacing;
+  }
+}
+
+function badge(ctx, label, right, top, s, lead) {
+  const font = `700 ${32 * s}px ${RM_DISPLAY}`;
+  ctx.font = font;
+  const padX = 26 * s;
+  const w = ctx.measureText(label).width + padX * 2;
+  const h = 52 * s;
+  const x = right - w;
+
+  ctx.fillStyle = lead ? '#FFFFFF' : RM.accent;
+  roundRect(ctx, x, top, w, h, h / 2);
+  ctx.fill();
+
+  ctx.fillStyle = lead ? RM.accent : '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + w / 2, top + h / 2 + 1);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
 
 /* ---------- src/admin.js ---------- */

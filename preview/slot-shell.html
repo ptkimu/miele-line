@@ -225,6 +225,10 @@
           <input type="checkbox" id="slotRecent" checked>
           <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span>
         </label>
+        <label class="chk">
+          <input type="checkbox" id="slotEveryone">
+          <span>受け取りを希望していない方にも送る（全員）<small>稼働の直後など、呼び水にしたいときだけ。頼んでいない案内はブロックされやすい</small></span>
+        </label>
 
         <div id="slotOut"></div>
       </div>
@@ -604,6 +608,7 @@ $('slotToday').addEventListener('click', () => { slots = todaySlots(room); refre
 $('slotSched').addEventListener('click', () => { slots = schedSlots(room); refresh(); });
 $('slotNarrow').addEventListener('change', refresh);
 $('slotRecent').addEventListener('change', refresh);
+$('slotEveryone').addEventListener('change', refresh);
 
 /* ==================================================================
    ストーリーズ画像
@@ -683,7 +688,8 @@ async function refresh() {
   const p = await previewOpenSlot(env, slots, {
     today: TODAY, quota: state.quota, room,
     narrow: $('slotNarrow').checked,
-    excludeRecent: $('slotRecent').checked
+    excludeRecent: $('slotRecent').checked,
+    everyone: $('slotEveryone').checked
   });
 
   const holders = await listSegment(env, { tags: [OPEN_SLOT_TAG] }, TODAY);
@@ -701,6 +707,7 @@ async function refresh() {
 
   const notes = p.notes
     .filter(n => !(n.kind === 'empty' && meOn))
+    .filter(n => !(n.kind === 'empty' && p.everyone))
     .map(n => `<div class="verdict verdict--stop" style="margin-top:8px">${esc2(n.text)}</div>`).join('');
 
   $('slotOut').innerHTML = verdict + notes +
@@ -721,7 +728,8 @@ async function refresh() {
     btn.disabled = true;
     const res = await sendOpenSlot(env, slots, {
       today: TODAY, quota: state.quota, room,
-      narrow: $('slotNarrow').checked, excludeRecent: $('slotRecent').checked
+      narrow: $('slotNarrow').checked, excludeRecent: $('slotRecent').checked,
+      everyone: $('slotEveryone').checked
     });
     state.quota.used += res.sent;
     if (!res.targets.some(c => c.line_user_id === ME)) {

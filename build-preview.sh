@@ -10,7 +10,7 @@
 set -e
 cd "$(dirname "$0")"
 
-MODULES="src/salon.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/scenarios.js src/delivery.js src/segments.js src/openslot.js src/story.js src/admin.js"
+MODULES="src/salon.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/scenarios.js src/delivery.js src/segments.js src/openslot.js src/story.js src/richmenu.js src/admin.js"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
@@ -85,3 +85,12 @@ check_dupes preview/index.html
 check_dupes preview/slot.html
 check_dupes preview/richmenu.html
 echo "checked: 名前の重複なし"
+
+# リッチメニュー編集ページ（ボタンの文字と、空欄の店舗情報を編集できる）
+awk -v file="$TMP" '
+  /\/\*__MODULES__\*\// { while ((getline line < file) > 0) print line; next }
+  { print }
+' preview/menu-shell.html > preview/menu.html
+cp preview/menu.html out/menu.html
+check_dupes preview/menu.html
+echo "built: out/menu.html"
