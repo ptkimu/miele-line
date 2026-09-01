@@ -205,9 +205,7 @@
     <button class="tab" role="tab" data-p="1" aria-selected="true"><span class="n">01</span>自動応答と来店記録</button>
     <button class="tab" role="tab" data-p="2" aria-selected="false"><span class="n">02</span>診断とお客様の好み</button>
     <button class="tab" role="tab" data-p="3" aria-selected="false"><span class="n">03</span>来店後のご案内</button>
-    <button class="tab" role="tab" data-p="4" aria-selected="false"><span class="n">04</span>絞り込んで送る</button>
-    <button class="tab" role="tab" data-p="5" aria-selected="false"><span class="n">05</span>何を送るか決める</button>
-    <button class="tab" role="tab" data-p="6" aria-selected="false"><span class="n">06</span>空き枠を出す</button>
+    <button class="tab" role="tab" data-p="4" aria-selected="false"><span class="n">04</span>空き枠を出す</button>
   </div>
 
   <!-- ============ 01 ============ -->
@@ -254,7 +252,7 @@
     <p class="phaseline">
       <b>お客様の「好み」が貯まっていく段階です。</b>
       すでにあるコース診断をLINEにつなぐと、答えた内容がそのまま印（タグ）として残ります。
-      この印が、04の「絞り込んで送る」の材料になります。配信はしないので通数は使いません。
+      この印が、04の「空き枠を出す」で送り先を絞る材料になります。配信はしないので通数は使いません。
     </p>
     <div class="cols">
       <section class="panel">
@@ -295,92 +293,6 @@
 
   <!-- ============ 04 ============ -->
   <div class="panelwrap" data-panel="4" hidden>
-    <p class="phaseline">
-      <b>新メニューやキャンペーンのお知らせを送るところです。</b>
-      条件を選ぶと、送る前に「何人に届いて、何通使うか」が出ます。
-      通数には十分な余裕があるので、ここで気にするのは金額ではなく
-      <b>関係のない方に送ってブロックされないか</b>のほうです。
-    </p>
-    <div class="cols">
-      <section class="panel">
-        <h2>誰に送るか <span class="badge badge--cost">通数を使う</span></h2>
-        <p class="intro">よく使う条件を選ぶか、下の印で自由に絞り込めます。</p>
-        <div class="chips" id="presetBtns"></div>
-        <div class="pad">
-          <div id="tagFilters"></div>
-          <label class="chk"><input type="checkbox" id="fUnbooked">
-            <span>次回予約が入っていない方だけ<small>予約済みの方に営業をかけない</small></span></label>
-          <label class="chk"><input type="checkbox" id="fSleeping">
-            <span>90日以上ご来店のない方だけ<small>復帰のきっかけづくり</small></span></label>
-          <label class="chk"><input type="checkbox" id="fRecent">
-            <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span></label>
-        </div>
-      </section>
-      <section class="panel">
-        <h2>送る前の確認 <span class="badge badge--cost">通数を使う</span></h2>
-        <div class="pad">
-          <textarea id="segBody">ミエーレです。今週、金曜18時と土曜11時にお席が空きました。
-LINEの方に先にご案内しています。ご希望の方はこのままお返事ください。</textarea>
-          <div id="segOut" style="margin-top:16px"></div>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <!-- ============ 05 ============ -->
-  <div class="panelwrap" data-panel="5" hidden>
-    <p class="phaseline">
-      <b>「今月は何を送るか」を、勘ではなく売上から決めます。</b>
-      昨年の同じ月に強かったもの、直近で落ちているもの、
-      診断で希望されているのに売れていないもの。この3つを突き合わせて候補を出します。
-      <b>なぜそれを送るのかの根拠も一緒に出る</b>ので、判断の理由が残ります。
-    </p>
-    <div class="cols">
-      <section class="panel">
-        <h2>今月おすすめの配信 <span class="badge badge--free">0通</span></h2>
-        <p class="intro">
-          サンプルの売上データ15か月分から計算しています。
-          <b>実際の売上を入れると、この結論が変わります。</b>
-        </p>
-        <div class="pad">
-          <div class="btnrow" style="margin-bottom:16px">
-            <button class="btn btn--ghost" id="mPrev">前の月</button>
-            <span class="num" id="mLabel" style="font-size:15px"></span>
-            <button class="btn btn--ghost" id="mNext">次の月</button>
-          </div>
-          <div id="recoOut"></div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>売上の動き <span class="badge badge--free">0通</span></h2>
-        <p class="intro">カテゴリごとの月別売上です。棒が長いほど売れています。</p>
-        <div class="pad" id="salesOut"></div>
-      </section>
-    </div>
-
-    <section class="panel" style="margin-top:26px">
-      <h2>実際の売上を入れてみる</h2>
-      <p class="intro">
-        オーナー様のシステムから書き出したCSVを、そのまま貼り付けてください。
-        <b>列の順番は問いません。</b>見出しに「日付」「メニュー」「金額」が含まれていれば読み取ります。
-        メニュー名の書き方の揺れも自動でまとめます。
-      </p>
-      <div class="pad">
-        <textarea id="csvIn" style="min-height:130px" placeholder="日付,メニュー,金額
-2026/08/01,韓国肌管理 ララピール,8800
-2026/08/01,セラピスト脱毛 60分,9900"></textarea>
-        <div class="btnrow" style="margin-top:12px">
-          <button class="btn" id="csvGo">この内容で計算し直す</button>
-          <button class="btn btn--ghost" id="csvReset">サンプルに戻す</button>
-        </div>
-        <div id="csvOut" style="margin-top:14px"></div>
-      </div>
-    </section>
-  </div>
-
-  <!-- ============ 06 ============ -->
-  <div class="panelwrap" data-panel="6" hidden>
     <p class="phaseline">
       <b>空いた枠を、30秒で流すための画面です。</b>
       日時とメニューを選ぶと、LINEに送る文面とInstagramに載せる文面が両方できます。
@@ -1252,13 +1164,12 @@ async function findTargets(env, step, visitedOn) {
 
 /* ---------- src/segments.js ---------- */
 /**
- * 絞り込み配信
+ * 配信対象の絞り込み
  *
- * 全員に送るのではなく、タグと来店状況で対象を絞ります。
+ * 全員に送ることはしません。タグと来店状況で対象を絞ります。
  * 通数が減るだけでなく、関係のない配信でブロックされるのを防げます。
  *
- * 送信前に必ず「何人に届いて、何通使うか」を返します。
- * 通数を消費する操作は、数字を見てから決められるようにするためです。
+ * ここは「誰に送るか」を決めるだけで、送信そのものは行いません。
  */
 
 
@@ -1329,97 +1240,6 @@ async function listSegment(env, spec, today = todayJst()) {
   return res.results ?? [];
 }
 
-/**
- * 送る前の確認。何人に届いて、何通使い、通数の枠に収まるか。
- * ここで数字を見てから送信を決めます。
- */
-async function previewSegment(env, spec, options = {}) {
-  const today = options.today ?? todayJst();
-  const targets = await listSegment(env, spec, today);
-  const planned = targets.length;
-  const quota = await checkQuota(env, planned, options.quota ?? null);
-
-  // 通数より先に限界が来るのは、お客様の受信箱のほう。
-  // 最近送ったばかりの人が何人混じっているかを、送信前に示す。
-  const recentCutoff = cutoffIso(today, RECENT_DAYS);
-  const recentlyContacted = targets.filter(
-    (c) => c.last_sent_at && c.last_sent_at >= recentCutoff
-  ).length;
-
-  return { spec, today, targets, planned, quota, recentlyContacted, recentDays: RECENT_DAYS };
-}
-
-/** 実際に送る。previewSegment で確認した内容と同じ条件で呼ぶ */
-async function sendSegment(env, spec, body, options = {}) {
-  const preview = await previewSegment(env, spec, options);
-  if (!preview.quota.allowed) {
-    return { ...preview, sent: 0, stopped: preview.quota.reason };
-  }
-  if (options.dryRun) return { ...preview, sent: 0, dryRun: true };
-
-  const key = options.campaignId ?? 'segment:' + nowIso().slice(0, 19);
-  let sent = 0;
-
-  for (const c of preview.targets) {
-    const claimed = await env.DB.prepare(
-      `INSERT OR IGNORE INTO deliveries
-         (line_user_id, step_id, dedupe_key, status, messages, sent_at)
-       VALUES (?, 'segment', ?, 'sending', 1, ?)`
-    )
-      .bind(c.line_user_id, key, nowIso())
-      .run();
-    if (claimed.meta.changes === 0) continue;
-
-    const ok = await push(env, c.line_user_id, [text(body)]);
-    await env.DB.prepare(
-      `UPDATE deliveries SET status = ?, sent_at = ?
-        WHERE line_user_id = ? AND dedupe_key = ?`
-    )
-      .bind(ok ? 'sent' : 'failed', nowIso(), c.line_user_id, key)
-      .run();
-    if (ok) sent++;
-  }
-
-  return { ...preview, sent, campaignId: key };
-}
-
-/**
- * よく使う条件のひな形。
- * ミエーレの一斉配信は、主に新メニューとキャンペーンのときです。
- * その2つを「全員」と「関心のある方だけ」に分けられるようにしています。
- */
-const PRESETS = [
-  {
-    id: 'announce_all',
-    label: '新メニュー・キャンペーン（全員）',
-    note: '内容が全員に関係する場合。直近1週間に送った方は外す',
-    spec: { excludeRecentDays: RECENT_DAYS }
-  },
-  {
-    id: 'campaign_hair',
-    label: '脱毛のキャンペーン',
-    note: '診断で脱毛を選んだ方だけ。関心のない方に届かない',
-    spec: { tags: ['希望:セラピスト脱毛'] }
-  },
-  {
-    id: 'campaign_skin',
-    label: '肌の悩みで通われている方',
-    note: '毛穴・シミ・くすみを選んだ方。肌管理の新メニュー向け',
-    spec: { tags: ['希望:毛穴・シミ・くすみ'] }
-  },
-  {
-    id: 'open_slot',
-    label: '空き枠のお知らせ',
-    note: '受け取りを希望した方だけ。Instagramで告知して、枠はLINEだけで出す',
-    spec: { tags: ['希望:空き枠のお知らせ'] }
-  },
-  {
-    id: 'sleeping',
-    label: '3か月以上ご来店のない方',
-    note: '復帰のきっかけづくり。特典をつけるならここ',
-    spec: { notVisitedDays: 90, unbookedOnly: true }
-  }
-];
 
 /* ---------- src/openslot.js ---------- */
 /**
@@ -1729,269 +1549,6 @@ async function sendOpenSlot(env, slots, opts = {}) {
 
   return { ...preview, sent, campaignId: key };
 }
-
-/* ---------- src/insights.js ---------- */
-/**
- * 売上から「次に何を送るか」を決める
- *
- * オーナー管理のシステムから書き出した売上データを読み込み、
- *   1. 昨年の同じ月に強かったもの（季節性）
- *   2. 直近で落ちているもの（テコ入れの余地）
- *   3. 診断で関心はあるのに売れていないもの（need と売上のギャップ）
- * を突き合わせて、配信の候補を出します。
- *
- * 判断の根拠を必ず一緒に返すので、「なぜこれを送るのか」が説明できます。
- */
-
-
-/* ------------------------------------------------------------------ *
- * メニュー名 → カテゴリ
- * 書き方の揺れ（「ララピール」「韓国肌管理ララピール」など）をここで吸収する
- * ------------------------------------------------------------------ */
-
-const CATEGORY_RULES = [
-  [/脱毛|ヒゲ|髭|VIO/i, '脱毛'],
-  [/ダクトピール|dactorpeel|doctorpeel|ララピール|リジュラン|ピーリング|肌管理/i, '韓国肌管理'],
-  [/花嫁|ブライダル/i, 'ブライダル'],
-  [/red\s*ショット|レッドショット(?!body)|サーマエッジ|小顔|輪郭/i, '小顔'],
-  [/脂肪冷却|ラジオ波|痩身|body|電磁パルス|産後/i, '痩身'],
-  [/プラズマ|フェイシャル|光|ミルキー/i, 'フェイシャル'],
-  [/アロマ|ヘッド|デコルテ|マッサージ|トリートメント/i, 'リラク']
-];
-
-function categoryOf(menu) {
-  const name = String(menu ?? '');
-  for (const [re, cat] of CATEGORY_RULES) if (re.test(name)) return cat;
-  return 'その他';
-}
-
-/** カテゴリ → 絞り込み配信に使うタグ（null は全員向け） */
-const CATEGORY_TAG = {
-  脱毛: '希望:セラピスト脱毛',
-  韓国肌管理: '希望:毛穴・シミ・くすみ',
-  フェイシャル: '希望:毛穴・シミ・くすみ',
-  小顔: '希望:たるみ・小顔',
-  痩身: '希望:お腹・太ももの脂肪',
-  ブライダル: '希望:結婚式・イベント前',
-  リラク: null,
-  その他: null
-};
-
-/* ------------------------------------------------------------------ *
- * 取り込み
- * ------------------------------------------------------------------ */
-
-const COLUMNS = {
-  date: ['日付', '売上日', '来店日', 'date', '年月日'],
-  menu: ['メニュー', 'メニュー名', '商品名', '施術', 'menu', '内容'],
-  amount: ['金額', '売上', '税込金額', '合計', 'amount', '価格'],
-  isNew: ['区分', '新規', '新規再来', 'type']
-};
-
-/**
- * CSV を読み取って売上の行にする。
- * 列の順番ではなく見出しの名前で判断するので、書き出し形式が多少違っても通ります。
- */
-function parseSalesCsv(csvText) {
-  const rows = splitCsv(String(csvText ?? '').trim());
-  if (rows.length < 2) return { rows: [], errors: ['データが見つかりません'] };
-
-  const header = rows[0].map((h) => h.trim());
-  const idx = {};
-  for (const [key, names] of Object.entries(COLUMNS)) {
-    idx[key] = header.findIndex((h) => names.some((n) => h.toLowerCase() === n.toLowerCase()));
-  }
-
-  const errors = [];
-  if (idx.date < 0) errors.push('日付の列が見つかりません（' + COLUMNS.date.join(' / ') + '）');
-  if (idx.menu < 0) errors.push('メニューの列が見つかりません（' + COLUMNS.menu.join(' / ') + '）');
-  if (idx.amount < 0) errors.push('金額の列が見つかりません（' + COLUMNS.amount.join(' / ') + '）');
-  if (errors.length) return { rows: [], errors };
-
-  const out = [];
-  const skipped = [];
-  for (let i = 1; i < rows.length; i++) {
-    const r = rows[i];
-    if (!r.length || r.every((v) => !String(v).trim())) continue;
-
-    const soldOn = normalizeDate(r[idx.date]);
-    const menu = String(r[idx.menu] ?? '').trim();
-    const amount = Number(String(r[idx.amount] ?? '').replace(/[^\d.-]/g, ''));
-
-    if (!soldOn || !menu || !Number.isFinite(amount)) {
-      skipped.push(i + 1);
-      continue;
-    }
-    out.push({
-      sold_on: soldOn,
-      menu,
-      category: categoryOf(menu),
-      amount: Math.round(amount),
-      is_new: idx.isNew >= 0 && /新規/.test(String(r[idx.isNew] ?? '')) ? 1 : 0
-    });
-  }
-
-  if (skipped.length) errors.push(`${skipped.length}行を読み取れませんでした（${skipped.slice(0, 5).join(', ')}行目など）`);
-  return { rows: out, errors };
-}
-
-/** 2026/8/1 も 2026-08-01 も受け取る */
-function normalizeDate(v) {
-  const s = String(v ?? '').trim();
-  const m = s.match(/^(\d{4})[-/年.](\d{1,2})[-/月.](\d{1,2})/);
-  if (!m) return null;
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
-}
-
-function splitCsv(text) {
-  const rows = [];
-  let row = [], field = '', quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
-      else if (ch === '"') quoted = false;
-      else field += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === ',') { row.push(field); field = ''; }
-    else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-    else if (ch !== '\r') field += ch;
-  }
-  row.push(field);
-  if (row.some((f) => f !== '')) rows.push(row);
-  return rows;
-}
-
-async function importSales(env, rows) {
-  const at = nowIso();
-  for (const r of rows) {
-    await env.DB.prepare(
-      `INSERT INTO sales (sold_on, menu, category, amount, is_new, imported_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    )
-      .bind(r.sold_on, r.menu, r.category, r.amount, r.is_new ?? 0, at)
-      .run();
-  }
-  return rows.length;
-}
-
-/* ------------------------------------------------------------------ *
- * 集計
- * ------------------------------------------------------------------ */
-
-/** カテゴリ×月の売上 */
-async function categoryMonthly(env) {
-  const res = await env.DB.prepare(
-    `SELECT category, substr(sold_on, 1, 7) AS ym, SUM(amount) AS total, COUNT(*) AS n
-       FROM sales
-      GROUP BY category, ym
-      ORDER BY ym`
-  ).all();
-  return res.results ?? [];
-}
-
-const sum = (a) => a.reduce((n, x) => n + x, 0);
-const share = (part, whole) => (whole > 0 ? part / whole : 0);
-
-function monthsBefore(ym, n) {
-  const [y, m] = ym.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1 - n, 1));
-  return d.toISOString().slice(0, 7);
-}
-
-/* ------------------------------------------------------------------ *
- * 配信候補
- * ------------------------------------------------------------------ */
-
-const W = { season: 3, decline: 2, gap: 3 };
-
-/**
- * @param {string} targetYm 送る予定の月（例 '2026-09'）
- */
-async function recommend(env, targetYm) {
-  const rows = await categoryMonthly(env);
-  if (!rows.length) return { targetYm, ready: false, reason: '売上データがまだ取り込まれていません', items: [] };
-
-  const categories = [...new Set(rows.map((r) => r.category))];
-  const totalOf = (cat, ym) => sum(rows.filter((r) => r.category === cat && r.ym === ym).map((r) => r.total));
-  const monthTotal = (ym) => sum(rows.filter((r) => r.ym === ym).map((r) => r.total));
-
-  const lastYearYm = monthsBefore(targetYm, 12);
-  const recent = [1, 2, 3].map((n) => monthsBefore(targetYm, n)); // 直近3か月
-  const allYms = [...new Set(rows.map((r) => r.ym))];
-
-  // 診断でどのくらい関心が集まっているか
-  const tags = await tagCounts(env);
-  const interestTotal = sum(tags.filter((t) => t.name.startsWith('希望:')).map((t) => t.n));
-  const interestOf = (cat) => {
-    const tag = CATEGORY_TAG[cat];
-    if (!tag || !interestTotal) return null;
-    return share(tags.find((t) => t.name === tag)?.n ?? 0, interestTotal);
-  };
-
-  const items = categories.map((cat) => {
-    const reasons = [];
-    let score = 0;
-
-    // 1. 季節性：昨年の同じ月、このカテゴリは平均より強かったか
-    const lyShare = share(totalOf(cat, lastYearYm), monthTotal(lastYearYm));
-    const avgShare = share(
-      sum(allYms.map((ym) => totalOf(cat, ym))),
-      sum(allYms.map((ym) => monthTotal(ym)))
-    );
-    if (monthTotal(lastYearYm) > 0 && lyShare > avgShare * 1.15) {
-      score += W.season;
-      reasons.push({
-        type: 'season',
-        label: '昨年の同じ月に強かった',
-        detail: `昨年${lastYearYm.slice(5)}月は売上の${pct(lyShare)}を占めた（通常は${pct(avgShare)}）`
-      });
-    }
-
-    // 2. 落ち込み：前年の同じ時期と比べる。
-    //    単に3か月前と比べると、季節で下がるだけのメニュー（夏後の痩身など）まで
-    //    「落ちている」と判定してしまうため、季節の影響を除いて見る。
-    const recentThis = sum(recent.map((ym) => totalOf(cat, ym)));
-    const recentLast = sum(recent.map((ym) => totalOf(cat, monthsBefore(ym, 12))));
-    if (recentLast > 0 && recentThis < recentLast * 0.85) {
-      score += W.decline;
-      reasons.push({
-        type: 'decline',
-        label: '昨年の同じ時期より落ちている',
-        detail: `直近3か月は ${yen(recentThis)}（昨年同期 ${yen(recentLast)}／${pct((recentThis - recentLast) / recentLast, true)}）`
-      });
-    }
-
-    // 3. 関心と売上のギャップ：診断で選ばれているのに売上が伴っていない
-    const interest = interestOf(cat);
-    const salesShare = share(sum(recent.map((ym) => totalOf(cat, ym))), sum(recent.map((ym) => monthTotal(ym))));
-    if (interest != null && interest > salesShare * 1.3 && interest > 0.1) {
-      score += W.gap;
-      reasons.push({
-        type: 'gap',
-        label: '関心はあるのに売上が伴っていない',
-        detail: `診断で${pct(interest)}の方が希望しているが、売上では${pct(salesShare)}`
-      });
-    }
-
-    return {
-      category: cat,
-      score,
-      reasons,
-      tag: CATEGORY_TAG[cat] ?? null,
-      lastYear: totalOf(cat, lastYearYm),
-      recentTotal: sum(recent.map((ym) => totalOf(cat, ym)))
-    };
-  });
-
-  items.sort((a, b) => b.score - a.score || b.recentTotal - a.recentTotal);
-
-  return { targetYm, lastYearYm, recent, ready: true, items: items.filter((i) => i.score > 0), all: items };
-}
-
-const pct = (v, signed = false) => (signed && v > 0 ? '+' : '') + Math.round(v * 100) + '%';
-const yen = (v) => '¥' + Math.round(v).toLocaleString('ja-JP');
 
 /* ---------- src/admin.js ---------- */
 /**
@@ -2393,10 +1950,6 @@ function run(sql, args) {
     return { first: { n }, rows: [] };
   }
 
-  /* --- 売上（カテゴリ×月に集計済みのものを返す） --- */
-  if (sql.includes('FROM sales')) {
-    return { first:null, rows: salesRows };
-  }
   if (sql.includes('FROM inbound_messages')) {
     return { first:null, rows: state.unmatched.map(u => ({ body:u.body, n:u.n, latest:state.today })) };
   }
@@ -2554,9 +2107,7 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   document.querySelectorAll('.panelwrap').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.p; });
   if (tab.dataset.p === '2') renderTags();
   if (tab.dataset.p === '3') renderDelivery();
-  if (tab.dataset.p === '4') renderSegment();
-  if (tab.dataset.p === '5') renderInsights();
-  if (tab.dataset.p === '6') renderSlot();
+  if (tab.dataset.p === '4') renderSlot();
 });
 
 /* ==================================================================
@@ -2715,7 +2266,7 @@ $('dPrev').addEventListener('click', () => { runDate = shift(runDate, -1); rende
 $('dNext').addEventListener('click', () => { runDate = shift(runDate,  1); renderDelivery(); });
 $('dNearLimit').addEventListener('click', () => { state.quota = { limit:5000, used:4800 }; renderDelivery(); });
 $('dReset').addEventListener('click', async () => {
-  state = seed(); runDate = REAL_TODAY; await applyPreseed(); renderDelivery(); renderTags(); renderSegment();
+  state = seed(); runDate = REAL_TODAY; await applyPreseed(); renderDelivery(); renderTags(); renderSlot();
 });
 
 function meter(q) {
@@ -2762,231 +2313,7 @@ async function renderDelivery() {
 }
 
 /* ==================================================================
-   04 絞り込んで送る
-   ================================================================== */
-
-let segSpec = { tags: [] };
-
-PRESETS.forEach(p => {
-  const b = document.createElement('button');
-  b.className = 'chip'; b.type = 'button';
-  b.innerHTML = esc2(p.label) + '<small>' + esc2(p.note) + '</small>';
-  b.addEventListener('click', () => {
-    segSpec = JSON.parse(JSON.stringify(p.spec));
-    syncFilters();
-    renderSegment();
-  });
-  $('presetBtns').appendChild(b);
-});
-
-function syncFilters() {
-  $('fUnbooked').checked = !!segSpec.unbookedOnly;
-  $('fSleeping').checked = segSpec.notVisitedDays === 90;
-  $('fRecent').checked = segSpec.excludeRecentDays != null;
-  document.querySelectorAll('#tagFilters input').forEach(i => {
-    i.checked = (segSpec.tags ?? []).includes(i.value);
-  });
-}
-
-function readFilters() {
-  segSpec = {
-    tags: [...document.querySelectorAll('#tagFilters input:checked')].map(i => i.value),
-    unbookedOnly: $('fUnbooked').checked,
-    notVisitedDays: $('fSleeping').checked ? 90 : undefined,
-    excludeRecentDays: $('fRecent').checked ? RECENT_DAYS : undefined
-  };
-}
-
-['fUnbooked','fSleeping','fRecent'].forEach(id =>
-  $(id).addEventListener('change', () => { readFilters(); renderSegment(); }));
-$('segBody').addEventListener('input', renderSegment);
-
-async function renderSegment() {
-  const counts = await tagCounts(env);
-  $('tagFilters').innerHTML = counts.map(t =>
-    `<label class="chk"><input type="checkbox" value="${esc2(t.name)}">
-       <span>${esc2(t.name)}<small>${t.n}名</small></span></label>`).join('')
-    || '<p class="empty">印がまだありません。02のタブで診断を受けてもらうと増えます。</p>';
-
-  syncFilters();
-  document.querySelectorAll('#tagFilters input').forEach(i =>
-    i.addEventListener('change', () => { readFilters(); renderSegment(); }));
-
-  const preview = await previewSegment(env, segSpec, { today: REAL_TODAY, quota: state.quota });
-  const q = preview.quota;
-
-  const verdict = preview.planned === 0
-    ? '<div class="verdict verdict--stop"><b>対象が0名です。</b>条件を緩めてください。</div>'
-    : q.allowed
-      ? `<div class="verdict verdict--go"><b>${nf(preview.planned)} 名に届きます。${nf(preview.planned)} 通を使います。</b>
-         送信後の残りは ${nf(q.remaining - preview.planned)} 通です。</div>`
-      : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(q.reason ?? '')}</div>`;
-
-  const recentWarn = preview.recentlyContacted
-    ? `<div class="verdict verdict--stop" style="margin-top:10px">
-         このうち <b>${preview.recentlyContacted}名</b> は、直近${preview.recentDays}日以内に別の配信を受け取っています。
-         続けて届くとブロックされやすくなります。上の「直近1週間に送った方は外す」で除けます。
-       </div>`
-    : '';
-
-  $('segOut').innerHTML =
-    meter({ ...q, planned: preview.planned }) + verdict + recentWarn +
-    '<p class="note" style="padding:14px 0 0">届く方</p>' +
-    (preview.targets.length
-      ? '<div class="taglist">' + preview.targets.map(c =>
-          '<span class="t">' + esc2(c.display_name) + '</span>').join('') + '</div>'
-      : '<p class="empty">該当なし</p>') +
-    `<div class="btnrow" style="margin-top:18px">
-       <button class="btn" id="segSend" ${q.allowed && preview.planned ? '' : 'disabled'}>この内容で送る</button>
-     </div>
-     <p class="note" style="padding:8px 0 0">デモなので、押しても実際には送信されません。</p>`;
-
-  const btn = $('segSend');
-  if (btn) btn.addEventListener('click', async () => {
-    const res = await sendSegment(env, segSpec, $('segBody').value,
-      { today: REAL_TODAY, quota: state.quota, dryRun: true });
-    btn.textContent = `${nf(res.planned)}名に送信しました（デモ）`;
-    btn.disabled = true;
-  });
-}
-
-/* ==================================================================
-   05 何を送るか決める
-   ================================================================== */
-
-/* サンプルの売上（15か月分）。カテゴリごとに季節の山を持たせている */
-const SALES_SHAPE = {
-  '韓国肌管理': { base: 380000, peak: 10 },
-  'フェイシャル': { base: 260000, peak: 11 },
-  '小顔':        { base: 220000, peak: 3 },
-  '痩身':        { base: 340000, peak: 6 },
-  '脱毛':        { base: 180000, peak: 6 },
-  'リラク':      { base: 90000,  peak: 12 }
-};
-
-function sampleSales() {
-  const rows = [];
-  const now = new Date(Date.parse(REAL_TODAY + 'T00:00:00Z'));
-  for (let back = 14; back >= 0; back--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
-    const ym = d.toISOString().slice(0, 7);
-    const month = d.getUTCMonth() + 1;
-    for (const [cat, s] of Object.entries(SALES_SHAPE)) {
-      let f = 1 + 0.45 * Math.cos((2 * Math.PI * (month - s.peak)) / 12);
-      // 脱毛は直近2か月で落ち込んでいる、という想定
-      if (cat === '脱毛' && back <= 1) f *= 0.75;
-      rows.push({ ym, category: cat, total: Math.round(s.base * f), n: Math.round((s.base * f) / 9000) });
-    }
-  }
-  return rows;
-}
-
-let salesRows = sampleSales();
-let targetYm = monthsBefore(REAL_TODAY.slice(0, 7), -1); // 来月
-
-$('mPrev').addEventListener('click', () => { targetYm = monthsBefore(targetYm, 1); renderInsights(); });
-$('mNext').addEventListener('click', () => { targetYm = monthsBefore(targetYm, -1); renderInsights(); });
-
-$('csvGo').addEventListener('click', () => {
-  const { rows, errors } = parseSalesCsv($('csvIn').value);
-  if (errors.length && !rows.length) {
-    $('csvOut').innerHTML = '<div class="verdict verdict--stop">' +
-      errors.map(esc2).join('<br>') + '</div>';
-    return;
-  }
-  // 取り込んだ行を、カテゴリ×月に集計し直す
-  const map = new Map();
-  rows.forEach(r => {
-    const key = r.category + '|' + r.sold_on.slice(0, 7);
-    const cur = map.get(key) ?? { category:r.category, ym:r.sold_on.slice(0,7), total:0, n:0 };
-    cur.total += r.amount; cur.n += 1;
-    map.set(key, cur);
-  });
-  salesRows = [...map.values()];
-  const cats = [...new Set(rows.map(r => r.category))];
-  $('csvOut').innerHTML =
-    '<div class="verdict verdict--go"><b>' + rows.length + '件を読み取りました。</b>' +
-    'カテゴリ：' + cats.map(esc2).join('、') + '</div>' +
-    (errors.length ? '<div class="verdict verdict--stop" style="margin-top:8px">' + errors.map(esc2).join('<br>') + '</div>' : '');
-  renderInsights();
-});
-
-$('csvReset').addEventListener('click', () => {
-  salesRows = sampleSales();
-  $('csvIn').value = '';
-  $('csvOut').innerHTML = '';
-  renderInsights();
-});
-
-const REASON_ICON = { season:'昨年', decline:'下降', gap:'ギャップ' };
-
-async function renderInsights() {
-  $('mLabel').textContent = targetYm.replace('-', '年') + '月に送るなら';
-
-  const reco = await recommend(env, targetYm);
-
-  if (!reco.ready) {
-    $('recoOut').innerHTML = '<p class="empty">' + esc2(reco.reason) + '</p>';
-  } else if (!reco.items.length) {
-    $('recoOut').innerHTML =
-      '<div class="verdict verdict--go">この月は、特に押し出すべきメニューが見当たりませんでした。' +
-      '無理に一斉配信せず、キャンセル枠の案内などに留めるのが妥当です。</div>';
-  } else {
-    $('recoOut').innerHTML = reco.items.map((it, i) => `
-      <div class="step">
-        <h3>${i === 0 ? '★ ' : ''}${esc2(it.category)}
-          <span class="cnt cnt--on">根拠 ${it.reasons.length}件</span></h3>
-        ${it.reasons.map(r => `
-          <p class="why" style="margin:0 0 6px">
-            <span class="t" style="margin-right:8px">${esc2(REASON_ICON[r.type] ?? '')}</span>
-            <b style="color:var(--ink-soft)">${esc2(r.label)}</b><br>${esc2(r.detail)}
-          </p>`).join('')}
-        <div class="btnrow" style="margin-top:10px">
-          <button class="btn btn--ghost" data-tag="${esc2(it.tag ?? '')}">
-            ${it.tag ? 'この方たちに送る準備をする' : '全員に送る準備をする'}
-          </button>
-        </div>
-      </div>`).join('') +
-      '<p class="note" style="padding:6px 0 0">上のボタンを押すと、04の画面に条件が入った状態で移ります。</p>';
-
-    $('recoOut').querySelectorAll('button[data-tag]').forEach(b => {
-      b.addEventListener('click', () => {
-        const tag = b.dataset.tag;
-        segSpec = tag ? { tags: [tag] } : { excludeRecentDays: RECENT_DAYS };
-        document.querySelector('.tab[data-p="4"]').click();
-      });
-    });
-  }
-
-  // 売上の棒グラフ
-  const cats = [...new Set(salesRows.map(r => r.category))];
-  const yms = [...new Set(salesRows.map(r => r.ym))].sort().slice(-13);
-  const max = Math.max(...salesRows.map(r => r.total), 1);
-  const of = (c, y) => salesRows.find(r => r.category === c && r.ym === y)?.total ?? 0;
-
-  $('salesOut').innerHTML = cats.map(c => `
-    <div style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:500;margin-bottom:5px">${esc2(c)}</div>
-      <div style="display:flex;gap:2px;align-items:flex-end;height:52px">
-        ${yms.map(y => {
-          const v = of(c, y);
-          const isLastYear = y === reco.lastYearYm;
-          return `<div title="${esc2(y)} ${yen(v)}" style="flex:1;height:${Math.max(2, (v / max) * 100)}%;
-            background:${isLastYear ? 'var(--accent)' : 'var(--rule-hard)'};border-radius:2px 2px 0 0"></div>`;
-        }).join('')}
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:3px">
-        <span>${esc2(yms[0] ?? '')}</span><span>${esc2(yms[yms.length - 1] ?? '')}</span>
-      </div>
-    </div>`).join('') +
-    `<p class="note" style="padding:0">
-       <span style="display:inline-block;width:9px;height:9px;background:var(--accent);border-radius:2px;margin-right:5px"></span>
-       昨年の同じ月（${esc2(reco.lastYearYm ?? '')}）
-     </p>`;
-}
-
-/* ==================================================================
-   06 空き枠を出す
+   04 空き枠を出す
    ================================================================== */
 
 const menusOf = (r) => ROOMS.find((x) => x.id === r).menus;
@@ -3122,7 +2449,5 @@ async function renderSlot() {
 await applyPreseed();
 renderTags();
 renderDelivery();
-renderSegment();
-renderInsights();
 renderSlot();
 </script>

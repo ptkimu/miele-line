@@ -1,16 +1,13 @@
 /**
- * 絞り込み配信
+ * 配信対象の絞り込み
  *
- * 全員に送るのではなく、タグと来店状況で対象を絞ります。
+ * 全員に送ることはしません。タグと来店状況で対象を絞ります。
  * 通数が減るだけでなく、関係のない配信でブロックされるのを防げます。
  *
- * 送信前に必ず「何人に届いて、何通使うか」を返します。
- * 通数を消費する操作は、数字を見てから決められるようにするためです。
+ * ここは「誰に送るか」を決めるだけで、送信そのものは行いません。
  */
 
-import { push, text } from './line.js';
-import { checkQuota } from './quota.js';
-import { todayJst, nowIso } from './handlers.js';
+import { todayJst } from './handlers.js';
 
 /**
  * @typedef {object} SegmentSpec
@@ -79,94 +76,3 @@ export async function listSegment(env, spec, today = todayJst()) {
   return res.results ?? [];
 }
 
-/**
- * 送る前の確認。何人に届いて、何通使い、通数の枠に収まるか。
- * ここで数字を見てから送信を決めます。
- */
-export async function previewSegment(env, spec, options = {}) {
-  const today = options.today ?? todayJst();
-  const targets = await listSegment(env, spec, today);
-  const planned = targets.length;
-  const quota = await checkQuota(env, planned, options.quota ?? null);
-
-  // 通数より先に限界が来るのは、お客様の受信箱のほう。
-  // 最近送ったばかりの人が何人混じっているかを、送信前に示す。
-  const recentCutoff = cutoffIso(today, RECENT_DAYS);
-  const recentlyContacted = targets.filter(
-    (c) => c.last_sent_at && c.last_sent_at >= recentCutoff
-  ).length;
-
-  return { spec, today, targets, planned, quota, recentlyContacted, recentDays: RECENT_DAYS };
-}
-
-/** 実際に送る。previewSegment で確認した内容と同じ条件で呼ぶ */
-export async function sendSegment(env, spec, body, options = {}) {
-  const preview = await previewSegment(env, spec, options);
-  if (!preview.quota.allowed) {
-    return { ...preview, sent: 0, stopped: preview.quota.reason };
-  }
-  if (options.dryRun) return { ...preview, sent: 0, dryRun: true };
-
-  const key = options.campaignId ?? 'segment:' + nowIso().slice(0, 19);
-  let sent = 0;
-
-  for (const c of preview.targets) {
-    const claimed = await env.DB.prepare(
-      `INSERT OR IGNORE INTO deliveries
-         (line_user_id, step_id, dedupe_key, status, messages, sent_at)
-       VALUES (?, 'segment', ?, 'sending', 1, ?)`
-    )
-      .bind(c.line_user_id, key, nowIso())
-      .run();
-    if (claimed.meta.changes === 0) continue;
-
-    const ok = await push(env, c.line_user_id, [text(body)]);
-    await env.DB.prepare(
-      `UPDATE deliveries SET status = ?, sent_at = ?
-        WHERE line_user_id = ? AND dedupe_key = ?`
-    )
-      .bind(ok ? 'sent' : 'failed', nowIso(), c.line_user_id, key)
-      .run();
-    if (ok) sent++;
-  }
-
-  return { ...preview, sent, campaignId: key };
-}
-
-/**
- * よく使う条件のひな形。
- * ミエーレの一斉配信は、主に新メニューとキャンペーンのときです。
- * その2つを「全員」と「関心のある方だけ」に分けられるようにしています。
- */
-export const PRESETS = [
-  {
-    id: 'announce_all',
-    label: '新メニュー・キャンペーン（全員）',
-    note: '内容が全員に関係する場合。直近1週間に送った方は外す',
-    spec: { excludeRecentDays: RECENT_DAYS }
-  },
-  {
-    id: 'campaign_hair',
-    label: '脱毛のキャンペーン',
-    note: '診断で脱毛を選んだ方だけ。関心のない方に届かない',
-    spec: { tags: ['希望:セラピスト脱毛'] }
-  },
-  {
-    id: 'campaign_skin',
-    label: '肌の悩みで通われている方',
-    note: '毛穴・シミ・くすみを選んだ方。肌管理の新メニュー向け',
-    spec: { tags: ['希望:毛穴・シミ・くすみ'] }
-  },
-  {
-    id: 'open_slot',
-    label: '空き枠のお知らせ',
-    note: '受け取りを希望した方だけ。Instagramで告知して、枠はLINEだけで出す',
-    spec: { tags: ['希望:空き枠のお知らせ'] }
-  },
-  {
-    id: 'sleeping',
-    label: '3か月以上ご来店のない方',
-    note: '復帰のきっかけづくり。特典をつけるならここ',
-    spec: { notVisitedDays: 90, unbookedOnly: true }
-  }
-];
