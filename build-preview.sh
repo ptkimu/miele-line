@@ -47,8 +47,14 @@ printf 'User-agent: *\nDisallow: /\n' > out-slot/robots.txt
 
 echo "built: out-slot/index.html, out-slot/robots.txt"
 
-# リッチメニューの設定手順（画像を埋め込んだ単独ファイル）
+# リッチメニューの設定手順（src のコードと画像を埋め込んだ単独ファイル）
+awk -v file="$TMP" '
+  /\/\*__MODULES__\*\// { while ((getline line < file) > 0) print line; next }
+  { print }
+' preview/richmenu-shell.html > "$TMP.rm"
+
 B64="$(base64 -w0 design/richmenu.png)"
-sed "s|/\*__RICHMENU_PNG__\*/|data:image/png;base64,${B64}|" preview/richmenu-shell.html > preview/richmenu.html
+sed "s|/\*__RICHMENU_PNG__\*/|data:image/png;base64,${B64}|" "$TMP.rm" > preview/richmenu.html
+rm -f "$TMP.rm"
 cp preview/richmenu.html out/richmenu.html
 echo "built: out/richmenu.html"

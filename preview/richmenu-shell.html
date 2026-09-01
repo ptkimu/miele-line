@@ -81,6 +81,24 @@
   .flow .free{font-size:11.5px;font-weight:700;color:#fff;background:#1F9D57;
               border-radius:99px;padding:2px 9px;margin-left:8px}
 
+  /* LINEのトーク風 */
+  .phone{background:#8CABD8;border-radius:14px;padding:16px;margin:0 0 24px}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .phone{background:#3E5470}}
+  :root[data-theme="dark"] .phone{background:#3E5470}
+  .phone__cap{font-size:11.5px;color:rgba(255,255,255,.9);margin:0 0 12px;text-align:center;
+              letter-spacing:.04em}
+  .row{display:flex;margin-bottom:11px}
+  .row.me{justify-content:flex-end}
+  .bub{max-width:82%;padding:10px 15px;border-radius:17px;font-size:13.5px;line-height:1.8;
+       white-space:pre-wrap;word-break:break-word;background:#fff;color:#1E1E1E;
+       border-bottom-left-radius:4px}
+  .row.me .bub{background:#8DE055;color:#16260F;border-bottom-left-radius:17px;
+               border-bottom-right-radius:4px}
+  .qr{display:flex;gap:8px;flex-wrap:wrap;margin:-2px 0 12px}
+  .qr span{background:#fff;color:#3E6DB5;border:1px solid #C8D8EE;border-radius:999px;
+           padding:6px 15px;font-size:12.5px;font-weight:500}
+  .tapnote{text-align:center;font-size:11px;color:rgba(255,255,255,.85);margin:0 0 12px}
+
   footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -166,7 +184,26 @@
   </li>
 </ol>
 
-<h2>押したときに何が起きるか</h2>
+<h2>押したときに、お客様の画面はこうなります</h2>
+
+<p>
+  下は<strong>実際に届く文面そのもの</strong>です。このページを作るときに、
+  動いているプログラムから文面を取り出して表示しています。
+</p>
+
+<div class="phone">
+  <p class="phone__cap">「空き枠のお知らせ」をタップしたあと</p>
+  <div id="optinChat"></div>
+</div>
+
+<p>
+  「受け取る」を押した方にだけ、お席が空いたときに次のようなお知らせが届きます。
+</p>
+
+<div class="phone">
+  <p class="phone__cap">後日、お席が空いたとき</p>
+  <div id="slotChat"></div>
+</div>
 
 <div class="flow">
   お客様が「空き枠のお知らせ」をタップ<br>
@@ -200,7 +237,42 @@
 
 <footer>
   ビューティサロン ミエーレ ／ リッチメニュー設定手順<br>
-  画像ファイル：2500 × 1686 ピクセル。管理画面の上限（1MB）に収まっています。
+  画像ファイル：2500 × 1686 ピクセル。管理画面の上限（1MB）に収まっています。<br>
+  トーク画面の文面は、動作中のプログラムから取り出したものです。
 </footer>
 
 </div>
+
+<script type="module">
+/*__MODULES__*/
+
+/* 文面はすべて実際のコードから取り出す。手で書き写さないので、
+   プログラムを直せばこの資料にも必ず反映される */
+
+const esc = (s) => String(s ?? '')
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+const me  = (t) => `<div class="row me"><div class="bub">${esc(t)}</div></div>`;
+const bot = (t) => `<div class="row"><div class="bub">${esc(t)}</div></div>`;
+const buttons = (labels) =>
+  `<div class="qr">${labels.map(l => `<span>${esc(l)}</span>`).join('')}</div>`;
+const tap = (t) => `<p class="tapnote">${esc(t)}</p>`;
+
+/* --- 受け取り希望のやりとり --- */
+const optin = matchReply('空き枠');
+document.getElementById('optinChat').innerHTML =
+  me('空き枠') +
+  bot(optin.messages[0].text) +
+  buttons(optin.messages[0].quickReply.items.map(i => i.action.label)) +
+  tap('↓「受け取る」を押すと') +
+  bot(OPTIN_DONE);
+
+/* --- 後日届く空き枠のお知らせ --- */
+const today = todayJst();
+document.getElementById('slotChat').innerHTML =
+  bot(buildLineMessage([
+    { date: today, time: '17:00', menu: 'セラピスト脱毛 60分（全身可）', minutes: 60 }
+  ])) +
+  tap('↓ ご希望の方は返信するだけ') +
+  me('17時希望');
+</script>

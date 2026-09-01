@@ -7,7 +7,7 @@
  */
 
 import { reply, getProfile, text } from './line.js';
-import { matchReply } from './replies.js';
+import { matchReply, OPTIN_DONE, OPTOUT_DONE } from './replies.js';
 import { grantTags, revokeTag, OPEN_SLOT_TAG } from './tags.js';
 
 export async function handleEvent(env, event) {
@@ -54,25 +54,12 @@ async function onPostback(env, event) {
 
   if (action === 'optin') {
     await grantTags(env, userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
-    return reply(env, event.replyToken, [
-      text([
-        '空き枠のお知らせを受け取る設定にしました。',
-        '',
-        'ご予約のキャンセルなどでお席が空いたとき、こちらにお送りします。',
-        '止めたいときは「空き枠」とお送りください。'
-      ].join('\n'))
-    ]);
+    return reply(env, event.replyToken, [text(OPTIN_DONE)]);
   }
 
   if (action === 'optout') {
     await revokeTag(env, userId, OPEN_SLOT_TAG);
-    return reply(env, event.replyToken, [
-      text([
-        '空き枠のお知らせは送らない設定にしました。',
-        '',
-        'またご希望のときは「空き枠」とお送りください。'
-      ].join('\n'))
-    ]);
+    return reply(env, event.replyToken, [text(OPTOUT_DONE)]);
   }
 }
 

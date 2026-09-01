@@ -513,6 +513,21 @@ const button = (label, data, displayText) => ({
  */
 
 
+/* ボタンを押したあとの返信。設定手順の資料からも参照するので、
+   文面はここに置いて1か所で管理する */
+const OPTIN_DONE = [
+  '空き枠のお知らせを受け取る設定にしました。',
+  '',
+  'ご予約のキャンセルなどでお席が空いたとき、こちらにお送りします。',
+  '止めたいときは「空き枠」とお送りください。'
+].join('\n');
+
+const OPTOUT_DONE = [
+  '空き枠のお知らせは送らない設定にしました。',
+  '',
+  'またご希望のときは「空き枠」とお送りください。'
+].join('\n');
+
 const RULES = [
   /* 空き枠の受け取り希望。
      稼働の初日は希望者が0名なので、こことリッチメニューから集めます。
@@ -716,25 +731,12 @@ async function onPostback(env, event) {
 
   if (action === 'optin') {
     await grantTags(env, userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
-    return reply(env, event.replyToken, [
-      text([
-        '空き枠のお知らせを受け取る設定にしました。',
-        '',
-        'ご予約のキャンセルなどでお席が空いたとき、こちらにお送りします。',
-        '止めたいときは「空き枠」とお送りください。'
-      ].join('\n'))
-    ]);
+    return reply(env, event.replyToken, [text(OPTIN_DONE)]);
   }
 
   if (action === 'optout') {
     await revokeTag(env, userId, OPEN_SLOT_TAG);
-    return reply(env, event.replyToken, [
-      text([
-        '空き枠のお知らせは送らない設定にしました。',
-        '',
-        'またご希望のときは「空き枠」とお送りください。'
-      ].join('\n'))
-    ]);
+    return reply(env, event.replyToken, [text(OPTOUT_DONE)]);
   }
 }
 
