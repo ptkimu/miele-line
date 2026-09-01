@@ -114,6 +114,55 @@ export function scheduleDates(today, leadDays = DEFAULT_SCHEDULE.leadDays) {
   return [...leadDays].sort((a, b) => a - b).map((n) => shiftDate(today, n));
 }
 
+/**
+ * 送信日の朝、スタッフに送るお知らせの文面。
+ *
+ * サロンボードから空きを自動で取る手段は公開されておらず、
+ * また「空いている」枠がすべて「出していい」枠とは限りません
+ * （移動や休憩、あえて残している枠が混ざります）。
+ * そのため機械は送り忘れだけを防ぎ、どの枠を出すかは人が決めます。
+ */
+export function buildStaffReminder(today, opts = {}) {
+  const leadDays = opts.leadDays ?? DEFAULT_SCHEDULE.leadDays;
+  const dates = scheduleDates(today, leadDays);
+  return [
+    '【空き枠のお知らせの日です】',
+    '',
+    `本日は${WEEKDAYS[weekdayOf(today)]}曜日です。`,
+    `${dates.map(formatDate).join('・')} の空きをご確認ください。`,
+    '',
+    'サロンボードで空きを見てから、管理ページで枠を選んで送信してください。',
+    opts.adminUrl ?? null,
+    '',
+    '出したくない枠（移動・休憩・あえて残している枠）は入れないでください。'
+  ].filter((l) => l !== null).join('\n');
+}
+
+/**
+ * 送信日の朝にスタッフへ通知する。
+ * スタッフ宛の1通なので、通数はごくわずかです（週2回で月8通程度）。
+ */
+export async function remindStaff(env, opts = {}) {
+  const today = opts.today ?? todayJst();
+  const days = opts.days ?? DEFAULT_SCHEDULE.days;
+  if (!isSendDay(today, days)) return { today, sent: 0, skipped: '送信日ではありません' };
+
+  const ids = String(opts.staffIds ?? env.STAFF_USER_IDS ?? '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  if (!ids.length) return { today, sent: 0, skipped: 'スタッフのIDが未設定です' };
+
+  const body = buildStaffReminder(today, {
+    leadDays: opts.leadDays,
+    adminUrl: opts.adminUrl ?? env.ADMIN_URL ?? null
+  });
+
+  let sent = 0;
+  for (const id of ids) {
+    if (await push(env, id, [text(body)])) sent++;
+  }
+  return { today, sent, body };
+}
+
 /** Instagram に告知するまでに空ける時間（LINEが先である事実をつくる） */
 export const INSTAGRAM_DELAY_MIN = 30;
 

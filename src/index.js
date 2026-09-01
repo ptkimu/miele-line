@@ -10,6 +10,7 @@ import { handleEvent } from './handlers.js';
 import { adminRequest } from './admin.js';
 import { diagnosisRequest } from './api.js';
 import { runDailyDelivery } from './delivery.js';
+import { remindStaff } from './openslot.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -54,6 +55,14 @@ export default {
           }));
         })
         .catch((err) => console.error('daily delivery failed', err))
+    );
+
+    /* 空き枠のお知らせの日だけ、スタッフに声をかける。
+       どの枠を出すかは人が決めるので、送信そのものは自動化しない。 */
+    ctx.waitUntil(
+      remindStaff(env)
+        .then((r) => console.log('staff reminder', JSON.stringify(r.skipped ?? { sent: r.sent })))
+        .catch((err) => console.error('staff reminder failed', err))
     );
   }
 };

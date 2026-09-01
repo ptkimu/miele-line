@@ -24,3 +24,6 @@ enabled = true
 #   ADMIN_PASS            スタッフ用管理ページのパスワード
 #   LIFF_CHANNEL_ID       LINE Developers > LIFF を作成したチャネルのチャネルID
 #                         （コース診断ツールからの投稿を検証するために使う）
+#   STAFF_USER_IDS        空き枠のお知らせの日に声をかけるスタッフのLINEユーザーID
+#                         （カンマ区切り。週2回・1人1通なので月8通程度）
+#   ADMIN_URL             スタッフ用ページのURL。通知の文面に入れる
