@@ -72,10 +72,47 @@ export function tagForSlots(slots) {
 
 /**
  * 1週間に出す上限。
- * 毎日のように空き枠を流していると、
- * 「人気がない店」という印象になり逆効果になるため。
+ * 定期のお知らせが週2回（月・木）、それに加えて突発の空きが1回まで、という想定。
+ * これ以上続けて流すと「いつも空いている店」という印象になり逆効果になる。
  */
-export const MAX_PER_WEEK = 2;
+export const MAX_PER_WEEK = 3;
+
+/* ------------------------------------------------------------------ *
+ * 定期のお知らせ
+ *
+ * 決まった曜日に、2〜3日後の空きをまとめてご案内します。
+ * 突発のキャンセルとは別枠で、こちらは計画的に出せます。
+ * ------------------------------------------------------------------ */
+
+export const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+/** 既定は月曜と木曜に、2日後と3日後の空きを案内する */
+export const DEFAULT_SCHEDULE = { days: [1, 4], leadDays: [2, 3] };
+
+const shiftDate = (ymd, n) =>
+  new Date(Date.parse(ymd + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+
+export const weekdayOf = (ymd) => new Date(Date.parse(ymd + 'T00:00:00Z')).getUTCDay();
+
+/** その日が送信日か */
+export function isSendDay(today, days) {
+  return (days ?? []).includes(weekdayOf(today));
+}
+
+/** 次の送信日（当日を含む） */
+export function nextSendDay(today, days) {
+  if (!days?.length) return null;
+  for (let i = 0; i <= 7; i++) {
+    const d = shiftDate(today, i);
+    if (isSendDay(d, days)) return d;
+  }
+  return null;
+}
+
+/** その日に案内する対象の日付。既定では2日後と3日後 */
+export function scheduleDates(today, leadDays = DEFAULT_SCHEDULE.leadDays) {
+  return [...leadDays].sort((a, b) => a - b).map((n) => shiftDate(today, n));
+}
 
 /** Instagram に告知するまでに空ける時間（LINEが先である事実をつくる） */
 export const INSTAGRAM_DELAY_MIN = 30;

@@ -1,4 +1,4 @@
-<title>ミエーレ 空き枠のお知らせ</title>
+<title>ミエーレ 空き枠のしくみ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
@@ -9,11 +9,10 @@
     --ink:#2B2724; --ink-soft:#5D534E; --muted:#8B7F79;
     --rule:#E7DBD4; --rule-hard:#D6C6BD;
     --accent:#98543F; --accent-wash:#F7EBE5;
-    --free:#1F7A4C; --free-fill:#1F9D57; --free-wash:#E8F3EC;
-    --cost:#8E6415; --cost-fill:#B5822A; --cost-wash:#F7EFDF;
+    --free:#1F7A4C; --free-wash:#E8F3EC;
     --stop:#A73A2A; --stop-wash:#FBE6E2;
-    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
-    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
   }
   @media (prefers-color-scheme:dark){
     :root:not([data-theme="light"]){
@@ -21,8 +20,7 @@
       --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
       --rule:#3A3331; --rule-hard:#4C4340;
       --accent:#D9967C; --accent-wash:#33241F;
-      --free:#5CC98C; --free-fill:#2E9E63; --free-wash:#1C2C24;
-      --cost:#DEAC57; --cost-fill:#A87A28; --cost-wash:#2E2619;
+      --free:#5CC98C; --free-wash:#1C2C24;
       --stop:#E58775; --stop-wash:#33211E;
     }
   }
@@ -31,80 +29,110 @@
     --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
     --rule:#3A3331; --rule-hard:#4C4340;
     --accent:#D9967C; --accent-wash:#33241F;
-    --free:#5CC98C; --free-fill:#2E9E63; --free-wash:#1C2C24;
-    --cost:#DEAC57; --cost-fill:#A87A28; --cost-wash:#2E2619;
+    --free:#5CC98C; --free-wash:#1C2C24;
     --stop:#E58775; --stop-wash:#33211E;
   }
 
   *{box-sizing:border-box}
   body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
        font-size:15px;line-height:1.8;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1060px;margin:0 auto;padding:40px 22px 90px}
+  .wrap{max-width:1200px;margin:0 auto;padding:40px 22px 90px}
 
-  header.top{border-bottom:1px solid var(--rule);padding-bottom:24px;margin-bottom:26px}
+  header.top{border-bottom:1px solid var(--rule);padding-bottom:22px;margin-bottom:20px}
   .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.2em;color:var(--accent);margin:0 0 12px}
   h1{font-family:var(--f-display);font-weight:700;font-size:clamp(25px,4.4vw,32px);
      line-height:1.32;margin:0 0 14px;text-wrap:balance}
-  .lede{color:var(--ink-soft);margin:0 0 20px;max-width:62ch;font-size:15px}
-  .facts{display:flex;flex-wrap:wrap;border-top:1px solid var(--rule);margin:0}
-  .facts div{flex:1 1 170px;padding:14px 18px 12px 0;border-right:1px solid var(--rule)}
-  .facts div:last-child{border-right:0}
-  .facts dt{font-size:10.5px;letter-spacing:.12em;color:var(--muted);margin:0 0 2px}
-  .facts dd{margin:0;font-family:var(--f-display);font-weight:700;font-size:16px;line-height:1.45}
-  .facts dd small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;
-                  color:var(--muted);line-height:1.6}
+  .lede{color:var(--ink-soft);margin:0;max-width:68ch}
   .warn{background:var(--accent-wash);border-left:3px solid var(--accent);
-        border-radius:0 10px 10px 0;padding:13px 18px;font-size:13.5px;margin:22px 0 0;
-        color:var(--ink-soft)}
+        border-radius:0 10px 10px 0;padding:12px 18px;font-size:13.5px;margin:18px 0 0;color:var(--ink-soft)}
   .warn strong{color:var(--ink);font-weight:500}
 
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
-  @media (max-width:940px){.cols{grid-template-columns:1fr}}
+  .status{display:flex;flex-wrap:wrap;background:var(--surface);border:1px solid var(--rule);
+          border-radius:14px;overflow:hidden;margin:0 0 26px}
+  .status div{flex:1 1 190px;padding:14px 20px;border-right:1px solid var(--rule)}
+  .status div:last-child{border-right:0}
+  .status dt{font-size:10.5px;letter-spacing:.1em;color:var(--muted);margin:0 0 2px}
+  .status dd{margin:0;font-family:var(--f-display);font-weight:700;font-size:19px;line-height:1.4;
+             font-variant-numeric:tabular-nums}
+  .status dd small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;
+                   color:var(--muted);line-height:1.6}
+  .status dd.on{color:var(--free)}
 
-  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
-  .panel > h2{font-family:var(--f-display);margin:0;padding:16px 20px;font-size:15.5px;
+  .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start}
+  @media (max-width:980px){.cols{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:16px;overflow:hidden;
+         margin-bottom:26px}
+  .panel > h2{font-family:var(--f-display);margin:0;padding:15px 20px;font-size:15.5px;
               border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .badge{font-size:10.5px;font-weight:700;color:#fff;border-radius:99px;padding:2px 10px;
-         letter-spacing:.04em;white-space:nowrap;background:var(--cost-fill)}
+  .who{font-size:10.5px;font-weight:700;color:#fff;border-radius:99px;padding:2px 10px;letter-spacing:.04em}
+  .who--guest{background:#3E6DB5}
+  .who--staff{background:var(--accent)}
   .pad{padding:16px 20px 20px}
+  .intro{padding:14px 20px 0;font-size:13px;color:var(--muted);margin:0}
+  .intro b{color:var(--ink-soft);font-weight:500}
+
+  .menu{position:relative;margin:14px 20px 0;border-radius:10px;overflow:hidden;border:1px solid var(--rule)}
+  .menu img{display:block;width:100%;height:auto}
+  .menu .hit{position:absolute;inset:0;display:grid;
+             grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}
+  .menu .hit button{border:0;background:transparent;cursor:pointer;padding:0}
+  .menu .hit button:hover{background:rgba(152,84,63,.16)}
+  .menu .hit button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+  .menucap{font-size:12px;color:var(--muted);padding:8px 20px 0;margin:0}
+
+  .phone{background:#8CABD8;padding:14px;height:320px;overflow-y:auto;margin-top:14px}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .phone{background:#3E5470}}
+  :root[data-theme="dark"] .phone{background:#3E5470}
+  .row{display:flex;margin-bottom:10px}
+  .row.me{justify-content:flex-end}
+  .row.sys{justify-content:center}
+  .bub{max-width:84%;padding:9px 14px;border-radius:17px;font-size:13px;line-height:1.75;
+       white-space:pre-wrap;word-break:break-word;background:#fff;color:#1E1E1E;border-bottom-left-radius:4px}
+  .row.me .bub{background:#8DE055;color:#16260F;border-bottom-left-radius:17px;border-bottom-right-radius:4px}
+  .row.sys .bub{background:rgba(0,0,0,.34);color:#fff;font-size:11.5px;border-radius:99px;
+                padding:4px 13px;white-space:normal;max-width:92%;text-align:center}
+  .qr{display:flex;gap:7px;flex-wrap:wrap;padding:0 14px 14px;background:#8CABD8;min-height:14px}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .qr{background:#3E5470}}
+  :root[data-theme="dark"] .qr{background:#3E5470}
+  .qr button{background:#fff;color:#3E6DB5;border:1px solid #C8D8EE;border-radius:999px;
+             padding:7px 16px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
 
   .btn{border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:700;font-size:13.5px;
        cursor:pointer;background:var(--accent);color:#fff}
+  .btn:disabled{background:var(--rule-hard);cursor:default}
   .btn--ghost{background:var(--surface);color:var(--accent);border:1px solid var(--rule-hard)}
   .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
-  .meter{margin:0 0 6px}
-  .meter .bar{height:12px;border-radius:99px;background:var(--sunk);overflow:hidden;display:flex}
-  .meter .used{background:var(--cost-fill)}
-  .meter .now{background:var(--accent)}
-  .meter .res{background:var(--rule-hard)}
-  .meterlabels{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--muted);margin-top:8px}
-  .meterlabels i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
-  .num{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
-
-  .verdict{border-radius:10px;padding:12px 16px;font-size:13.5px;margin:14px 0 0;line-height:1.7}
+  .step{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+  .msg{background:var(--sunk);border-radius:10px;padding:12px 15px;font-size:12.5px;
+       white-space:pre-wrap;line-height:1.8;margin-top:0}
+  .note{font-size:12.5px;color:var(--muted);line-height:1.75;margin:12px 0 0}
+  .verdict{border-radius:10px;padding:11px 15px;font-size:13px;margin:12px 0 0;line-height:1.7}
   .verdict--go{background:var(--free-wash);color:var(--free)}
   .verdict--stop{background:var(--stop-wash);color:var(--stop)}
-
-  .step{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:10px;
-        background:var(--surface)}
-  .msg{background:var(--sunk);border-radius:10px;padding:12px 15px;font-size:12.5px;
-       white-space:pre-wrap;line-height:1.8;margin-top:8px}
-  .note{font-size:12.5px;color:var(--muted);line-height:1.75;margin:12px 0 0}
-  .empty{color:var(--muted);font-size:13px}
-
-  label.chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:6px 0;cursor:pointer}
+  label.chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:5px 0;cursor:pointer}
   label.chk input{margin-top:6px}
   label.chk small{display:block;color:var(--muted);font-size:11.5px;line-height:1.6}
+  h4{font-family:var(--f-display);font-size:14px;margin:20px 0 8px}
 
-  .phone{background:#8CABD8;padding:14px}
-  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .phone{background:#3E5470}}
-  :root[data-theme="dark"] .phone{background:#3E5470}
-  .row{display:flex}
-  .bub{max-width:88%;padding:10px 14px;border-radius:17px;font-size:13.5px;line-height:1.75;
-       white-space:pre-wrap;word-break:break-word;background:#FFFFFF;color:#1E1E1E;
-       border-bottom-left-radius:4px}
+  /* 曜日の設定 */
+  .sched{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin:0 0 14px;
+         background:var(--sunk)}
+  .schedhead{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .days{display:flex;gap:6px;flex-wrap:wrap}
+  .days button{width:40px;height:40px;border-radius:99px;border:1px solid var(--rule-hard);
+               background:var(--surface);color:var(--ink-soft);font:inherit;font-size:13.5px;
+               font-weight:700;cursor:pointer}
+  .days button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .days button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ストーリー画像 */
+  .story{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+  .story canvas{width:270px;height:480px;border-radius:12px;border:1px solid var(--rule);
+                box-shadow:0 8px 24px rgba(43,39,36,.10);background:#FAF7F5}
+  .story .side{flex:1;min-width:220px}
 
   footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
@@ -115,55 +143,108 @@
 
   <header class="top">
     <p class="eyebrow">動作デモ</p>
-    <h1>空いた枠を、30秒でお知らせする</h1>
+    <h1>空き枠のしくみ ぜんぶ</h1>
     <p class="lede">
-      日時とメニューを選ぶだけで、<strong>LINEに送る文面とInstagramに載せる文面が
-      同時にできます。</strong>空きが出るたびに文面を考えていては続かないので、
-      考えなくて済むようにしました。実際に触って動かせます。
+      左がお客様の画面、右がスタッフの画面です。<strong>2つは実際に連動します。</strong>
+      左のリッチメニューから「空き枠のお知らせ」を押して受け取りを申し込むと、右の送り先が1名増えます。
+      そのまま右で送ると、左のトークに届きます。
     </p>
-    <dl class="facts">
-      <div><dt>スタッフの操作</dt><dd>3タップ<small>部屋・時刻・メニューを選ぶだけ</small></dd></div>
-      <div><dt>ご予約の受け方</dt><dd>これまで通り<small>LINEで承り、サロンボードへ入力</small></dd></div>
-      <div><dt>Instagram</dt><dd>枠は出しません<small>「LINEに先に案内済み」と伝えるだけ</small></dd></div>
-    </dl>
     <p class="warn">
       <strong>これはデモです。</strong>お名前・通数はすべて架空のサンプルで、
-      ここで押したボタンでLINEが送られることはありません。
+      ここで押したボタンで本物のLINEが送られることはありません。
     </p>
   </header>
 
+  <dl class="status">
+    <div><dt>受け取りを希望した方</dt><dd id="stCount">—</dd></div>
+    <div><dt>あなたの設定</dt><dd id="stMe">—</dd></div>
+    <div><dt>今月の配信通数</dt><dd id="stQuota">—</dd></div>
+  </dl>
+
   <div class="cols">
+
     <section class="panel">
-      <h2>空き枠を登録する <span class="badge">通数を使う</span></h2>
+      <h2>お客様の画面 <span class="who who--guest">スマホ</span></h2>
+      <p class="intro">
+        リッチメニューはトーク画面の下にいつも出ています。<b>押してみてください。</b>6つとも動きます。
+      </p>
+      <div class="menu">
+        <img src="/*__RICHMENU_PNG__*/" alt="リッチメニュー">
+        <div class="hit" id="rmHit"></div>
+      </div>
+      <p class="menucap">左上が今回追加するボタンです。</p>
+      <div class="phone" id="chat"></div>
+      <div class="qr" id="qr"></div>
+    </section>
+
+    <section class="panel">
+      <h2>スタッフの画面 <span class="who who--staff">空き枠を出す</span></h2>
+      <p class="intro">
+        空きが出たら、部屋と時刻とメニューを選ぶだけ。<b>LINEの文面もInstagramの画像も同時にできます。</b>
+      </p>
       <div class="pad">
         <div class="btnrow" style="margin-bottom:8px" id="roomBtns"></div>
         <p class="note" id="roomNote" style="margin:0 0 12px"></p>
-        <div class="btnrow" style="margin-bottom:14px">
-          <button class="btn btn--ghost" id="slotWeek">今週末をまとめて</button>
+        <div class="btnrow" style="margin-bottom:6px">
+          <button class="btn btn--ghost" id="slotToday">今日の急な空き</button>
+          <button class="btn btn--ghost" id="slotSched">2〜3日後をまとめて</button>
         </div>
+
+        <div class="sched">
+          <div class="schedhead">定期のお知らせを出す曜日</div>
+          <div class="days" id="days"></div>
+          <p class="note" id="schedNote" style="margin:8px 0 0"></p>
+        </div>
+
         <div id="slotList"></div>
 
-        <label class="chk" style="margin-top:6px">
-          <input type="checkbox" id="slotNarrow" checked>
-          <span>このメニューに関心のある方だけに送る<small>診断でその希望を選んだ方だけ。関係のない方に届かない</small></span>
+        <label class="chk">
+          <input type="checkbox" id="slotNarrow">
+          <span>このメニューに関心のある方だけに送る<small>診断でその希望を選んだ方だけ。分かりやすさのため、ここでは外してあります</small></span>
         </label>
-
-        <label class="chk" style="margin-top:10px">
+        <label class="chk">
           <input type="checkbox" id="slotRecent" checked>
           <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span>
         </label>
-      </div>
-    </section>
 
-    <section class="panel">
-      <h2>送る前の確認 <span class="badge">通数を使う</span></h2>
-      <div class="pad" id="slotOut"></div>
+        <div id="slotOut"></div>
+      </div>
     </section>
   </div>
 
+  <section class="panel">
+    <h2>Instagram ストーリーズ <span class="who who--staff">画像もできます</span></h2>
+    <p class="intro">
+      文字を打ち込む必要はありません。<b>左の画像をそのままストーリーズに上げるだけです。</b>
+      上の枠を変えると、この画像もすぐ作り直されます。
+    </p>
+    <div class="pad">
+      <div class="story">
+        <canvas id="story" width="1080" height="1920" aria-label="Instagramストーリーズ用の画像"></canvas>
+        <div class="side">
+          <h4 style="margin-top:0">画像に添える文面</h4>
+          <div class="msg" id="igText"></div>
+          <div class="btnrow" style="margin-top:14px">
+            <button class="btn" id="dl">画像を保存</button>
+          </div>
+          <p class="note">
+            スマホでは画像を長押しでも保存できます。<br>
+            1080 × 1920 ピクセル。上下はInstagramの操作ボタンが重なるため、
+            文字は中央寄りに置いています。
+          </p>
+          <p class="note">
+            <b style="color:var(--ink-soft)">枠は載せますが、必ず「LINEの方には先にお知らせ済み」を入れます。</b>
+            ここが抜けると、LINEに登録する理由が伝わりません。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <footer>
-    ビューティサロン ミエーレ ／ 空き枠・キャンセル枠のお知らせ<br>
-    このデモは実際のプログラムをそのまま動かしています。データベースだけサンプルに差し替えてあります。
+    ビューティサロン ミエーレ ／ 空き枠のお知らせ<br>
+    このデモは実際のプログラムをそのまま動かしています。お客様の画面に出る文面も、
+    送信のしくみも、ストーリーズ画像も本物です。データベースだけサンプルに差し替えてあります。
   </footer>
 </div>
 
@@ -171,46 +252,33 @@
 /*__MODULES__*/
 
 /* ==================================================================
-   デモ用のサンプルデータ（お名前・通数はすべて架空です）
+   サンプルデータ（お名前・通数はすべて架空です）
+   「あなた」は受け取り希望をしていない状態から始まります
    ================================================================== */
 
-const REAL_TODAY = todayJst();
+const TODAY = todayJst();
 const shift = (b, d) => new Date(Date.parse(b + 'T00:00:00Z') + d * 86400000).toISOString().slice(0, 10);
 const $ = (id) => document.getElementById(id);
 const esc2 = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const nf = (n) => n.toLocaleString('ja-JP');
 
+const ME = 'U00';
+
 const state = {
   quota: { limit: 5000, used: 1240 },
   customers: [
-    { line_user_id:'U01', display_name:'さくら', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-11), followed_at:shift(REAL_TODAY,-120) },
-    { line_user_id:'U02', display_name:'みどり', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-3),  followed_at:shift(REAL_TODAY,-90) },
-    { line_user_id:'U03', display_name:'ゆき',   status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-21), followed_at:shift(REAL_TODAY,-200) },
-    { line_user_id:'U04', display_name:'あやの', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-8),  followed_at:shift(REAL_TODAY,-45) },
-    { line_user_id:'U05', display_name:'けんた', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-6),  followed_at:shift(REAL_TODAY,-30) },
-    { line_user_id:'U06', display_name:'ひなの', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-40), followed_at:shift(REAL_TODAY,-300) }
+    { line_user_id:ME,    display_name:'あなた', status:'active', next_booked:0, last_visit_at:shift(TODAY,-9),  followed_at:shift(TODAY,-60) },
+    { line_user_id:'U01', display_name:'さくら', status:'active', next_booked:0, last_visit_at:shift(TODAY,-11), followed_at:shift(TODAY,-120) },
+    { line_user_id:'U02', display_name:'みどり', status:'active', next_booked:0, last_visit_at:shift(TODAY,-3),  followed_at:shift(TODAY,-90) },
+    { line_user_id:'U03', display_name:'ゆき',   status:'active', next_booked:0, last_visit_at:shift(TODAY,-21), followed_at:shift(TODAY,-200) }
   ],
-  tags: [
-    { id:1, name:'希望:空き枠のお知らせ' },
-    { id:2, name:'希望:セルフ脱毛' },
-    { id:3, name:'希望:セラピスト脱毛' },
-    { id:4, name:'希望:毛穴・シミ・くすみ' },
-    { id:5, name:'希望:お腹・太ももの脂肪' }
-  ],
-  customerTags: [
-    { line_user_id:'U01', tag_id:1 }, { line_user_id:'U01', tag_id:2 },
-    { line_user_id:'U02', tag_id:1 }, { line_user_id:'U02', tag_id:3 },
-    { line_user_id:'U03', tag_id:1 }, { line_user_id:'U03', tag_id:4 },
-    { line_user_id:'U04', tag_id:1 }, { line_user_id:'U04', tag_id:2 },
-    { line_user_id:'U05', tag_id:1 }, { line_user_id:'U05', tag_id:3 },
-    { line_user_id:'U06', tag_id:1 }, { line_user_id:'U06', tag_id:5 }
-  ],
-  // ゆきさんは2日前に別のお知らせを受け取っている
-  deliveries: [
-    { line_user_id:'U03', dedupe_key:'past', status:'sent', sent_at: shift(REAL_TODAY,-2) + 'T01:00:00.000Z' }
-  ],
-  openSlots: []
+  tags: [], customerTags: [], deliveries: [], openSlots: [], processed: new Set()
 };
+
+const PRESEED = [
+  ['U01', [OPEN_SLOT_TAG, '希望:セルフ脱毛']],
+  ['U02', [OPEN_SLOT_TAG, '希望:セラピスト脱毛']]
+];
 
 /* ==================================================================
    D1 のふるまいを、この画面で使う範囲だけ再現する
@@ -220,21 +288,42 @@ const active = () => state.customers.filter(c => c.status === 'active');
 const tagId = (name) => state.tags.find(t => t.name === name)?.id ?? null;
 
 function q(sql, args) {
+  if (sql.includes('INSERT OR IGNORE INTO processed_events')) {
+    if (state.processed.has(args[0])) return { first:null, rows:[], changes:0 };
+    state.processed.add(args[0]);
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('INSERT INTO inbound_messages')) return { first:null, rows:[], changes:1 };
+
+  if (sql.includes('INSERT OR IGNORE INTO tags')) {
+    if (!tagId(args[0])) state.tags.push({ id: state.tags.length + 1, name: args[0], kind: args[1] });
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('INSERT OR IGNORE INTO customer_tags')) {
+    const id = tagId(args[2]);
+    if (id && !state.customerTags.some(c => c.line_user_id === args[0] && c.tag_id === id))
+      state.customerTags.push({ line_user_id: args[0], tag_id: id });
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('DELETE FROM customer_tags')) {
+    const id = tagId(args[1]);
+    state.customerTags = state.customerTags.filter(c => !(c.line_user_id === args[0] && c.tag_id === id));
+    return { first:null, rows:[], changes:1 };
+  }
+
   if (sql.includes('INSERT INTO open_slots')) {
     state.openSlots.push({ kind: args[0], created_at: args[3] });
     return { first:null, rows:[], changes:1 };
   }
   if (sql.includes('FROM open_slots')) {
-    const since = args[0];
-    const room = sql.includes('kind = ?') ? args[1] : null;
-    const n = state.openSlots.filter(s => s.created_at >= since && (!room || s.kind === room)).length;
-    return { first:{ n }, rows:[] };
+    const since = args[0], room = sql.includes('kind = ?') ? args[1] : null;
+    return { first:{ n: state.openSlots.filter(s => s.created_at >= since && (!room || s.kind === room)).length }, rows:[] };
   }
+
   if (sql.includes('INSERT OR IGNORE INTO deliveries')) {
     const uid = args[0], key = args[1];
-    if (state.deliveries.some(d => d.line_user_id === uid && d.dedupe_key === key)) {
+    if (state.deliveries.some(d => d.line_user_id === uid && d.dedupe_key === key))
       return { first:null, rows:[], changes:0 };
-    }
     state.deliveries.push({ line_user_id:uid, dedupe_key:key, status:'sending', sent_at:args[2] });
     return { first:null, rows:[], changes:1 };
   }
@@ -243,13 +332,12 @@ function q(sql, args) {
     if (d) { d.status = args[0]; d.sent_at = args[1]; }
     return { first:null, rows:[], changes:1 };
   }
+
   if (sql.includes('FROM customers')) {
-    let rows = active();
-    let i = 0;
-    const tagCount = (sql.match(/FROM customer_tags ct JOIN tags t/g) ?? []).length;
-    for (let k = 0; k < tagCount; k++) {
-      const name = args[i++];
-      const id = tagId(name);
+    let rows = active(), i = 0;
+    const n = (sql.match(/FROM customer_tags ct JOIN tags t/g) ?? []).length;
+    for (let k = 0; k < n; k++) {
+      const name = args[i++], id = tagId(name);
       rows = rows.filter(c => id && state.customerTags.some(
         ct => ct.line_user_id === c.line_user_id && ct.tag_id === id));
     }
@@ -279,10 +367,91 @@ const env = { DB: { prepare(sql) {
     async run()   { return { meta: { changes: q(sql, args).changes ?? 0 } }; }
   };
   return stmt;
-} } };
+} }, CHANNEL_ACCESS_TOKEN: 'demo' };
+
+/* LINEへの送信を横取りして、そのまま左のトークに描く。
+   画面に出ているのは、本物のプログラムが送ろうとした内容そのものです */
+globalThis.fetch = async (url, init) => {
+  try {
+    const body = JSON.parse(init?.body ?? '{}');
+    const isPush = String(url).includes('/message/push');
+    if (!isPush || body.to === ME) {
+      (body.messages ?? []).forEach(m => {
+        bubble('bot', m.text);
+        showButtons(m.quickReply?.items ?? []);
+      });
+    }
+  } catch {}
+  return new Response('{}', { status: 200 });
+};
 
 /* ==================================================================
-   画面
+   お客様の画面
+   ================================================================== */
+
+const chat = $('chat');
+let seq = 0;
+
+function bubble(kind, body) {
+  const row = document.createElement('div');
+  row.className = 'row ' + kind;
+  const b = document.createElement('div');
+  b.className = 'bub';
+  b.textContent = body;
+  row.appendChild(b);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showButtons(items) {
+  $('qr').innerHTML = '';
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = it.action.label;
+    b.addEventListener('click', async () => {
+      bubble('me', it.action.displayText ?? it.action.label);
+      $('qr').innerHTML = '';
+      await handleEvent(env, {
+        type:'postback', webhookEventId:'p' + (++seq), replyToken:'rt',
+        source:{ userId: ME }, postback:{ data: it.action.data }
+      });
+      await refresh();
+    });
+    $('qr').appendChild(b);
+  });
+}
+
+/* リッチメニューの6マス。管理画面で設定するのと同じ内容 */
+const CELLS = [
+  { text:'空き枠',   label:'空き枠のお知らせ' },
+  { text:'予約',     label:'ご予約・ご相談' },
+  { text:'メニュー', label:'メニュー・料金' },
+  { link:true,       label:'コース診断' },
+  { text:'場所',     label:'アクセス' },
+  { text:'営業時間', label:'営業時間' }
+];
+
+CELLS.forEach(cell => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.setAttribute('aria-label', cell.label);
+  b.addEventListener('click', async () => {
+    $('qr').innerHTML = '';
+    if (cell.link) return bubble('sys', 'コース診断のページが開きます（LIFFのURL発行後）');
+    bubble('me', cell.text);
+    await handleEvent(env, {
+      type:'message', webhookEventId:'m' + (++seq), replyToken:'rt',
+      source:{ userId: ME }, message:{ type:'text', text: cell.text }
+    });
+    if (!matchReply(cell.text)) bubble('sys', '自動で答えられない質問 → スタッフのLINEへ');
+    await refresh();
+  });
+  $('rmHit').appendChild(b);
+});
+
+/* ==================================================================
+   スタッフの画面
    ================================================================== */
 
 const menusOf = (r) => ROOMS.find(x => x.id === r).menus;
@@ -290,53 +459,75 @@ const menusOf = (r) => ROOMS.find(x => x.id === r).menus;
 function todaySlots(r) {
   const m = menusOf(r);
   return r === 'self'
-    ? [{ date: REAL_TODAY, time:'19:00', menu:m[0], minutes:30 }]
-    : [{ date: REAL_TODAY, time:'17:00', menu:m[0], minutes:60 }];
+    ? [{ date: TODAY, time:'19:00', menu:m[0], minutes:30 }]
+    : [{ date: TODAY, time:'17:00', menu:m[0], minutes:60 }];
 }
 
-function weekendSlots(r) {
+/** 定期のお知らせ。決まった曜日に、2〜3日後の空きをまとめて案内する */
+function schedSlots(r) {
   const m = menusOf(r);
-  const dow = new Date(Date.parse(REAL_TODAY + 'T00:00:00Z')).getUTCDay();
-  const toSat = ((6 - dow + 7) % 7) || 7;
-  const sat = shift(REAL_TODAY, toSat), sun = shift(REAL_TODAY, toSat + 1);
-  return [
-    { date:sat, time:'11:00', menu:m[0], minutes:60 },
-    { date:sat, time:'14:30', menu:m[0], minutes:60 },
-    { date:sun, time:'13:00', menu:m[Math.min(1, m.length - 1)], minutes:30 }
-  ];
+  const times = r === 'self' ? ['19:00', '11:00'] : ['14:00', '11:00'];
+  return scheduleDates(TODAY, DEFAULT_SCHEDULE.leadDays).map((date, i) => ({
+    date, time: times[i % times.length],
+    menu: m[Math.min(i, m.length - 1)],
+    minutes: r === 'self' ? 30 : 60
+  }));
 }
 
 let room = 'room';
+let sendDays = [...DEFAULT_SCHEDULE.days];
 let slots = todaySlots(room);
 
 ROOMS.forEach(r => {
   const b = document.createElement('button');
   b.className = 'btn btn--ghost';
   b.dataset.room = r.id;
-  b.textContent = r.label + 'の空き';
-  b.addEventListener('click', () => { room = r.id; slots = todaySlots(room); render(); });
+  b.textContent = r.label;
+  b.addEventListener('click', () => { room = r.id; slots = todaySlots(room); refresh(); });
   $('roomBtns').appendChild(b);
 });
 
-$('slotWeek').addEventListener('click', () => { slots = weekendSlots(room); render(); });
-$('slotRecent').addEventListener('change', render);
-$('slotNarrow').addEventListener('change', render);
+/* 曜日の選択。押すたびに次の送信日が変わる */
+WEEKDAYS.forEach((label, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = label;
+  b.dataset.day = String(i);
+  b.addEventListener('click', () => {
+    sendDays = sendDays.includes(i) ? sendDays.filter(d => d !== i) : [...sendDays, i].sort();
+    refresh();
+  });
+  $('days').appendChild(b);
+});
 
-function meter(v) {
-  const pct = (n) => Math.max(0, Math.min(100, (n / v.limit) * 100));
-  return `<div class="meter"><div class="bar">
-      <div class="used" style="width:${pct(v.used)}%"></div>
-      <div class="now"  style="width:${pct(v.planned)}%"></div>
-      <div class="res"  style="width:${pct(v.reserve)}%"></div></div>
-    <div class="meterlabels">
-      <span><i style="background:var(--cost-fill)"></i>今月すでに使った <span class="num">${nf(v.used)}</span> 通</span>
-      <span><i style="background:var(--accent)"></i>今回送る <span class="num">${nf(v.planned)}</span> 通</span>
-      <span><i style="background:var(--rule-hard)"></i>いざという時のために残す <span class="num">${nf(v.reserve)}</span> 通</span>
-      <span>上限 <span class="num">${nf(v.limit)}</span> 通</span>
-    </div></div>`;
+$('slotToday').addEventListener('click', () => { slots = todaySlots(room); refresh(); });
+$('slotSched').addEventListener('click', () => { slots = schedSlots(room); refresh(); });
+$('slotNarrow').addEventListener('change', refresh);
+$('slotRecent').addEventListener('change', refresh);
+
+/* ==================================================================
+   ストーリーズ画像
+   ================================================================== */
+
+const canvas = $('story');
+const ctx = canvas.getContext('2d');
+
+function paintStory() {
+  drawStory(ctx, slots, { today: TODAY, delayMinutes: INSTAGRAM_DELAY_MIN });
 }
 
-async function render() {
+$('dl').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = 'miele-story-' + TODAY + '.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+
+/* ==================================================================
+   描画
+   ================================================================== */
+
+async function refresh() {
   const roomDef = ROOMS.find(r => r.id === room);
   $('roomBtns').querySelectorAll('button').forEach(b => {
     const on = b.dataset.room === room;
@@ -345,72 +536,101 @@ async function render() {
   });
   $('roomNote').textContent = roomDef.note;
 
+  /* 曜日の設定と、次の送信日 */
+  $('days').querySelectorAll('button').forEach(b =>
+    b.setAttribute('aria-pressed', String(sendDays.includes(Number(b.dataset.day)))));
+
+  const next = nextSendDay(TODAY, sendDays);
+  const lead = DEFAULT_SCHEDULE.leadDays;
+  $('schedNote').innerHTML = !next
+    ? '曜日が選ばれていません。定期のお知らせは出ません。'
+    : (isSendDay(TODAY, sendDays)
+        ? '<b style="color:var(--accent)">本日は送信日です。</b>'
+        : '次の送信日は <b style="color:var(--ink-soft)">' + esc2(formatDate(next)) + '</b> です。') +
+      `　${lead[0]}〜${lead[lead.length - 1]}日後の空きをまとめてご案内します。` +
+      `<br>週${sendDays.length}回。上限は同じ部屋で週${MAX_PER_WEEK}回までなので、` +
+      `突発の空きをあと${Math.max(0, MAX_PER_WEEK - sendDays.length)}回出せます。`;
+
   $('slotList').innerHTML = slots.map((s, i) => `
-    <div class="step" style="padding:12px 14px;margin-bottom:8px">
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">${esc2(formatDate(s.date))}</div>
+    <div class="step">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${esc2(formatDate(s.date))}</div>
       <div class="btnrow">
         <input type="time" value="${esc2(s.time)}" data-i="${i}" data-f="time"
-               style="padding:9px 11px;border:1px solid var(--rule);border-radius:9px;
-                      font:inherit;font-size:14px;background:var(--ground);color:var(--ink)">
+               style="padding:8px 10px;border:1px solid var(--rule);border-radius:9px;
+                      font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)">
         <select data-i="${i}" data-f="menu"
-                style="flex:1;min-width:0;padding:9px 11px;border:1px solid var(--rule);
-                       border-radius:9px;font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)">
+                style="flex:1;min-width:0;padding:8px 10px;border:1px solid var(--rule);
+                       border-radius:9px;font:inherit;font-size:13px;background:var(--ground);color:var(--ink)">
           ${menusOf(room).map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
         </select>
-        ${slots.length > 1 ? `<button class="btn btn--ghost" data-del="${i}" aria-label="この枠を削除">✕</button>` : ''}
       </div>
     </div>`).join('');
 
   $('slotList').querySelectorAll('input,select').forEach(el =>
-    el.addEventListener('change', () => { slots[Number(el.dataset.i)][el.dataset.f] = el.value; render(); }));
-  $('slotList').querySelectorAll('[data-del]').forEach(b =>
-    b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); render(); }));
+    el.addEventListener('change', () => { slots[Number(el.dataset.i)][el.dataset.f] = el.value; refresh(); }));
 
   const p = await previewOpenSlot(env, slots, {
-    today: REAL_TODAY, quota: state.quota, room,
+    today: TODAY, quota: state.quota, room,
     narrow: $('slotNarrow').checked,
     excludeRecent: $('slotRecent').checked
   });
 
+  const holders = await listSegment(env, { tags: [OPEN_SLOT_TAG] }, TODAY);
+  const meOn = holders.some(c => c.line_user_id === ME);
+  $('stCount').textContent = holders.length + '名';
+  $('stMe').innerHTML = meOn ? '受け取る' : '<span style="color:var(--muted)">まだ未設定</span>';
+  $('stMe').className = meOn ? 'on' : '';
+  $('stQuota').innerHTML = nf(state.quota.used) + ' 通<small>上限 ' + nf(state.quota.limit) + ' 通</small>';
+
   const verdict = p.planned === 0
-    ? '<div class="verdict verdict--stop"><b>送る相手がいません。</b></div>'
+    ? '<div class="verdict verdict--stop"><b>送る相手がいません。</b>左のリッチメニューから受け取りを申し込むと1名になります。</div>'
     : p.quota.allowed
-      ? `<div class="verdict verdict--go"><b>${nf(p.planned)}名に届きます。${nf(p.planned)}通を使います。</b></div>`
+      ? `<div class="verdict verdict--go"><b>${nf(p.planned)}名に届きます。${nf(p.planned)}通を使います。</b>${meOn ? '　あなたにも届きます。' : ''}</div>`
       : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(p.quota.reason ?? '')}</div>`;
 
-  const notes = p.notes.map(n =>
-    `<div class="verdict ${'verdict--stop'}"
-          style="margin-top:8px">${esc2(n.text)}</div>`).join('');
+  const notes = p.notes
+    .filter(n => !(n.kind === 'empty' && meOn))
+    .map(n => `<div class="verdict verdict--stop" style="margin-top:8px">${esc2(n.text)}</div>`).join('');
 
-  $('slotOut').innerHTML =
-    meter({ ...p.quota, planned: p.planned }) + verdict + notes +
+  $('slotOut').innerHTML = verdict + notes +
     `<p class="note">送り先　<b style="color:var(--ink-soft)">${
       p.narrowTag ? esc2(p.narrowTag) + ' の方' : '空き枠を希望した方 全員'}</b><br>
-      ${esc2(p.roomLabel)}の直近7日間の配信回数　<b class="num">${p.weekCount}</b> / ${p.maxPerWeek} 回まで
-      <span style="color:var(--muted)">（部屋ごとに数えます。送り先が別なので互いに影響しません）</span></p>` +
+      ${esc2(p.roomLabel)}の直近7日間　<b>${p.weekCount}</b> / ${p.maxPerWeek} 回まで</p>` +
+    '<h4>LINE に届く文面</h4>' +
+    `<div class="msg">${esc2(p.lineText)}</div>` +
+    `<div class="btnrow" style="margin-top:16px">
+       <button class="btn" id="send" ${p.quota.allowed && p.planned ? '' : 'disabled'}>この内容で送る</button>
+     </div>`;
 
-    '<h4 style="font-family:var(--f-display);font-size:14px;margin:18px 0 8px">LINE に届く文面</h4>' +
-    `<div class="phone"><div class="row"><div class="bub">${esc2(p.lineText)}</div></div></div>` +
+  $('igText').textContent = p.instagramText;
+  paintStory();
 
-    '<h4 style="font-family:var(--f-display);font-size:14px;margin:20px 0 8px">Instagram ストーリーズに載せる文面</h4>' +
-    `<div class="msg" style="margin-top:0">${esc2(p.instagramText)}</div>` +
-    `<p class="note">LINEに送ってから ${INSTAGRAM_DELAY_MIN} 分ほど空けて投稿します。
-      「LINEの方が先に知れた」という事実をつくるためです。</p>` +
-
-    `<div class="btnrow" style="margin-top:18px">
-       <button class="btn" id="slotSend" ${p.quota.allowed && p.planned ? '' : 'disabled'}>この内容で送る</button>
-     </div>
-     <p class="note">デモなので、押しても実際には送信されません。</p>`;
-
-  const btn = $('slotSend');
+  const btn = $('send');
   if (btn) btn.addEventListener('click', async () => {
-    await sendOpenSlot(env, slots, {
-      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked, excludeRecent: $('slotRecent').checked, dryRun: true
+    btn.disabled = true;
+    const res = await sendOpenSlot(env, slots, {
+      today: TODAY, quota: state.quota, room,
+      narrow: $('slotNarrow').checked, excludeRecent: $('slotRecent').checked
     });
-    state.openSlots.push({ kind: room, created_at: new Date().toISOString() });
-    render();
+    state.quota.used += res.sent;
+    if (!res.targets.some(c => c.line_user_id === ME)) {
+      bubble('sys', '（' + res.sent + '名に送信。あなたは対象外でした）');
+    }
+    await refresh();
   });
 }
 
-render();
+/* ==================================================================
+   起動
+   ================================================================== */
+
+for (const [uid, names] of PRESEED) {
+  await grantTags(env, uid, names.map(name => ({ kind:'preference', name })));
+}
+
+bubble('sys', '下のリッチメニューを押してみてください');
+await refresh();
+
+/* Webフォントの読み込みを待ってから、画像を描き直す */
+if (document.fonts?.ready) document.fonts.ready.then(paintStory);
 </script>

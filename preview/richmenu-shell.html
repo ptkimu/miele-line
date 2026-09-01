@@ -249,14 +249,14 @@
 /* 文面はすべて実際のコードから取り出す。手で書き写さないので、
    プログラムを直せばこの資料にも必ず反映される */
 
-const esc = (s) => String(s ?? '')
+const esc2 = (s) => String(s ?? '')
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-const me  = (t) => `<div class="row me"><div class="bub">${esc(t)}</div></div>`;
-const bot = (t) => `<div class="row"><div class="bub">${esc(t)}</div></div>`;
+const me  = (t) => `<div class="row me"><div class="bub">${esc2(t)}</div></div>`;
+const bot = (t) => `<div class="row"><div class="bub">${esc2(t)}</div></div>`;
 const buttons = (labels) =>
-  `<div class="qr">${labels.map(l => `<span>${esc(l)}</span>`).join('')}</div>`;
-const tap = (t) => `<p class="tapnote">${esc(t)}</p>`;
+  `<div class="qr">${labels.map(l => `<span>${esc2(l)}</span>`).join('')}</div>`;
+const tap = (t) => `<p class="tapnote">${esc2(t)}</p>`;
 
 /* --- 受け取り希望のやりとり --- */
 const optin = matchReply('空き枠');
