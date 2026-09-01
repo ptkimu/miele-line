@@ -128,6 +128,15 @@
   .days button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
   .days button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
+  /* 役割分担の表 */
+  table.split{width:100%;border-collapse:collapse;font-size:13px;line-height:1.7}
+  table.split th,table.split td{text-align:left;padding:8px 12px 8px 0;
+                                border-bottom:1px solid var(--rule);vertical-align:top}
+  table.split thead th{font-size:10.5px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+  table.split tbody tr:last-child td{border-bottom:0}
+  table.split .auto{color:var(--free);font-weight:700;white-space:nowrap}
+  table.split .human{color:var(--accent);font-weight:700;white-space:nowrap}
+
   /* ストーリー画像 */
   .story{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
   .story canvas{width:270px;height:480px;border-radius:12px;border:1px solid var(--rule);
@@ -235,6 +244,54 @@
           <p class="note">
             <b style="color:var(--ink-soft)">枠は載せますが、必ず「LINEの方には先にお知らせ済み」を入れます。</b>
             ここが抜けると、LINEに登録する理由が伝わりません。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>送り忘れを防ぐしくみ <span class="who who--staff">月・木の朝10時</span></h2>
+    <p class="intro">
+      <b>週2回の発信が続くかどうかは、送り忘れないかで決まります。</b>
+      決めた曜日の朝、スタッフのLINEに自動で声がかかります。
+      どの枠を出すかは人が決めるので、送信そのものは自動化しません。
+    </p>
+    <div class="pad">
+      <p class="note" style="margin:0 0 10px">曜日を押すと、その日の朝に何が起きるか分かります。</p>
+      <div class="days" id="simDays" style="margin-bottom:14px"></div>
+
+      <div class="cols" style="gap:20px">
+        <div>
+          <h4 style="margin-top:0">スタッフのLINEに届くもの</h4>
+          <div id="simOut"></div>
+        </div>
+        <div>
+          <h4 style="margin-top:0">そのあとの流れ</h4>
+          <div class="scroll">
+            <table class="split">
+              <thead><tr><th>やること</th><th>誰が</th><th>時間</th></tr></thead>
+              <tbody>
+                <tr><td>月・木だと気づく</td><td class="auto">自動</td><td>0</td></tr>
+                <tr><td>2〜3日後がいつか出す</td><td class="auto">自動</td><td>0</td></tr>
+                <tr><td>サロンボードで空きを見る</td><td class="human">人</td><td>30秒</td></tr>
+                <tr><td><b>どの枠を出すか決める</b></td><td class="human">人</td><td>—</td></tr>
+                <tr><td>枠を入力する</td><td class="human">人</td><td>30秒</td></tr>
+                <tr><td>LINEの文面を作る</td><td class="auto">自動</td><td>0</td></tr>
+                <tr><td>誰に送るか決める</td><td class="auto">自動</td><td>0</td></tr>
+                <tr><td>通数を確認する</td><td class="auto">自動</td><td>0</td></tr>
+                <tr><td>Instagramの画像を作る</td><td class="auto">自動</td><td>0</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">
+            人がやるのは<b style="color:var(--ink-soft)">1〜2分</b>だけです。
+            しかもその時間は、機械には任せられない判断に使われます。
+          </p>
+          <p class="note">
+            <b style="color:var(--ink-soft)">サロンボードから空きを自動で読むことはしません。</b>
+            外部向けの連携手段が公開されていないうえ、空いている枠には移動・休憩・
+            あえて残している枠が混ざるためです。全自動にすると、出したくない枠まで流れます。
           </p>
         </div>
       </div>
@@ -2225,6 +2282,7 @@ WEEKDAYS.forEach((label, i) => {
   b.addEventListener('click', () => {
     sendDays = sendDays.includes(i) ? sendDays.filter(d => d !== i) : [...sendDays, i].sort();
     refresh();
+    renderSim();
   });
   $('days').appendChild(b);
 });
@@ -2350,6 +2408,53 @@ async function refresh() {
 }
 
 /* ==================================================================
+   送り忘れを防ぐしくみ（曜日ごとに何が起きるかを見せる）
+   ================================================================== */
+
+let simDay = weekdayOf(TODAY);
+
+WEEKDAYS.forEach((label, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = label;
+  b.dataset.sim = String(i);
+  b.addEventListener('click', () => { simDay = i; renderSim(); });
+  $('simDays').appendChild(b);
+});
+
+function renderSim() {
+  $('simDays').querySelectorAll('button').forEach(b =>
+    b.setAttribute('aria-pressed', String(Number(b.dataset.sim) === simDay)));
+
+  /* その曜日にあたる直近の日付を求める */
+  let day = TODAY;
+  for (let i = 0; i < 7 && weekdayOf(day) !== simDay; i++) day = shift(TODAY, i + 1);
+
+  if (!isSendDay(day, sendDays)) {
+    $('simOut').innerHTML =
+      `<div class="verdict verdict--stop">
+         <b>${esc2(WEEKDAYS[simDay])}曜日は送信日ではありません。</b>
+         何も届きません。上のスタッフ画面で曜日を足せば、この日も送信日にできます。
+       </div>`;
+    return;
+  }
+
+  $('simOut').innerHTML =
+    `<div class="verdict verdict--go" style="margin-top:0">
+       <b>${esc2(WEEKDAYS[simDay])}曜日の朝10時、自動で届きます。</b></div>
+     <div class="phone" style="height:auto;margin-top:12px">
+       <div class="row"><div class="bub">${esc2(
+         buildStaffReminder(day, {
+           leadDays: DEFAULT_SCHEDULE.leadDays,
+           adminUrl: 'https://miele-line.（発行後のURL）/admin'
+         })
+       )}</div></div>
+     </div>
+     <p class="note">スタッフ宛の1通だけです。週2回・1人1通で月8通程度なので、
+       5,000通の枠には影響しません。</p>`;
+}
+
+/* ==================================================================
    起動
    ================================================================== */
 
@@ -2358,6 +2463,7 @@ for (const [uid, names] of PRESEED) {
 }
 
 bubble('sys', '下のリッチメニューを押してみてください');
+renderSim();
 await refresh();
 
 /* Webフォントの読み込みを待ってから、画像を描き直す */
