@@ -60,12 +60,14 @@ const RULES = [
     build: () => {
       const lines = [
         'ご予約のご相談ありがとうございます。',
+        has(SALON.reservation) ? `${SALON.name}は${SALON.reservation}です。` : null,
         '',
         'ご希望のお日にちと時間帯を、このままメッセージでお知らせください。',
         'スタッフが空き状況を確認して、折り返しご連絡いたします。',
         '',
-        '「今週の土曜の午後」のようなおおまかなご希望でも大丈夫です。'
-      ];
+        '「今週の土曜の午後」のようなおおまかなご希望でも大丈夫です。',
+        has(SALON.reservationNote) ? SALON.reservationNote + '。' : null
+      ].filter((l) => l !== null);
       if (has(SALON.diagnosisUrl)) {
         lines.push('', 'メニューで迷われている場合は、こちらの診断もご利用ください。', SALON.diagnosisUrl);
       }
@@ -92,11 +94,13 @@ const RULES = [
       const lines = [
         `${SALON.name}へのアクセスです。`,
         '',
+        has(SALON.postal) ? SALON.postal : null,
         SALON.address,
         SALON.access
-      ];
-      if (has(SALON.parking)) lines.push('', `駐車場　${SALON.parking}`);
-      lines.push('', 'Googleマップ', `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SALON.address)}`);
+      ].filter((l) => l !== null);
+      if (has(SALON.parking)) lines.push('', SALON.parking);
+      lines.push('', 'Googleマップ',
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SALON.address)}`);
       return [text(lines.join('\n'))];
     }
   },
@@ -152,6 +156,20 @@ const RULES = [
     keys: ['電話', 'でんわ', 'tel'],
     requires: () => has(SALON.tel),
     build: () => [text(['お電話でのお問い合わせはこちらです。', '', SALON.tel].join('\n'))]
+  },
+
+  {
+    name: 'payment',
+    keys: ['支払', 'カード', 'クレジット', '現金', 'paypay', '決済'],
+    requires: () => has(SALON.payment),
+    build: () =>
+      [text([
+        'お支払い方法のご案内です。',
+        '',
+        SALON.payment,
+        '',
+        'ご不明な点は、このままメッセージでお尋ねください。'
+      ].join('\n'))]
   }
 ];
 

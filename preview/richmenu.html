@@ -236,7 +236,7 @@
 </p>
 
 <footer>
-  ビューティサロン ミエーレ ／ リッチメニュー設定手順<br>
+  トータル・ビューティー・サロン ミエーレ ／ リッチメニュー設定手順<br>
   画像ファイル：2500 × 1686 ピクセル。管理画面の上限（1MB）に収まっています。<br>
   トーク画面の文面は、動作中のプログラムから取り出したものです。
 </footer>
@@ -248,27 +248,26 @@
 /**
  * 店舗情報。応答メッセージの文面はすべてここを参照する。
  *
- * ★ TODO と書かれた項目は、実際の値に置き換えてください。
- *   置き換えるまでの間、その項目に関する質問には自動応答せず、
- *   スタッフのLINEチャットに回す動きになります（誤った案内を出さないため）。
+ * 値が null の項目は、その話題への自動応答が無効になる。
+ * 間違った案内を自動で返すより、スタッフがお答えするほうが確実なため。
  */
 
 const SALON = {
-  name: 'ビューティサロン ミエーレ',
-  address: '茨城県古河市本町3-19-1 Anesisビル',
+  name: 'トータル・ビューティー・サロン ミエーレ',
+  shortName: 'ミエーレ',
+
+  postal: '〒306-0023',
+  address: '茨城県古河市本町3丁目19-1 Anesisビル',
   access: 'JR古河駅から徒歩8分',
+  parking: '専用駐車場あり（店舗前にスタッフが駐車場までご案内します）',
 
-  // ★ TODO: 営業時間（例: '10:00〜20:00（最終受付 19:00）'）
-  hours: null,
+  hours: '9:00〜19:00',
+  closed: '年中無休',
+  tel: '090-3286-4994',
 
-  // ★ TODO: 定休日（例: '毎週火曜日'）
-  closed: null,
-
-  // ★ TODO: 電話番号
-  tel: null,
-
-  // ★ TODO: 駐車場の案内（例: '店舗裏に3台分ございます'）
-  parking: null,
+  reservation: '完全予約制',
+  reservationNote: 'お一人さま・ペアでのご来店も承ります',
+  payment: '現金 / Visa / Mastercard / JCB / American Express',
 
   bookingUrl: 'https://beauty.hotpepper.jp/kr/slnH000649391/',
   couponUrl: 'https://beauty.hotpepper.jp/kr/slnH000649391/coupon/',
@@ -278,7 +277,7 @@ const SALON = {
   diagnosisUrl: null
 };
 
-/** TODO のままの項目を使った案内は出さない */
+/** 未設定の項目を使った案内は出さない */
 const has = (value) => typeof value === 'string' && value.length > 0;
 
 /* ---------- src/menu.js ---------- */
@@ -539,12 +538,14 @@ const RULES = [
     build: () => {
       const lines = [
         'ご予約のご相談ありがとうございます。',
+        has(SALON.reservation) ? `${SALON.name}は${SALON.reservation}です。` : null,
         '',
         'ご希望のお日にちと時間帯を、このままメッセージでお知らせください。',
         'スタッフが空き状況を確認して、折り返しご連絡いたします。',
         '',
-        '「今週の土曜の午後」のようなおおまかなご希望でも大丈夫です。'
-      ];
+        '「今週の土曜の午後」のようなおおまかなご希望でも大丈夫です。',
+        has(SALON.reservationNote) ? SALON.reservationNote + '。' : null
+      ].filter((l) => l !== null);
       if (has(SALON.diagnosisUrl)) {
         lines.push('', 'メニューで迷われている場合は、こちらの診断もご利用ください。', SALON.diagnosisUrl);
       }
@@ -571,11 +572,13 @@ const RULES = [
       const lines = [
         `${SALON.name}へのアクセスです。`,
         '',
+        has(SALON.postal) ? SALON.postal : null,
         SALON.address,
         SALON.access
-      ];
-      if (has(SALON.parking)) lines.push('', `駐車場　${SALON.parking}`);
-      lines.push('', 'Googleマップ', `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SALON.address)}`);
+      ].filter((l) => l !== null);
+      if (has(SALON.parking)) lines.push('', SALON.parking);
+      lines.push('', 'Googleマップ',
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SALON.address)}`);
       return [text(lines.join('\n'))];
     }
   },
@@ -631,6 +634,20 @@ const RULES = [
     keys: ['電話', 'でんわ', 'tel'],
     requires: () => has(SALON.tel),
     build: () => [text(['お電話でのお問い合わせはこちらです。', '', SALON.tel].join('\n'))]
+  },
+
+  {
+    name: 'payment',
+    keys: ['支払', 'カード', 'クレジット', '現金', 'paypay', '決済'],
+    requires: () => has(SALON.payment),
+    build: () =>
+      [text([
+        'お支払い方法のご案内です。',
+        '',
+        SALON.payment,
+        '',
+        'ご不明な点は、このままメッセージでお尋ねください。'
+      ].join('\n'))]
   }
 ];
 
@@ -1739,7 +1756,7 @@ function drawStory(ctx, slots, opts = {}) {
   center(ctx, 'DM または プロフィールのリンクから', cx, y, `400 40px ${BODY}`, C.muted, 1);
 
   /* 下端の署名。安全領域の内側に置く */
-  center(ctx, 'ビューティサロン ミエーレ', cx, SAFE_BOTTOM - 20,
+  center(ctx, SALON.name, cx, SAFE_BOTTOM - 20,
          `400 34px ${BODY}`, C.muted, 4);
 }
 

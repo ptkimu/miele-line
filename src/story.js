@@ -9,6 +9,7 @@
  */
 
 import { formatDate } from './openslot.js';
+import { SALON } from './salon.js';
 
 export const STORY_W = 1080;
 export const STORY_H = 1920;
@@ -102,7 +103,7 @@ export function drawStory(ctx, slots, opts = {}) {
   center(ctx, 'DM または プロフィールのリンクから', cx, y, `400 40px ${BODY}`, C.muted, 1);
 
   /* 下端の署名。安全領域の内側に置く */
-  center(ctx, 'ビューティサロン ミエーレ', cx, SAFE_BOTTOM - 20,
+  center(ctx, SALON.name, cx, SAFE_BOTTOM - 20,
          `400 34px ${BODY}`, C.muted, 4);
 }
 

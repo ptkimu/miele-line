@@ -159,7 +159,7 @@
   </section>
 
   <footer>
-    ビューティサロン ミエーレ ／ リッチメニュー編集<br>
+    トータル・ビューティー・サロン ミエーレ ／ リッチメニュー編集<br>
     画像は 1MB 以内であればLINEの管理画面にそのままアップロードできます。
   </footer>
 </div>
@@ -177,10 +177,12 @@ let layout = LAYOUTS[0];
 
 /* 空欄になっている店舗情報。ここを埋めると応答が有効になる */
 const BLANKS = [
-  { key:'hours',   label:'営業時間',   ph:'10:00〜20:00（最終受付 19:00）' },
-  { key:'closed',  label:'定休日',     ph:'毎週火曜日' },
-  { key:'tel',     label:'電話番号',   ph:'0280-00-0000' },
-  { key:'parking', label:'駐車場',     ph:'店舗裏に3台分ございます' },
+  { key:'hours',   label:'営業時間',   ph:'9:00〜19:00' },
+  { key:'closed',  label:'定休日',     ph:'年中無休' },
+  { key:'tel',     label:'電話番号',   ph:'090-3286-4994' },
+  { key:'parking', label:'駐車場',     ph:'専用駐車場あり' },
+  { key:'payment', label:'お支払い方法', ph:'現金 / Visa / Mastercard / JCB / American Express' },
+  { key:'reservation', label:'ご予約', ph:'完全予約制' },
   { key:'diagnosisUrl', label:'コース診断のURL', ph:'https://liff.line.me/＜LIFF_ID＞' }
 ];
 
