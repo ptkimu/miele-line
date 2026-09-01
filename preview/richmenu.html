@@ -498,7 +498,21 @@ const button = (label, data, displayText) => ({
 const OPTIN_DONE = [
   '空き枠のお知らせを受け取る設定にしました。',
   '',
-  'ご予約のキャンセルなどでお席が空いたとき、こちらにお送りします。',
+  'ご希望に近いお席だけをお送りしたいので、よろしければ教えてください。',
+  '下のボタンからお選びいただけます。'
+].join('\n');
+
+/** 受け取り希望のあとに伺う内容。ここで選んでいただくと、送る枠を絞れます */
+const PREF_QUESTION = [
+  { label: 'セルフ脱毛', value: 'self' },
+  { label: 'セラピスト施術', value: 'room' },
+  { label: 'どちらも', value: 'both' }
+];
+
+const PREF_DONE = (labels) => [
+  `${labels}のお席が空いたときにお送りします。`,
+  '',
+  'ご予約のキャンセルなどでお席が空いたとき、こちらにご連絡します。',
   '止めたいときは「空き枠」とお送りください。'
 ].join('\n');
 
@@ -729,7 +743,25 @@ async function onPostback(env, event) {
 
   if (action === 'optin') {
     await grantTags(env, userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
-    return reply(env, event.replyToken, [text(OPTIN_DONE)]);
+    /* 続けて、どの部屋のお席を希望されるか伺う。
+       ここで選んでいただくと、関係のない枠を送らずに済む */
+    return reply(env, event.replyToken, [
+      withButtons(
+        text(OPTIN_DONE),
+        PREF_QUESTION.map((p) => button(p.label, 'action=pref&v=' + p.value, p.label))
+      )
+    ]);
+  }
+
+  if (action === 'pref') {
+    const value = new URLSearchParams(event.postback?.data ?? '').get('v');
+    const chosen = value === 'both' ? ['self', 'room'] : [value];
+    const tags = chosen.map((r) => ROOM_TAG[r]).filter(Boolean);
+    if (!tags.length) return;
+
+    await grantTags(env, userId, tags.map((name) => ({ kind: 'preference', name })));
+    const labels = PREF_QUESTION.find((p) => p.value === value)?.label ?? '';
+    return reply(env, event.replyToken, [text(PREF_DONE(labels))]);
   }
 
   if (action === 'optout') {
@@ -956,212 +988,6 @@ async function checkQuota(env, planned, override = null) {
   };
 }
 
-/* ---------- src/scenarios.js ---------- */
-/**
- * 来店後のご案内（ステップ配信）
- *
- * ミエーレは2〜3週間サイクル、かつ会計時に次回予約を取る運用のため、
- *   - 予約が取れた方には送らない（audience: 'unbooked'）
- *   - サイクルを過ぎる前の11日目に声をかける
- * という組み方にしています。
- *
- * 文面を変えたいときは、このファイルだけを直せば全体に反映されます。
- */
-
-const さん = (name) => (name ? `${name}さん` : 'お客様');
-
-const STEPS = [
-  {
-    id: 'after_care',
-    label: 'アフターケアのご案内',
-    offsetDays: 1,
-    audience: 'all', // 予約の有無にかかわらず全員
-    purpose: 'お礼と施術後の過ごし方。売り込みはしない',
-    build: (c) => [
-      [
-        `${さん(c.display_name)}、昨日はご来店ありがとうございました。`,
-        '',
-        '施術後2〜3日は、いつもより保湿を丁寧に、日中の紫外線対策をお願いします。',
-        'ご自宅でのケアで気になることがあれば、このままメッセージでご相談ください。'
-      ].join('\n')
-    ]
-  },
-
-  {
-    id: 'next_cycle',
-    label: '次回のご案内',
-    offsetDays: 11,
-    audience: 'unbooked', // 次回予約が入っていない方だけ
-    purpose: '2〜3週サイクルの手前で、予約を入れる余裕があるうちに声をかける',
-    build: (c) => [
-      [
-        `${さん(c.display_name)}、前回のご来店から2週間ほどが経ちました。`,
-        '',
-        '続けてお手入れいただくと変化を感じやすい時期です。',
-        'ご都合のよいお日にちがあれば、このままメッセージでお知らせください。お席をお取りします。'
-      ].join('\n')
-    ]
-  },
-
-  {
-    id: 'open_slot',
-    label: 'キャンセル枠のご案内',
-    offsetDays: 21,
-    audience: 'unbooked',
-    purpose: 'まだ予約が無い方へ。売り込みではなく、入りやすい枠の提示に切り替える',
-    build: (c) => [
-      [
-        `${さん(c.display_name)}、こんにちは。`,
-        '',
-        'お忙しい時期かと思います。直近で空きが出たお日にちは、LINEの方に先にご案内しています。',
-        '「空き」とメッセージをいただければ、今週のご案内をお送りします。'
-      ].join('\n')
-    ]
-  },
-
-  {
-    id: 'comeback',
-    label: 'ご無沙汰フォロー',
-    offsetDays: 60,
-    audience: 'unbooked',
-    purpose: '離れかけている方への復帰のきっかけ。ここだけ特典をつける',
-    build: (c) => [
-      [
-        `${さん(c.display_name)}、お久しぶりです。ミエーレです。`,
-        '',
-        '前回のご来店から2か月が経ちました。季節の変わり目でお肌の調子が変わりやすい時期です。',
-        '久しぶりのご来店の方に、次回ご利用いただける特典をご用意しています。',
-        'ご興味があれば「特典」とお送りください。'
-      ].join('\n')
-    ]
-  }
-];
-
-/** 何日前の来店が対象になるか（デモの説明用） */
-const stepById = (id) => STEPS.find((s) => s.id === id) ?? null;
-
-/** その日に送る対象となる来店日 */
-function targetVisitDate(today, offsetDays) {
-  const ms = Date.parse(today + 'T00:00:00Z') - offsetDays * 86400000;
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
-/* ---------- src/delivery.js ---------- */
-/**
- * 定時バッチ（毎朝10時）
- *
- * 「誰に何を送るか」を決めてから、必ず通数ガードを通し、
- * 予算内に収まる場合だけ送ります。
- *
- * dryRun: true で呼ぶと、1通も送らずに「送るはずだった内容」を返します。
- * デモと、本番投入前の確認に使います。
- */
-
-
-async function runDailyDelivery(env, options = {}) {
-  const today = options.today ?? todayJst();
-  const dryRun = options.dryRun ?? false;
-  const quotaOverride = options.quota ?? null;
-
-  // 1. 送る相手を集める
-  const plan = [];
-  for (const step of STEPS) {
-    const visitedOn = targetVisitDate(today, step.offsetDays);
-    const targets = await findTargets(env, step, visitedOn);
-    plan.push({ step, visitedOn, targets });
-  }
-
-  const planned = plan.reduce((n, p) => n + p.targets.length, 0);
-
-  // 2. 通数ガード。ここを通らなければ1通も送らない
-  const quota = await checkQuota(env, planned, quotaOverride);
-
-  const report = {
-    today,
-    dryRun,
-    quota,
-    planned,
-    sent: 0,
-    steps: plan.map((p) => ({
-      id: p.step.id,
-      label: p.step.label,
-      offsetDays: p.step.offsetDays,
-      audience: p.step.audience,
-      visitedOn: p.visitedOn,
-      count: p.targets.length,
-      // 実際に送られる文面。デモではこれをそのまま画面に出す
-      samples: p.targets.slice(0, 3).map((c) => ({
-        name: c.display_name,
-        body: p.step.build(c)[0]
-      }))
-    }))
-  };
-
-  if (!quota.allowed) {
-    report.stopped = quota.reason;
-    return report; // 送らずに終了。本番ではこのあとオーナーへ通知する
-  }
-  if (dryRun || planned === 0) return report;
-
-  // 3. 送信。先に記録を作ることで、再実行しても二重に届かない
-  for (const { step, visitedOn, targets } of plan) {
-    for (const c of targets) {
-      const dedupe = `${step.id}:${visitedOn}`;
-      const claimed = await env.DB.prepare(
-        `INSERT OR IGNORE INTO deliveries
-           (line_user_id, step_id, dedupe_key, status, messages, sent_at)
-         VALUES (?, ?, ?, 'sending', 1, ?)`
-      )
-        .bind(c.line_user_id, step.id, dedupe, nowIso())
-        .run();
-
-      if (claimed.meta.changes === 0) continue; // 他の実行が既に確保済み
-
-      const ok = await push(env, c.line_user_id, step.build(c).map(text));
-
-      await env.DB.prepare(
-        `UPDATE deliveries SET status = ?, sent_at = ?
-          WHERE line_user_id = ? AND dedupe_key = ?`
-      )
-        .bind(ok ? 'sent' : 'failed', nowIso(), c.line_user_id, dedupe)
-        .run();
-
-      if (ok) report.sent++;
-    }
-  }
-
-  return report;
-}
-
-/**
- * その日の対象者。
- *   - 指定日に来店している
- *   - unbooked のステップでは、次回予約が入っていない
- *   - まだ同じ案内を受け取っていない
- *   - ブロックしていない
- */
-async function findTargets(env, step, visitedOn) {
-  const dedupe = `${step.id}:${visitedOn}`;
-  const bookedCondition = step.audience === 'unbooked' ? 'AND v.next_booked = 0' : '';
-
-  const res = await env.DB.prepare(
-    `SELECT c.line_user_id, c.display_name
-       FROM visits v
-       JOIN customers c ON c.line_user_id = v.line_user_id
-      WHERE v.visited_on = ?
-        AND c.status = 'active'
-        ${bookedCondition}
-        AND NOT EXISTS (
-          SELECT 1 FROM deliveries d
-           WHERE d.line_user_id = c.line_user_id AND d.dedupe_key = ?
-        )`
-  )
-    .bind(visitedOn, dedupe)
-    .all();
-
-  return res.results ?? [];
-}
-
 /* ---------- src/segments.js ---------- */
 /**
  * 配信対象の絞り込み
@@ -1271,42 +1097,85 @@ const ROOMS = [
     id: 'self',
     label: 'セルフブース',
     note: '1室。セラピストの予定と関係なく空きます',
-    menus: ['セルフ脱毛 30分', 'セルフ脱毛 60分（全身OK）']
+    menus: [
+      { name: 'セルフ脱毛 30分', minutes: 30 },
+      { name: 'セルフ脱毛 60分（全身OK）', minutes: 60 }
+    ]
   },
   {
     id: 'room',
     label: '施術ルーム',
     note: 'セラピストの予定で決まります',
+    /* 掲載メニューの所要時間。枠の長さに入るものだけを候補に出す */
     menus: [
-      'セラピスト脱毛 60分（全身可）',
-      '韓国肌管理 ララピール',
-      'ミルキーフェイシャル 30分',
-      '脂肪冷却 45分'
+      { name: 'ヘッド & デコルテマッサージ 20分', minutes: 20 },
+      { name: '痛みが少ないLED脱毛 初回体験', minutes: 20 },
+      { name: 'ミルキーフェイシャル 30分', minutes: 30 },
+      { name: '【女性限定】VIO脱毛 30分', minutes: 30 },
+      { name: 'セラピスト脱毛 30分', minutes: 30 },
+      { name: '脂肪冷却 2カップ 二の腕', minutes: 30 },
+      { name: 'アロマトリートメント 40分', minutes: 40 },
+      { name: '脂肪冷却 2カップ お腹 or 太もも or お尻', minutes: 45 },
+      { name: 'お腹・太ももを集中ケア', minutes: 50 },
+      { name: 'プラズマシャワー', minutes: 60 },
+      { name: '韓国肌管理 ララピール', minutes: 60 },
+      { name: 'ダクトピール お試しお手軽コース', minutes: 60 },
+      { name: '韓国肌管理 ダクトピール（毛穴/美白/水光肌）', minutes: 60 },
+      { name: 'プラズマ × 光フェイシャル', minutes: 60 },
+      { name: '小顔輪郭形成 REDショット', minutes: 60 },
+      { name: 'セラピスト脱毛 60分（全身可）', minutes: 60 },
+      { name: 'アロマトリートメント 60分', minutes: 60 },
+      { name: 'ラジオ波 & 脂肪冷却 二の腕 or ふくらはぎ', minutes: 60 },
+      { name: 'ラジオ波 & 脂肪冷却 お腹 or 太もも', minutes: 75 },
+      { name: 'ダクトピール 90分 specialコース', minutes: 90 },
+      { name: 'セラピスト全身脱毛 90分', minutes: 90 },
+      { name: '結婚式向け 花嫁フェイシャル集中コース', minutes: 90 }
     ]
   }
 ];
 
-/** メニュー → そのメニューに関心のある方のタグ */
-const MENU_TAG = {
-  'セルフ脱毛 30分': '希望:セルフ脱毛',
-  'セルフ脱毛 60分（全身OK）': '希望:セルフ脱毛',
-  'セラピスト脱毛 60分（全身可）': '希望:セラピスト脱毛',
-  '韓国肌管理 ララピール': '希望:毛穴・シミ・くすみ',
-  'ミルキーフェイシャル 30分': '希望:毛穴・シミ・くすみ',
-  '脂肪冷却 45分': '希望:お腹・太ももの脂肪'
+/** 枠の長さに収まるメニューだけを返す */
+function menusWithin(roomId, minutes) {
+  const room = ROOMS.find((r) => r.id === roomId);
+  if (!room) return [];
+  return room.menus.filter((m) => !minutes || m.minutes <= minutes);
+}
+
+/** よく使う枠の長さ */
+const DURATIONS = [30, 45, 60, 90];
+
+/**
+ * 部屋 → その部屋を希望している方のタグ。
+ *
+ * 受け取りを申し込んだ直後に「どちらをご希望ですか」と伺い、
+ * その回答をこのタグとして持ちます。通数は消費しません。
+ */
+const ROOM_TAG = {
+  self: '希望:セルフ脱毛',
+  room: '希望:セラピスト施術'
 };
 
 const roomOfMenu = (menu) =>
-  ROOMS.find((r) => r.menus.includes(menu))?.id ?? 'room';
+  ROOMS.find((r) => r.menus.some((m) => m.name === menu))?.id ?? 'room';
+
+/**
+ * 1つの枠で受けられるメニュー。
+ * 60分の枠なら複数のメニューが入るので、配列で持ちます。
+ * 1つだけ指定された古い形（menu）もそのまま読めるようにしています。
+ */
+const slotMenus = (s) =>
+  Array.isArray(s?.menus) ? s.menus.filter(Boolean) : (s?.menu ? [s.menu] : []);
+
+const roomOfSlot = (s) => roomOfMenu(slotMenus(s)[0]);
 
 /**
  * 送る相手を絞るためのタグ。
- * 枠のメニューがすべて同じ関心に紐づくときだけ返します。
- * 種類が混ざっている場合は絞らず、空き枠を希望した方全員に送ります。
+ * 枠がすべて同じ部屋のときだけ返します。
+ * 部屋が混ざっている場合は絞らず、空き枠を希望した方全員に送ります。
  */
 function tagForSlots(slots) {
-  const tags = [...new Set((slots ?? []).map((s) => MENU_TAG[s.menu]).filter(Boolean))];
-  return tags.length === 1 ? tags[0] : null;
+  const rooms = [...new Set((slots ?? []).map(roomOfSlot))];
+  return rooms.length === 1 ? (ROOM_TAG[rooms[0]] ?? null) : null;
 }
 
 /**
@@ -1430,18 +1299,20 @@ function buildLineMessage(slots) {
   if (list.length === 1) {
     const s = list[0];
     const when = isToday(s.date) ? '本日' : formatDate(s.date);
+    const menus = slotMenus(s);
     return [
       `【${when}${s.time}〜、1枠空きました】`,
       '',
       'ミエーレです。',
       `${when}${s.time}〜のお席に空きが出ました。`,
       '',
-      `▼ ${formatDate(s.date)} ${s.time}〜`,
-      `　${s.menu}`,
-      s.minutes ? `　${s.minutes}分` : null,
+      `▼ ${formatDate(s.date)} ${s.time}〜${s.minutes ? '（' + s.minutes + '分）' : ''}`,
+      ...menus.map((m) => `　・${m}`),
+      menus.length > 1 ? '　いずれかをお選びいただけます' : null,
       '',
       'ご希望の方は、このメッセージに',
       `「${hourOf(s.time)}時希望」とご返信ください。`,
+      menus.length > 1 ? 'メニューはご来店時に決めていただいても大丈夫です。' : null,
       '',
       'ご返信の早い方からご案内します。',
       '先にお席が埋まった場合は',
@@ -1456,7 +1327,11 @@ function buildLineMessage(slots) {
     'ミエーレです。',
     '直近のお席をご案内します。',
     '',
-    ...byDate.flatMap(([date, ss]) => [formatDate(date), ...ss.map((s) => `　${s.time}〜　${s.menu}`), '']),
+    ...byDate.flatMap(([date, ss]) => [
+      formatDate(date),
+      ...ss.map((s) => `　${s.time}〜　${slotMenus(s).join('／')}`),
+      ''
+    ]),
     'ご希望の日時を、このメッセージに',
     'ご返信ください。',
     '',
@@ -1726,8 +1601,18 @@ function drawStory(ctx, slots, opts = {}) {
     y += 130;
     center(ctx, s.time, cx, y, `700 168px ${DISPLAY}`, C.ink, 2);
     y += 190;
-    center(ctx, s.menu, cx, y, `400 40px ${BODY}`, C.muted, 1);
-    y += 90;
+    /* メニューが複数なら、画像は先頭だけにして「ほか◯件」と添える。
+       ストーリーズは一瞬しか見られないので、詰め込まない */
+    const menus = slotMenus(s);
+    if (menus.length) {
+      center(ctx, menus[0], cx, y, `400 40px ${BODY}`, C.muted, 1);
+      y += 58;
+      if (menus.length > 1) {
+        center(ctx, `ほか ${menus.length - 1} メニューも可`, cx, y, `400 34px ${BODY}`, C.muted, 1);
+        y += 46;
+      }
+    }
+    y += 32;
   } else {
     /* 同じ日は1行にまとめる。「9月3日（木） 11:00 / 14:30」のように出す */
     const groups = groupDates(list);

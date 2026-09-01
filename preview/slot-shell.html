@@ -117,6 +117,12 @@
   label.chk small{display:block;color:var(--muted);font-size:11.5px;line-height:1.6}
   h4{font-family:var(--f-display);font-size:14px;margin:20px 0 8px}
 
+  /* 枠ごとのメニュー選択 */
+  .menupick{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px 12px}
+  .menupick label{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;
+                  padding:3px 0;cursor:pointer;line-height:1.5}
+  .menupick input{margin-top:4px;flex:0 0 auto}
+  .menupick small{color:var(--muted);margin-left:6px;font-size:11px}
   /* 曜日の設定 */
   .sched{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin:0 0 14px;
          background:var(--sunk)}
@@ -560,23 +566,28 @@ CELLS.forEach(cell => {
    スタッフの画面
    ================================================================== */
 
-const menusOf = (r) => ROOMS.find(x => x.id === r).menus;
+/* 枠の長さに収まるメニューを候補に出す。
+   既定はその長さちょうどのもの。短いメニューも入るので候補には残す */
+function pickMenus(r, minutes) {
+  const fit = menusWithin(r, minutes);
+  const exact = fit.filter(m => m.minutes === minutes);
+  return (exact.length ? exact : fit).slice(0, 3).map(m => m.name);
+}
 
 function todaySlots(r) {
-  const m = menusOf(r);
-  return r === 'self'
-    ? [{ date: TODAY, time:'19:00', menu:m[0], minutes:30 }]
-    : [{ date: TODAY, time:'17:00', menu:m[0], minutes:60 }];
+  const minutes = r === 'self' ? 30 : 60;
+  return [{
+    date: TODAY, time: r === 'self' ? '19:00' : '17:00',
+    minutes, menus: pickMenus(r, minutes)
+  }];
 }
 
 /** 定期のお知らせ。決まった曜日に、2〜3日後の空きをまとめて案内する */
 function schedSlots(r) {
-  const m = menusOf(r);
+  const minutes = r === 'self' ? 30 : 60;
   const times = r === 'self' ? ['19:00', '11:00'] : ['14:00', '11:00'];
   return scheduleDates(TODAY, DEFAULT_SCHEDULE.leadDays).map((date, i) => ({
-    date, time: times[i % times.length],
-    menu: m[Math.min(i, m.length - 1)],
-    minutes: r === 'self' ? 30 : 60
+    date, time: times[i % times.length], minutes, menus: pickMenus(r, minutes)
   }));
 }
 
@@ -678,23 +689,58 @@ async function refresh() {
       <div class="btnrow" style="margin-bottom:6px">
         <input type="date" value="${esc2(s.date)}" data-i="${i}" data-f="date" style="${fld}">
         <input type="time" value="${esc2(s.time)}" data-i="${i}" data-f="time" style="${fld}">
+        <select data-i="${i}" data-f="minutes" style="${fld}">
+          ${DURATIONS.map(d =>
+            `<option value="${d}"${Number(s.minutes) === d ? ' selected' : ''}>${d}分</option>`).join('')}
+        </select>
         <span style="flex:1"></span>
         ${slots.length > 1
           ? `<button class="btn btn--ghost" data-del="${i}" aria-label="この枠を消す"
                style="padding:8px 12px">消す</button>`
           : ''}
       </div>
-      <select data-i="${i}" data-f="menu" style="${fld};width:100%">
-        ${menusOf(room).map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
-      </select>
+      <p class="note" style="margin:2px 0 6px">
+        この時間にご案内できるメニューです。
+        <b style="color:var(--ink-soft)">機材の不調や材料切れのときは、チェックを外してください。</b>
+      </p>
+      <div class="menupick">
+        ${menusWithin(room, Number(s.minutes)).map(m => `
+          <label>
+            <input type="checkbox" data-i="${i}" data-menu="${esc2(m.name)}"
+                   ${slotMenus(s).includes(m.name) ? 'checked' : ''}>
+            <span>${esc2(m.name)}<small>${m.minutes}分</small></span>
+          </label>`).join('')}
+      </div>
+      ${slotMenus(s).length === 0
+        ? '<p class="note" style="color:var(--stop)">メニューが1つも選ばれていません。</p>' : ''}
     </div>`).join('') +
     `<div class="btnrow" style="margin-bottom:12px">
        <button class="btn btn--ghost" id="slotAdd">＋ 枠を追加</button>
        <span class="note" style="margin:0">${slots.length}枠</span>
      </div>`;
 
-  $('slotList').querySelectorAll('input,select').forEach(el =>
-    el.addEventListener('change', () => { slots[Number(el.dataset.i)][el.dataset.f] = el.value; refresh(); }));
+  $('slotList').querySelectorAll('input[type="date"],input[type="time"],select').forEach(el =>
+    el.addEventListener('change', () => {
+      const s = slots[Number(el.dataset.i)];
+      s[el.dataset.f] = el.dataset.f === 'minutes' ? Number(el.value) : el.value;
+      /* 長さを短くしたら、入らなくなったメニューは自動で外す */
+      if (el.dataset.f === 'minutes') {
+        const ok = menusWithin(room, s.minutes).map(m => m.name);
+        s.menus = slotMenus(s).filter(n => ok.includes(n));
+        if (!s.menus.length) s.menus = pickMenus(room, s.minutes);
+      }
+      refresh();
+    }));
+
+  $('slotList').querySelectorAll('input[data-menu]').forEach(el =>
+    el.addEventListener('change', () => {
+      const s = slots[Number(el.dataset.i)];
+      const name = el.dataset.menu;
+      const cur = new Set(slotMenus(s));
+      el.checked ? cur.add(name) : cur.delete(name);
+      s.menus = menusWithin(room, s.minutes).map(m => m.name).filter(n => cur.has(n));
+      refresh();
+    }));
 
   $('slotList').querySelectorAll('[data-del]').forEach(b =>
     b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); refresh(); }));
@@ -706,8 +752,8 @@ async function refresh() {
     slots.push({
       date: last.date,
       time: String(h).padStart(2, '0') + ':00',
-      menu: last.menu,
-      minutes: last.minutes
+      minutes: last.minutes,
+      menus: [...slotMenus(last)]
     });
     refresh();
   });

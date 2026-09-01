@@ -6,9 +6,10 @@
  * （来店の記録をスタッフ用ページで行っているのはこのためです）
  */
 
-import { reply, getProfile, text } from './line.js';
-import { matchReply, OPTIN_DONE, OPTOUT_DONE } from './replies.js';
+import { reply, getProfile, text, withButtons, button } from './line.js';
+import { matchReply, OPTIN_DONE, OPTOUT_DONE, PREF_QUESTION, PREF_DONE } from './replies.js';
 import { grantTags, revokeTag, OPEN_SLOT_TAG } from './tags.js';
+import { ROOM_TAG } from './openslot.js';
 
 export async function handleEvent(env, event) {
   // LINE はイベントを再送することがある。二度処理しないよう先に記録する
@@ -54,7 +55,25 @@ async function onPostback(env, event) {
 
   if (action === 'optin') {
     await grantTags(env, userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
-    return reply(env, event.replyToken, [text(OPTIN_DONE)]);
+    /* 続けて、どの部屋のお席を希望されるか伺う。
+       ここで選んでいただくと、関係のない枠を送らずに済む */
+    return reply(env, event.replyToken, [
+      withButtons(
+        text(OPTIN_DONE),
+        PREF_QUESTION.map((p) => button(p.label, 'action=pref&v=' + p.value, p.label))
+      )
+    ]);
+  }
+
+  if (action === 'pref') {
+    const value = new URLSearchParams(event.postback?.data ?? '').get('v');
+    const chosen = value === 'both' ? ['self', 'room'] : [value];
+    const tags = chosen.map((r) => ROOM_TAG[r]).filter(Boolean);
+    if (!tags.length) return;
+
+    await grantTags(env, userId, tags.map((name) => ({ kind: 'preference', name })));
+    const labels = PREF_QUESTION.find((p) => p.value === value)?.label ?? '';
+    return reply(env, event.replyToken, [text(PREF_DONE(labels))]);
   }
 
   if (action === 'optout') {

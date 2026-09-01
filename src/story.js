@@ -8,7 +8,7 @@
  * ここが抜けると、LINEに登録する理由が伝わりません。
  */
 
-import { formatDate } from './openslot.js';
+import { formatDate, slotMenus } from './openslot.js';
 import { SALON } from './salon.js';
 
 export const STORY_W = 1080;
@@ -73,8 +73,18 @@ export function drawStory(ctx, slots, opts = {}) {
     y += 130;
     center(ctx, s.time, cx, y, `700 168px ${DISPLAY}`, C.ink, 2);
     y += 190;
-    center(ctx, s.menu, cx, y, `400 40px ${BODY}`, C.muted, 1);
-    y += 90;
+    /* メニューが複数なら、画像は先頭だけにして「ほか◯件」と添える。
+       ストーリーズは一瞬しか見られないので、詰め込まない */
+    const menus = slotMenus(s);
+    if (menus.length) {
+      center(ctx, menus[0], cx, y, `400 40px ${BODY}`, C.muted, 1);
+      y += 58;
+      if (menus.length > 1) {
+        center(ctx, `ほか ${menus.length - 1} メニューも可`, cx, y, `400 34px ${BODY}`, C.muted, 1);
+        y += 46;
+      }
+    }
+    y += 32;
   } else {
     /* 同じ日は1行にまとめる。「9月3日（木） 11:00 / 14:30」のように出す */
     const groups = groupDates(list);

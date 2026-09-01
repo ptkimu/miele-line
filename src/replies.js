@@ -20,7 +20,21 @@ import { text, withButtons, button } from './line.js';
 export const OPTIN_DONE = [
   '空き枠のお知らせを受け取る設定にしました。',
   '',
-  'ご予約のキャンセルなどでお席が空いたとき、こちらにお送りします。',
+  'ご希望に近いお席だけをお送りしたいので、よろしければ教えてください。',
+  '下のボタンからお選びいただけます。'
+].join('\n');
+
+/** 受け取り希望のあとに伺う内容。ここで選んでいただくと、送る枠を絞れます */
+export const PREF_QUESTION = [
+  { label: 'セルフ脱毛', value: 'self' },
+  { label: 'セラピスト施術', value: 'room' },
+  { label: 'どちらも', value: 'both' }
+];
+
+export const PREF_DONE = (labels) => [
+  `${labels}のお席が空いたときにお送りします。`,
+  '',
+  'ご予約のキャンセルなどでお席が空いたとき、こちらにご連絡します。',
   '止めたいときは「空き枠」とお送りください。'
 ].join('\n');
 

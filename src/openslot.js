@@ -32,42 +32,85 @@ export const ROOMS = [
     id: 'self',
     label: 'セルフブース',
     note: '1室。セラピストの予定と関係なく空きます',
-    menus: ['セルフ脱毛 30分', 'セルフ脱毛 60分（全身OK）']
+    menus: [
+      { name: 'セルフ脱毛 30分', minutes: 30 },
+      { name: 'セルフ脱毛 60分（全身OK）', minutes: 60 }
+    ]
   },
   {
     id: 'room',
     label: '施術ルーム',
     note: 'セラピストの予定で決まります',
+    /* 掲載メニューの所要時間。枠の長さに入るものだけを候補に出す */
     menus: [
-      'セラピスト脱毛 60分（全身可）',
-      '韓国肌管理 ララピール',
-      'ミルキーフェイシャル 30分',
-      '脂肪冷却 45分'
+      { name: 'ヘッド & デコルテマッサージ 20分', minutes: 20 },
+      { name: '痛みが少ないLED脱毛 初回体験', minutes: 20 },
+      { name: 'ミルキーフェイシャル 30分', minutes: 30 },
+      { name: '【女性限定】VIO脱毛 30分', minutes: 30 },
+      { name: 'セラピスト脱毛 30分', minutes: 30 },
+      { name: '脂肪冷却 2カップ 二の腕', minutes: 30 },
+      { name: 'アロマトリートメント 40分', minutes: 40 },
+      { name: '脂肪冷却 2カップ お腹 or 太もも or お尻', minutes: 45 },
+      { name: 'お腹・太ももを集中ケア', minutes: 50 },
+      { name: 'プラズマシャワー', minutes: 60 },
+      { name: '韓国肌管理 ララピール', minutes: 60 },
+      { name: 'ダクトピール お試しお手軽コース', minutes: 60 },
+      { name: '韓国肌管理 ダクトピール（毛穴/美白/水光肌）', minutes: 60 },
+      { name: 'プラズマ × 光フェイシャル', minutes: 60 },
+      { name: '小顔輪郭形成 REDショット', minutes: 60 },
+      { name: 'セラピスト脱毛 60分（全身可）', minutes: 60 },
+      { name: 'アロマトリートメント 60分', minutes: 60 },
+      { name: 'ラジオ波 & 脂肪冷却 二の腕 or ふくらはぎ', minutes: 60 },
+      { name: 'ラジオ波 & 脂肪冷却 お腹 or 太もも', minutes: 75 },
+      { name: 'ダクトピール 90分 specialコース', minutes: 90 },
+      { name: 'セラピスト全身脱毛 90分', minutes: 90 },
+      { name: '結婚式向け 花嫁フェイシャル集中コース', minutes: 90 }
     ]
   }
 ];
 
-/** メニュー → そのメニューに関心のある方のタグ */
-const MENU_TAG = {
-  'セルフ脱毛 30分': '希望:セルフ脱毛',
-  'セルフ脱毛 60分（全身OK）': '希望:セルフ脱毛',
-  'セラピスト脱毛 60分（全身可）': '希望:セラピスト脱毛',
-  '韓国肌管理 ララピール': '希望:毛穴・シミ・くすみ',
-  'ミルキーフェイシャル 30分': '希望:毛穴・シミ・くすみ',
-  '脂肪冷却 45分': '希望:お腹・太ももの脂肪'
+/** 枠の長さに収まるメニューだけを返す */
+export function menusWithin(roomId, minutes) {
+  const room = ROOMS.find((r) => r.id === roomId);
+  if (!room) return [];
+  return room.menus.filter((m) => !minutes || m.minutes <= minutes);
+}
+
+/** よく使う枠の長さ */
+export const DURATIONS = [30, 45, 60, 90];
+
+/**
+ * 部屋 → その部屋を希望している方のタグ。
+ *
+ * 受け取りを申し込んだ直後に「どちらをご希望ですか」と伺い、
+ * その回答をこのタグとして持ちます。通数は消費しません。
+ */
+export const ROOM_TAG = {
+  self: '希望:セルフ脱毛',
+  room: '希望:セラピスト施術'
 };
 
 export const roomOfMenu = (menu) =>
-  ROOMS.find((r) => r.menus.includes(menu))?.id ?? 'room';
+  ROOMS.find((r) => r.menus.some((m) => m.name === menu))?.id ?? 'room';
+
+/**
+ * 1つの枠で受けられるメニュー。
+ * 60分の枠なら複数のメニューが入るので、配列で持ちます。
+ * 1つだけ指定された古い形（menu）もそのまま読めるようにしています。
+ */
+export const slotMenus = (s) =>
+  Array.isArray(s?.menus) ? s.menus.filter(Boolean) : (s?.menu ? [s.menu] : []);
+
+export const roomOfSlot = (s) => roomOfMenu(slotMenus(s)[0]);
 
 /**
  * 送る相手を絞るためのタグ。
- * 枠のメニューがすべて同じ関心に紐づくときだけ返します。
- * 種類が混ざっている場合は絞らず、空き枠を希望した方全員に送ります。
+ * 枠がすべて同じ部屋のときだけ返します。
+ * 部屋が混ざっている場合は絞らず、空き枠を希望した方全員に送ります。
  */
 export function tagForSlots(slots) {
-  const tags = [...new Set((slots ?? []).map((s) => MENU_TAG[s.menu]).filter(Boolean))];
-  return tags.length === 1 ? tags[0] : null;
+  const rooms = [...new Set((slots ?? []).map(roomOfSlot))];
+  return rooms.length === 1 ? (ROOM_TAG[rooms[0]] ?? null) : null;
 }
 
 /**
@@ -191,18 +234,20 @@ export function buildLineMessage(slots) {
   if (list.length === 1) {
     const s = list[0];
     const when = isToday(s.date) ? '本日' : formatDate(s.date);
+    const menus = slotMenus(s);
     return [
       `【${when}${s.time}〜、1枠空きました】`,
       '',
       'ミエーレです。',
       `${when}${s.time}〜のお席に空きが出ました。`,
       '',
-      `▼ ${formatDate(s.date)} ${s.time}〜`,
-      `　${s.menu}`,
-      s.minutes ? `　${s.minutes}分` : null,
+      `▼ ${formatDate(s.date)} ${s.time}〜${s.minutes ? '（' + s.minutes + '分）' : ''}`,
+      ...menus.map((m) => `　・${m}`),
+      menus.length > 1 ? '　いずれかをお選びいただけます' : null,
       '',
       'ご希望の方は、このメッセージに',
       `「${hourOf(s.time)}時希望」とご返信ください。`,
+      menus.length > 1 ? 'メニューはご来店時に決めていただいても大丈夫です。' : null,
       '',
       'ご返信の早い方からご案内します。',
       '先にお席が埋まった場合は',
@@ -217,7 +262,11 @@ export function buildLineMessage(slots) {
     'ミエーレです。',
     '直近のお席をご案内します。',
     '',
-    ...byDate.flatMap(([date, ss]) => [formatDate(date), ...ss.map((s) => `　${s.time}〜　${s.menu}`), '']),
+    ...byDate.flatMap(([date, ss]) => [
+      formatDate(date),
+      ...ss.map((s) => `　${s.time}〜　${slotMenus(s).join('／')}`),
+      ''
+    ]),
     'ご希望の日時を、このメッセージに',
     'ご返信ください。',
     '',

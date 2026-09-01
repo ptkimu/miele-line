@@ -10,7 +10,7 @@
 set -e
 cd "$(dirname "$0")"
 
-MODULES="src/salon.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/scenarios.js src/delivery.js src/segments.js src/openslot.js src/story.js src/richmenu.js src/admin.js"
+MODULES="src/salon.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/segments.js src/openslot.js src/story.js src/richmenu.js src/admin.js"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
@@ -28,17 +28,10 @@ if [ -n "$DUP" ]; then
   exit 1
 fi
 
-awk -v file="$TMP" '
-  /\/\*__MODULES__\*\// { while ((getline line < file) > 0) print line; next }
-  { print }
-' preview/shell.html > preview/index.html
-
 mkdir -p out
-cp preview/index.html out/index.html
-printf 'User-agent: *\nDisallow: /\n' > out/robots.txt
-
-echo "built: preview/index.html, out/index.html, out/robots.txt"
-
+printf 'User-agent: *
+Disallow: /
+' > out/robots.txt
 # 説明書（オーナー・スタッフ向け）。モジュールを埋め込む必要はないのでそのまま配置する
 cp preview/guide.html out/guide.html
 echo "built: out/guide.html"
@@ -81,7 +74,6 @@ check_dupes() {
   fi
 }
 
-check_dupes preview/index.html
 check_dupes preview/slot.html
 check_dupes preview/richmenu.html
 echo "checked: 名前の重複なし"
@@ -115,5 +107,7 @@ awk -v css="$TMP.css" -v sec="$TMP.sec" -v js="$TMP.js" -v mod="$TMP" '
 sed "s|/\*__RICHMENU_PNG__\*/|data:image/png;base64,${B64}|" "$TMP.all" > preview/all.html
 rm -f "$TMP.css" "$TMP.sec" "$TMP.js" "$TMP.all"
 cp preview/all.html out/all.html
+cp preview/all.html out/index.html
+cp preview/all.html out/index.html
 check_dupes preview/all.html
 echo "built: out/all.html"
