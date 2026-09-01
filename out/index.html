@@ -207,6 +207,7 @@
     <button class="tab" role="tab" data-p="3" aria-selected="false"><span class="n">03</span>来店後のご案内</button>
     <button class="tab" role="tab" data-p="4" aria-selected="false"><span class="n">04</span>絞り込んで送る</button>
     <button class="tab" role="tab" data-p="5" aria-selected="false"><span class="n">05</span>何を送るか決める</button>
+    <button class="tab" role="tab" data-p="6" aria-selected="false"><span class="n">06</span>空き枠を出す</button>
   </div>
 
   <!-- ============ 01 ============ -->
@@ -376,6 +377,46 @@ LINEの方に先にご案内しています。ご希望の方はこのままお�
         <div id="csvOut" style="margin-top:14px"></div>
       </div>
     </section>
+  </div>
+
+  <!-- ============ 06 ============ -->
+  <div class="panelwrap" data-panel="6" hidden>
+    <p class="phaseline">
+      <b>空いた枠を、30秒で流すための画面です。</b>
+      日時とメニューを選ぶと、LINEに送る文面とInstagramに載せる文面が両方できます。
+      <b>Instagramには「LINEの方には先にお知らせ済み」と伝えるだけで、枠そのものはLINEに出します。</b>
+      Instagramに枠を出すと、LINEに登録する理由が消えてしまうためです。
+    </p>
+    <div class="cols">
+      <section class="panel">
+        <h2>空き枠を登録する <span class="badge badge--cost">通数を使う</span></h2>
+        <div class="pad">
+          <div class="btnrow" style="margin-bottom:14px">
+            <button class="btn btn--ghost" id="slotToday">本日の急なキャンセル</button>
+            <button class="btn btn--ghost" id="slotWeek">今週末をまとめて</button>
+          </div>
+          <div id="slotList"></div>
+
+          <h4 style="font-family:var(--f-display);font-size:14px;margin:22px 0 4px">
+            この枠をキャンセルされた方</h4>
+          <p class="note" style="padding:0 0 6px">
+            対象から外します。ご本人に案内が届くと「自分のせいで穴埋めしている」と
+            感じさせてしまうためです。
+          </p>
+          <div id="slotExclude"></div>
+
+          <label class="chk" style="margin-top:10px">
+            <input type="checkbox" id="slotRecent" checked>
+            <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>送る前の確認 <span class="badge badge--cost">通数を使う</span></h2>
+        <div class="pad" id="slotOut"></div>
+      </section>
+    </div>
   </div>
 
   <footer>
@@ -558,15 +599,20 @@ const RULES = [
   {
     name: 'booking',
     keys: ['予約', 'よやく', '空き', 'あき', '空いて', 'キャンセル'],
+    /* LINEで完結させます。ホットペッパーへは誘導しません。
+       LINEで予約が取れること自体が、LINEに登録する価値になるためです。 */
     build: () => {
       const lines = [
         'ご予約のご相談ありがとうございます。',
         '',
-        'ネット予約はこちらから承っております。',
-        SALON.bookingUrl,
+        'ご希望のお日にちと時間帯を、このままメッセージでお知らせください。',
+        'スタッフが空き状況を確認して、折り返しご連絡いたします。',
         '',
-        'お日にちのご相談や、メニューで迷われている場合は、このままメッセージをお送りください。スタッフが確認してお返事いたします。'
+        '「今週の土曜の午後」のようなおおまかなご希望でも大丈夫です。'
       ];
+      if (has(SALON.diagnosisUrl)) {
+        lines.push('', 'メニューで迷われている場合は、こちらの診断もご利用ください。', SALON.diagnosisUrl);
+      }
       return [text(lines.join('\n'))];
     }
   },
@@ -610,12 +656,15 @@ const RULES = [
     name: 'menu',
     keys: ['メニュー', '料金', '値段', 'いくら', '価格', 'コース'],
     build: () => {
+      /* 料金表として掲載ページを案内するが、ご予約はLINEで受ける */
       const lines = [
         'メニューと料金はこちらからご覧いただけます。',
         '',
         SALON.couponUrl,
         '',
-        '掲載価格はすべて税込・新規（初回）価格です。'
+        '掲載価格はすべて税込・新規（初回）価格です。',
+        '',
+        'ご予約は、このままメッセージでご希望のお日にちをお知らせいただければ承ります。'
       ];
       if (has(SALON.diagnosisUrl)) {
         lines.push(
@@ -1271,6 +1320,247 @@ const PRESETS = [
   }
 ];
 
+/* ---------- src/openslot.js ---------- */
+/**
+ * 空き枠・キャンセル枠のお知らせ
+ *
+ * 「LINEだけが先に知る」を、続けられる形にするための道具です。
+ * 空きが出るたびに文面を考えていては続かないので、
+ * 日時とメニューを選べば、LINEとInstagramの文面が両方出るようにしています。
+ *
+ * 役割を分けています：
+ *   LINE       枠そのものを、受け取りを希望した方だけに出す
+ *   Instagram  「LINEの方には先にお知らせ済み」と伝えるだけ（枠は出さない）
+ *
+ * Instagramに枠を出してしまうと、LINEに登録する理由が消えます。
+ *
+ * 予約はすべて LINE への返信で受けます。ホットペッパーへは誘導しません。
+ * LINEで完結させることが、そのままLINEに登録する価値になるためです。
+ */
+
+
+/** 受け取りを希望した方に付けるタグ */
+const OPEN_SLOT_TAG = '希望:キャンセル枠';
+
+/**
+ * 1週間に出す上限。
+ * 毎日のように「キャンセルが出ました」と送っていると、
+ * 「人気がない店」という印象になり逆効果になるため。
+ */
+const MAX_PER_WEEK = 2;
+
+/** Instagram に告知するまでに空ける時間（LINEが先である事実をつくる） */
+const INSTAGRAM_DELAY_MIN = 30;
+
+/* ------------------------------------------------------------------ *
+ * 文面
+ * ------------------------------------------------------------------ */
+
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+
+function formatDate(ymd) {
+  const d = new Date(Date.parse(ymd + 'T00:00:00Z'));
+  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${WD[d.getUTCDay()]}）`;
+}
+
+const isToday = (ymd) => ymd === todayJst();
+const hourOf = (time) => String(time ?? '').split(':')[0];
+
+/**
+ * LINE に送る文面。
+ * 1枠だけなら急ぎの案内、複数枠ならまとめての案内に切り替わります。
+ */
+function buildLineMessage(slots) {
+  const list = [...(slots ?? [])].sort(sortSlot);
+  if (!list.length) return '';
+
+  if (list.length === 1) {
+    const s = list[0];
+    const when = isToday(s.date) ? '本日' : formatDate(s.date);
+    return [
+      `【${when}${s.time}〜、1枠空きました】`,
+      '',
+      'ミエーレです。',
+      `${when}${s.time}〜のお席に空きが出ました。`,
+      '',
+      `▼ ${formatDate(s.date)} ${s.time}〜`,
+      `　${s.menu}`,
+      s.minutes ? `　${s.minutes}分` : null,
+      '',
+      'ご希望の方は、このメッセージに',
+      `「${hourOf(s.time)}時希望」とご返信ください。`,
+      '',
+      'ご返信の早い方からご案内します。',
+      '先にお席が埋まった場合は',
+      'その旨お伝えします。'
+    ].filter((l) => l !== null).join('\n');
+  }
+
+  const byDate = groupByDate(list);
+  return [
+    '【空き状況のご案内】',
+    '',
+    'ミエーレです。',
+    '直近のお席をご案内します。',
+    '',
+    ...byDate.flatMap(([date, ss]) => [formatDate(date), ...ss.map((s) => `　${s.time}〜　${s.menu}`), '']),
+    'ご希望の日時を、このメッセージに',
+    'ご返信ください。',
+    '',
+    'ご返信の早い方からご案内します。'
+  ].join('\n');
+}
+
+/**
+ * Instagram ストーリーズ用。
+ * 枠は出しますが「LINEには先に案内済み」を必ず添えます。
+ * DMでのご予約は受ける方針です（埋まらない枠を埋めるのが本来の目的のため）。
+ */
+function buildInstagramText(slots) {
+  const list = [...(slots ?? [])].sort(sortSlot);
+  if (!list.length) return '';
+
+  const head =
+    list.length === 1 && isToday(list[0].date)
+      ? [`本日${list[0].time}に空きが出ました`]
+      : groupByDate(list).map(([date, ss]) => `${formatDate(date)}　${ss.map((s) => s.time).join(' / ')}`);
+
+  return [
+    list.length === 1 ? 'CANCEL INFO' : 'OPEN SLOTS',
+    '',
+    ...head,
+    '',
+    'LINEの方には',
+    `${INSTAGRAM_DELAY_MIN}分前にお知らせ済みです`,
+    '',
+    'まだ空いていればご案内できます',
+    'DMまたはプロフィールのリンクから'
+  ].join('\n');
+}
+
+function sortSlot(a, b) {
+  return String(a.date + a.time).localeCompare(String(b.date + b.time));
+}
+
+function groupByDate(list) {
+  const m = new Map();
+  list.forEach((s) => m.set(s.date, [...(m.get(s.date) ?? []), s]));
+  return [...m.entries()];
+}
+
+/* ------------------------------------------------------------------ *
+ * 配信
+ * ------------------------------------------------------------------ */
+
+/** 直近7日間に空き枠のお知らせを何回出したか */
+async function recentSendCount(env, today = todayJst()) {
+  const since = new Date(Date.parse(today + 'T00:00:00Z') - 7 * 86400000).toISOString();
+  const row = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ?"
+  )
+    .bind(since)
+    .first();
+  return row?.n ?? 0;
+}
+
+/**
+ * 送る前の確認。
+ * 対象者・通数・文面・注意点をまとめて返します。
+ *
+ * @param {object[]} slots 空き枠
+ * @param {object}   opts
+ * @param {string[]} opts.excludeUserIds その日にキャンセルされた方など、外したい相手
+ * @param {boolean}  opts.excludeRecent  直近7日に配信を受け取った方を外すか
+ */
+async function previewOpenSlot(env, slots, opts = {}) {
+  const today = opts.today ?? todayJst();
+  const exclude = new Set(opts.excludeUserIds ?? []);
+
+  const spec = { tags: [OPEN_SLOT_TAG] };
+  if (opts.excludeRecent) spec.excludeRecentDays = RECENT_DAYS;
+
+  const all = await listSegment(env, spec, today);
+  const targets = all.filter((c) => !exclude.has(c.line_user_id));
+
+  const quota = await checkQuota(env, targets.length, opts.quota ?? null);
+  const weekCount = await recentSendCount(env, today);
+
+  const notes = [];
+  if (exclude.size) {
+    notes.push({
+      kind: 'excluded',
+      text: `${exclude.size}名を対象から外しました。キャンセルされたご本人に案内が届くと、` +
+            `「自分のせいで穴埋めしている」と感じさせてしまうためです。`
+    });
+  }
+  if (weekCount >= MAX_PER_WEEK) {
+    notes.push({
+      kind: 'too-often',
+      text: `直近7日間ですでに${weekCount}回お送りしています。` +
+            `続けすぎると「いつも空いている店」という印象になり、逆効果になります。`
+    });
+  }
+  if (!targets.length) {
+    notes.push({
+      kind: 'empty',
+      text: `お知らせを希望された方がいません。あいさつメッセージで` +
+            `「キャンセル枠のお知らせを受け取りますか」をご案内すると増えていきます。`
+    });
+  }
+
+  return {
+    today,
+    slots,
+    targets,
+    planned: targets.length,
+    quota,
+    weekCount,
+    maxPerWeek: MAX_PER_WEEK,
+    tooOften: weekCount >= MAX_PER_WEEK,
+    notes,
+    lineText: buildLineMessage(slots),
+    instagramText: buildInstagramText(slots)
+  };
+}
+
+/** 実際に送る */
+async function sendOpenSlot(env, slots, opts = {}) {
+  const preview = await previewOpenSlot(env, slots, opts);
+  if (!preview.quota.allowed) return { ...preview, sent: 0, stopped: preview.quota.reason };
+  if (opts.dryRun) return { ...preview, sent: 0, dryRun: true };
+
+  const at = nowIso();
+  const key = 'slot:' + at.slice(0, 19);
+  let sent = 0;
+
+  for (const c of preview.targets) {
+    const claimed = await env.DB.prepare(
+      `INSERT OR IGNORE INTO deliveries
+         (line_user_id, step_id, dedupe_key, status, messages, sent_at)
+       VALUES (?, 'open_slot', ?, 'sending', 1, ?)`
+    )
+      .bind(c.line_user_id, key, at)
+      .run();
+    if (claimed.meta.changes === 0) continue;
+
+    const ok = await push(env, c.line_user_id, [text(preview.lineText)]);
+    await env.DB.prepare(
+      "UPDATE deliveries SET status = ?, sent_at = ? WHERE line_user_id = ? AND dedupe_key = ?"
+    )
+      .bind(ok ? 'sent' : 'failed', nowIso(), c.line_user_id, key)
+      .run();
+    if (ok) sent++;
+  }
+
+  await env.DB.prepare(
+    'INSERT INTO open_slots (kind, slots, sent_count, created_at) VALUES (?, ?, ?, ?)'
+  )
+    .bind(slots.length === 1 ? 'single' : 'multi', JSON.stringify(slots), sent, at)
+    .run();
+
+  return { ...preview, sent, campaignId: key };
+}
+
 /* ---------- src/insights.js ---------- */
 /**
  * 売上から「次に何を送るか」を決める
@@ -1868,6 +2158,7 @@ function seed() {
     ],
     tags: [],
     customerTags: [],
+    openSlots: [],
     // 先週すでにキャンペーンを受け取った方がいる、という状態にしておく
     deliveries: [
       { line_user_id:'U01', dedupe_key:'campaign:先週', status:'sent', sent_at:shift(REAL_TODAY,-2) + 'T01:00:00.000Z' },
@@ -1921,6 +2212,16 @@ function run(sql, args) {
       today_visits: state.visits.filter(v => v.visited_on === todayJst()).length
     }, rows: [] };
   }
+  /* --- 空き枠のお知らせ履歴 --- */
+  if (sql.includes('INSERT INTO open_slots')) {
+    state.openSlots.push({ created_at: args[3] });
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('FROM open_slots')) {
+    const since = args[0];
+    return { first: { n: state.openSlots.filter(s => s.created_at >= since).length }, rows: [] };
+  }
+
   /* --- 売上（カテゴリ×月に集計済みのものを返す） --- */
   if (sql.includes('FROM sales')) {
     return { first:null, rows: salesRows };
@@ -2084,6 +2385,7 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   if (tab.dataset.p === '3') renderDelivery();
   if (tab.dataset.p === '4') renderSegment();
   if (tab.dataset.p === '5') renderInsights();
+  if (tab.dataset.p === '6') renderSlot();
 });
 
 /* ==================================================================
@@ -2513,6 +2815,123 @@ async function renderInsights() {
 }
 
 /* ==================================================================
+   06 空き枠を出す
+   ================================================================== */
+
+const MENUS = ['セラピスト脱毛 60分', '韓国肌管理 ララピール', 'ミルキーフェイシャル 30分', '脂肪冷却 45分'];
+
+const todaySlots = () => [{ date: REAL_TODAY, time: '17:00', menu: MENUS[0], minutes: 60 }];
+
+function weekendSlots() {
+  const dow = new Date(Date.parse(REAL_TODAY + 'T00:00:00Z')).getUTCDay();
+  const toSat = ((6 - dow + 7) % 7) || 7;
+  const sat = shift(REAL_TODAY, toSat), sun = shift(REAL_TODAY, toSat + 1);
+  return [
+    { date: sat, time: '11:00', menu: MENUS[1], minutes: 60 },
+    { date: sat, time: '14:30', menu: MENUS[0], minutes: 60 },
+    { date: sun, time: '13:00', menu: MENUS[2], minutes: 30 }
+  ];
+}
+
+let slots = todaySlots();
+const excluded = new Set();
+
+$('slotToday').addEventListener('click', () => { slots = todaySlots(); renderSlot(); });
+$('slotWeek').addEventListener('click', () => { slots = weekendSlots(); renderSlot(); });
+$('slotRecent').addEventListener('change', renderSlot);
+
+async function renderSlot() {
+  /* --- 枠の一覧（時刻とメニューはその場で変えられる） --- */
+  $('slotList').innerHTML = slots.map((s, i) => `
+    <div class="step" style="padding:12px 14px;margin-bottom:8px">
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">${esc2(formatDate(s.date))}</div>
+      <div class="btnrow">
+        <input type="time" value="${esc2(s.time)}" data-i="${i}" data-f="time"
+               style="padding:9px 11px;border:1px solid var(--rule);border-radius:9px;
+                      font:inherit;font-size:14px;background:var(--ground);color:var(--ink)">
+        <select data-i="${i}" data-f="menu"
+                style="flex:1;min-width:0;padding:9px 11px;border:1px solid var(--rule);
+                       border-radius:9px;font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)">
+          ${MENUS.map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
+        </select>
+        ${slots.length > 1 ? `<button class="btn btn--ghost" data-del="${i}" aria-label="この枠を削除">✕</button>` : ''}
+      </div>
+    </div>`).join('');
+
+  $('slotList').querySelectorAll('input,select').forEach(el =>
+    el.addEventListener('change', () => {
+      slots[Number(el.dataset.i)][el.dataset.f] = el.value;
+      renderSlot();
+    }));
+  $('slotList').querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); renderSlot(); }));
+
+  /* --- 除外する方（この枠をキャンセルされた方） --- */
+  const holders = await listSegment(env, { tags: [OPEN_SLOT_TAG] }, REAL_TODAY);
+  $('slotExclude').innerHTML = holders.length
+    ? holders.map(c => `<label class="chk" style="padding:4px 0">
+         <input type="checkbox" value="${esc2(c.line_user_id)}"${excluded.has(c.line_user_id) ? ' checked' : ''}>
+         <span>${esc2(c.display_name)}</span></label>`).join('')
+    : '<p class="empty">お知らせを希望された方がまだいません。</p>';
+
+  $('slotExclude').querySelectorAll('input').forEach(el =>
+    el.addEventListener('change', () => {
+      el.checked ? excluded.add(el.value) : excluded.delete(el.value);
+      renderSlot();
+    }));
+
+  /* --- 送る前の確認 --- */
+  const p = await previewOpenSlot(env, slots, {
+    today: REAL_TODAY,
+    quota: state.quota,
+    excludeUserIds: [...excluded],
+    excludeRecent: $('slotRecent').checked
+  });
+
+  const verdict = p.planned === 0
+    ? '<div class="verdict verdict--stop"><b>送る相手がいません。</b></div>'
+    : p.quota.allowed
+      ? `<div class="verdict verdict--go"><b>${nf(p.planned)}名に届きます。${nf(p.planned)}通を使います。</b></div>`
+      : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(p.quota.reason ?? '')}</div>`;
+
+  const notes = p.notes.map(n =>
+    `<div class="verdict ${n.kind === 'excluded' ? 'verdict--go' : 'verdict--stop'}"
+          style="margin-top:8px">${esc2(n.text)}</div>`).join('');
+
+  $('slotOut').innerHTML =
+    meter({ ...p.quota, planned: p.planned }) + verdict + notes +
+    `<p class="note" style="padding:16px 0 6px">
+       直近7日間の配信回数　<b class="num">${p.weekCount}</b> / ${p.maxPerWeek} 回まで</p>` +
+
+    '<h4 style="font-family:var(--f-display);font-size:14px;margin:18px 0 8px">LINE に届く文面</h4>' +
+    `<div class="phone" style="height:auto;margin-top:0;padding:14px">
+       <div class="row bot"><div class="bub">${esc2(p.lineText)}</div></div>
+     </div>` +
+
+    '<h4 style="font-family:var(--f-display);font-size:14px;margin:20px 0 8px">Instagram ストーリーズに載せる文面</h4>' +
+    `<div class="msg" style="margin-top:0">${esc2(p.instagramText)}</div>` +
+    `<p class="note" style="padding:8px 0 0">
+       LINEに送ってから ${INSTAGRAM_DELAY_MIN} 分ほど空けて投稿します。
+       「LINEの方が先に知れた」という事実をつくるためです。</p>` +
+
+    `<div class="btnrow" style="margin-top:18px">
+       <button class="btn" id="slotSend" ${p.quota.allowed && p.planned ? '' : 'disabled'}>この内容で送る</button>
+     </div>
+     <p class="note" style="padding:8px 0 0">デモなので、押しても実際には送信されません。</p>`;
+
+  const btn = $('slotSend');
+  if (btn) btn.addEventListener('click', async () => {
+    await sendOpenSlot(env, slots, {
+      today: REAL_TODAY, quota: state.quota,
+      excludeUserIds: [...excluded], excludeRecent: $('slotRecent').checked, dryRun: true
+    });
+    // 履歴だけ残して、出しすぎの警告が動くところまで見せる
+    state.openSlots.push({ created_at: new Date().toISOString() });
+    renderSlot();
+  });
+}
+
+/* ==================================================================
    起動
    ================================================================== */
 
@@ -2521,4 +2940,5 @@ renderTags();
 renderDelivery();
 renderSegment();
 renderInsights();
+renderSlot();
 </script>

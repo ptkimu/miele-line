@@ -207,6 +207,7 @@
     <button class="tab" role="tab" data-p="3" aria-selected="false"><span class="n">03</span>来店後のご案内</button>
     <button class="tab" role="tab" data-p="4" aria-selected="false"><span class="n">04</span>絞り込んで送る</button>
     <button class="tab" role="tab" data-p="5" aria-selected="false"><span class="n">05</span>何を送るか決める</button>
+    <button class="tab" role="tab" data-p="6" aria-selected="false"><span class="n">06</span>空き枠を出す</button>
   </div>
 
   <!-- ============ 01 ============ -->
@@ -378,6 +379,46 @@ LINEの方に先にご案内しています。ご希望の方はこのままお�
     </section>
   </div>
 
+  <!-- ============ 06 ============ -->
+  <div class="panelwrap" data-panel="6" hidden>
+    <p class="phaseline">
+      <b>空いた枠を、30秒で流すための画面です。</b>
+      日時とメニューを選ぶと、LINEに送る文面とInstagramに載せる文面が両方できます。
+      <b>Instagramには「LINEの方には先にお知らせ済み」と伝えるだけで、枠そのものはLINEに出します。</b>
+      Instagramに枠を出すと、LINEに登録する理由が消えてしまうためです。
+    </p>
+    <div class="cols">
+      <section class="panel">
+        <h2>空き枠を登録する <span class="badge badge--cost">通数を使う</span></h2>
+        <div class="pad">
+          <div class="btnrow" style="margin-bottom:14px">
+            <button class="btn btn--ghost" id="slotToday">本日の急なキャンセル</button>
+            <button class="btn btn--ghost" id="slotWeek">今週末をまとめて</button>
+          </div>
+          <div id="slotList"></div>
+
+          <h4 style="font-family:var(--f-display);font-size:14px;margin:22px 0 4px">
+            この枠をキャンセルされた方</h4>
+          <p class="note" style="padding:0 0 6px">
+            対象から外します。ご本人に案内が届くと「自分のせいで穴埋めしている」と
+            感じさせてしまうためです。
+          </p>
+          <div id="slotExclude"></div>
+
+          <label class="chk" style="margin-top:10px">
+            <input type="checkbox" id="slotRecent" checked>
+            <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>送る前の確認 <span class="badge badge--cost">通数を使う</span></h2>
+        <div class="pad" id="slotOut"></div>
+      </section>
+    </div>
+  </div>
+
   <footer>
     ビューティサロン ミエーレ ／ LINE公式アカウント連携<br>
     このデモは実際のプログラムをそのまま動かしています。データベースだけサンプルに差し替えてあります。
@@ -420,6 +461,7 @@ function seed() {
     ],
     tags: [],
     customerTags: [],
+    openSlots: [],
     // 先週すでにキャンペーンを受け取った方がいる、という状態にしておく
     deliveries: [
       { line_user_id:'U01', dedupe_key:'campaign:先週', status:'sent', sent_at:shift(REAL_TODAY,-2) + 'T01:00:00.000Z' },
@@ -473,6 +515,16 @@ function run(sql, args) {
       today_visits: state.visits.filter(v => v.visited_on === todayJst()).length
     }, rows: [] };
   }
+  /* --- 空き枠のお知らせ履歴 --- */
+  if (sql.includes('INSERT INTO open_slots')) {
+    state.openSlots.push({ created_at: args[3] });
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('FROM open_slots')) {
+    const since = args[0];
+    return { first: { n: state.openSlots.filter(s => s.created_at >= since).length }, rows: [] };
+  }
+
   /* --- 売上（カテゴリ×月に集計済みのものを返す） --- */
   if (sql.includes('FROM sales')) {
     return { first:null, rows: salesRows };
@@ -636,6 +688,7 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   if (tab.dataset.p === '3') renderDelivery();
   if (tab.dataset.p === '4') renderSegment();
   if (tab.dataset.p === '5') renderInsights();
+  if (tab.dataset.p === '6') renderSlot();
 });
 
 /* ==================================================================
@@ -1065,6 +1118,123 @@ async function renderInsights() {
 }
 
 /* ==================================================================
+   06 空き枠を出す
+   ================================================================== */
+
+const MENUS = ['セラピスト脱毛 60分', '韓国肌管理 ララピール', 'ミルキーフェイシャル 30分', '脂肪冷却 45分'];
+
+const todaySlots = () => [{ date: REAL_TODAY, time: '17:00', menu: MENUS[0], minutes: 60 }];
+
+function weekendSlots() {
+  const dow = new Date(Date.parse(REAL_TODAY + 'T00:00:00Z')).getUTCDay();
+  const toSat = ((6 - dow + 7) % 7) || 7;
+  const sat = shift(REAL_TODAY, toSat), sun = shift(REAL_TODAY, toSat + 1);
+  return [
+    { date: sat, time: '11:00', menu: MENUS[1], minutes: 60 },
+    { date: sat, time: '14:30', menu: MENUS[0], minutes: 60 },
+    { date: sun, time: '13:00', menu: MENUS[2], minutes: 30 }
+  ];
+}
+
+let slots = todaySlots();
+const excluded = new Set();
+
+$('slotToday').addEventListener('click', () => { slots = todaySlots(); renderSlot(); });
+$('slotWeek').addEventListener('click', () => { slots = weekendSlots(); renderSlot(); });
+$('slotRecent').addEventListener('change', renderSlot);
+
+async function renderSlot() {
+  /* --- 枠の一覧（時刻とメニューはその場で変えられる） --- */
+  $('slotList').innerHTML = slots.map((s, i) => `
+    <div class="step" style="padding:12px 14px;margin-bottom:8px">
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">${esc2(formatDate(s.date))}</div>
+      <div class="btnrow">
+        <input type="time" value="${esc2(s.time)}" data-i="${i}" data-f="time"
+               style="padding:9px 11px;border:1px solid var(--rule);border-radius:9px;
+                      font:inherit;font-size:14px;background:var(--ground);color:var(--ink)">
+        <select data-i="${i}" data-f="menu"
+                style="flex:1;min-width:0;padding:9px 11px;border:1px solid var(--rule);
+                       border-radius:9px;font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)">
+          ${MENUS.map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
+        </select>
+        ${slots.length > 1 ? `<button class="btn btn--ghost" data-del="${i}" aria-label="この枠を削除">✕</button>` : ''}
+      </div>
+    </div>`).join('');
+
+  $('slotList').querySelectorAll('input,select').forEach(el =>
+    el.addEventListener('change', () => {
+      slots[Number(el.dataset.i)][el.dataset.f] = el.value;
+      renderSlot();
+    }));
+  $('slotList').querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); renderSlot(); }));
+
+  /* --- 除外する方（この枠をキャンセルされた方） --- */
+  const holders = await listSegment(env, { tags: [OPEN_SLOT_TAG] }, REAL_TODAY);
+  $('slotExclude').innerHTML = holders.length
+    ? holders.map(c => `<label class="chk" style="padding:4px 0">
+         <input type="checkbox" value="${esc2(c.line_user_id)}"${excluded.has(c.line_user_id) ? ' checked' : ''}>
+         <span>${esc2(c.display_name)}</span></label>`).join('')
+    : '<p class="empty">お知らせを希望された方がまだいません。</p>';
+
+  $('slotExclude').querySelectorAll('input').forEach(el =>
+    el.addEventListener('change', () => {
+      el.checked ? excluded.add(el.value) : excluded.delete(el.value);
+      renderSlot();
+    }));
+
+  /* --- 送る前の確認 --- */
+  const p = await previewOpenSlot(env, slots, {
+    today: REAL_TODAY,
+    quota: state.quota,
+    excludeUserIds: [...excluded],
+    excludeRecent: $('slotRecent').checked
+  });
+
+  const verdict = p.planned === 0
+    ? '<div class="verdict verdict--stop"><b>送る相手がいません。</b></div>'
+    : p.quota.allowed
+      ? `<div class="verdict verdict--go"><b>${nf(p.planned)}名に届きます。${nf(p.planned)}通を使います。</b></div>`
+      : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(p.quota.reason ?? '')}</div>`;
+
+  const notes = p.notes.map(n =>
+    `<div class="verdict ${n.kind === 'excluded' ? 'verdict--go' : 'verdict--stop'}"
+          style="margin-top:8px">${esc2(n.text)}</div>`).join('');
+
+  $('slotOut').innerHTML =
+    meter({ ...p.quota, planned: p.planned }) + verdict + notes +
+    `<p class="note" style="padding:16px 0 6px">
+       直近7日間の配信回数　<b class="num">${p.weekCount}</b> / ${p.maxPerWeek} 回まで</p>` +
+
+    '<h4 style="font-family:var(--f-display);font-size:14px;margin:18px 0 8px">LINE に届く文面</h4>' +
+    `<div class="phone" style="height:auto;margin-top:0;padding:14px">
+       <div class="row bot"><div class="bub">${esc2(p.lineText)}</div></div>
+     </div>` +
+
+    '<h4 style="font-family:var(--f-display);font-size:14px;margin:20px 0 8px">Instagram ストーリーズに載せる文面</h4>' +
+    `<div class="msg" style="margin-top:0">${esc2(p.instagramText)}</div>` +
+    `<p class="note" style="padding:8px 0 0">
+       LINEに送ってから ${INSTAGRAM_DELAY_MIN} 分ほど空けて投稿します。
+       「LINEの方が先に知れた」という事実をつくるためです。</p>` +
+
+    `<div class="btnrow" style="margin-top:18px">
+       <button class="btn" id="slotSend" ${p.quota.allowed && p.planned ? '' : 'disabled'}>この内容で送る</button>
+     </div>
+     <p class="note" style="padding:8px 0 0">デモなので、押しても実際には送信されません。</p>`;
+
+  const btn = $('slotSend');
+  if (btn) btn.addEventListener('click', async () => {
+    await sendOpenSlot(env, slots, {
+      today: REAL_TODAY, quota: state.quota,
+      excludeUserIds: [...excluded], excludeRecent: $('slotRecent').checked, dryRun: true
+    });
+    // 履歴だけ残して、出しすぎの警告が動くところまで見せる
+    state.openSlots.push({ created_at: new Date().toISOString() });
+    renderSlot();
+  });
+}
+
+/* ==================================================================
    起動
    ================================================================== */
 
@@ -1073,4 +1243,5 @@ renderTags();
 renderDelivery();
 renderSegment();
 renderInsights();
+renderSlot();
 </script>

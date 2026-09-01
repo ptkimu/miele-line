@@ -115,3 +115,15 @@ CREATE TABLE IF NOT EXISTS sales (
 
 CREATE INDEX IF NOT EXISTS idx_sales_month ON sales(sold_on);
 CREATE INDEX IF NOT EXISTS idx_sales_cat   ON sales(category, sold_on);
+
+-- 空き枠・キャンセル枠のお知らせを出した履歴。
+-- 「直近7日で何回出したか」を数えて、出しすぎを止めるために使う。
+CREATE TABLE IF NOT EXISTS open_slots (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind       TEXT    NOT NULL,               -- single = 当日1枠 / multi = まとめて案内
+  slots      TEXT    NOT NULL,               -- 日時・メニュー（JSON）
+  sent_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_open_slots_created ON open_slots(created_at DESC);
