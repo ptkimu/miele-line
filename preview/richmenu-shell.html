@@ -1,0 +1,206 @@
+<title>ミエーレ リッチメニュー設定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&family=JetBrains+Mono:wght@600&display=swap">
+
+<style>
+  :root{
+    --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
+    --ink:#2B2724; --ink-soft:#574D48; --muted:#8B7F79;
+    --rule:#E7DBD4; --rule-hard:#D6C6BD;
+    --accent:#98543F; --accent-wash:#F7EBE5;
+    --free:#1F7A4C; --free-wash:#E8F3EC;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+    --f-mono:"JetBrains Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+      --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+      --rule:#3A3331; --rule-hard:#4C4340;
+      --accent:#D9967C; --accent-wash:#33241F;
+      --free:#5CC98C; --free-wash:#1C2C24;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+    --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+    --rule:#3A3331; --rule-hard:#4C4340;
+    --accent:#D9967C; --accent-wash:#33241F;
+    --free:#5CC98C; --free-wash:#1C2C24;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
+       font-size:15.5px;line-height:1.9;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px 90px}
+
+  header.top{padding:56px 0 26px;border-bottom:2px solid var(--accent);margin-bottom:34px}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.22em;color:var(--accent);margin:0 0 13px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,5vw,34px);
+     line-height:1.3;margin:0 0 14px;text-wrap:balance}
+  .lede{color:var(--ink-soft);margin:0;max-width:60ch}
+
+  h2{font-family:var(--f-display);font-weight:700;font-size:21px;line-height:1.4;
+     margin:46px 0 12px;text-wrap:balance}
+  h3{font-family:var(--f-display);font-weight:700;font-size:16px;margin:28px 0 8px}
+  p{margin:0 0 18px}
+  strong{font-weight:500;background:linear-gradient(transparent 62%,var(--accent-wash) 62%)}
+
+  figure{margin:0 0 14px}
+  figure img{display:block;width:100%;height:auto;border-radius:14px;
+             border:1px solid var(--rule);box-shadow:0 8px 28px rgba(43,39,36,.08)}
+  figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.75}
+
+  .scroll{overflow-x:auto;margin:0 0 22px}
+  table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.75;min-width:520px}
+  th,td{text-align:left;padding:12px 16px 12px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{font-size:11.5px;letter-spacing:.08em;color:var(--muted);font-weight:700;
+           border-bottom:1px solid var(--rule-hard);padding-bottom:8px}
+  tbody tr:last-child td{border-bottom:0}
+  code{font-family:var(--f-mono);font-size:.9em;background:var(--sunk);
+       border:1px solid var(--rule);border-radius:6px;padding:2px 8px;white-space:nowrap}
+
+  ol.steps{list-style:none;padding:0;counter-reset:s;margin:0 0 26px}
+  ol.steps > li{counter-increment:s;position:relative;padding:0 0 0 50px;margin-bottom:20px}
+  ol.steps > li::before{content:counter(s);position:absolute;left:0;top:1px;width:32px;height:32px;
+    border-radius:99px;background:var(--accent);color:#fff;font-family:var(--f-display);
+    font-size:14.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  ol.steps b{display:block;font-family:var(--f-display);font-size:16px;font-weight:700;margin-bottom:2px}
+  ol.steps p{margin:0;font-size:14.5px;color:var(--ink-soft)}
+
+  .callout{border-left:4px solid var(--accent);background:var(--accent-wash);
+           border-radius:0 12px 12px 0;padding:16px 22px;margin:0 0 24px}
+  .callout p:last-child{margin-bottom:0}
+  .callout--ok{border-left-color:var(--free);background:var(--free-wash)}
+
+  .flow{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+        padding:20px 24px;margin:0 0 24px;font-size:14px;line-height:2.1}
+  .flow .arrow{color:var(--accent);font-weight:700;padding:0 4px}
+  .flow .free{font-size:11.5px;font-weight:700;color:#fff;background:#1F9D57;
+              border-radius:99px;padding:2px 9px;margin-left:8px}
+
+  footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--muted);line-height:1.9}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">設定手順</p>
+  <h1>リッチメニューの差し替え</h1>
+  <p class="lede">
+    LINE公式アカウントの管理画面だけで完結します。<strong>費用はかかりません。</strong>
+    所要10分ほどです。
+  </p>
+</header>
+
+<figure>
+  <img src="/*__RICHMENU_PNG__*/" alt="ミエーレのリッチメニュー。3列2段の6ボタン構成で、左上が空き枠のお知らせ">
+  <figcaption>
+    2500 × 1686 ピクセル。管理画面の「3列 × 2段」テンプレートに合わせています。
+    左上だけ地色を変えているのは、いちばん押してほしいボタンだからです。
+  </figcaption>
+</figure>
+
+<div class="callout">
+  <p>
+    <strong>左上の「空き枠のお知らせ」が今回の要です。</strong>
+    稼働の初日は、空き枠の連絡を受け取りたい方が0名です。
+    一斉送信で募らずに集める入口が、このボタンになります。
+  </p>
+</div>
+
+<h2>6つのボタンの設定</h2>
+
+<p>
+  アクションの種類は<strong>「テキスト」を選ぶだけ</strong>です。
+  タップすると、そのテキストがお客様の発言として送られ、こちらが自動で返信します。
+</p>
+
+<div class="scroll">
+  <table>
+    <thead>
+      <tr><th>位置</th><th>ボタン</th><th>種類</th><th>テキスト</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>左上</td><td><strong>空き枠のお知らせ</strong></td><td>テキスト</td><td><code>空き枠</code></td></tr>
+      <tr><td>中上</td><td>ご予約・ご相談</td><td>テキスト</td><td><code>予約</code></td></tr>
+      <tr><td>右上</td><td>メニュー・料金</td><td>テキスト</td><td><code>メニュー</code></td></tr>
+      <tr><td>左下</td><td>コース診断</td><td>リンク</td><td>LIFFのURL</td></tr>
+      <tr><td>中下</td><td>アクセス</td><td>テキスト</td><td><code>場所</code></td></tr>
+      <tr><td>右下</td><td>営業時間</td><td>テキスト</td><td><code>営業時間</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>
+  左下の「コース診断」だけリンクです。LIFFのURLを発行するまでは
+  <strong>「設定しない」のままで構いません</strong>。押しても何も起きないだけです。
+</p>
+
+<h2>手順</h2>
+
+<ol class="steps">
+  <li>
+    <b>管理画面を開く</b>
+    <p>LINE公式アカウント管理画面 → 左メニューの「トークルーム管理」→「リッチメニュー」</p>
+  </li>
+  <li>
+    <b>いま使っているメニューを編集する</b>
+    <p>新しく作らず、既存のものを編集します。作り直すと表示期間の設定などをやり直すことになります。</p>
+  </li>
+  <li>
+    <b>テンプレートを「3列 × 2段」にして、画像をアップロードする</b>
+    <p>この画像は 2500 × 1686 ピクセルで、そのテンプレートに合わせてあります。</p>
+  </li>
+  <li>
+    <b>6つのエリアにアクションを設定する</b>
+    <p>上の表のとおりです。種類で「テキスト」を選び、内容を入力します。</p>
+  </li>
+  <li>
+    <b>保存して、自分のスマホで確認する</b>
+    <p>「空き枠」を押して、受け取り確認のボタンが返ってくれば成功です。</p>
+  </li>
+</ol>
+
+<h2>押したときに何が起きるか</h2>
+
+<div class="flow">
+  お客様が「空き枠のお知らせ」をタップ<br>
+  <span class="arrow">↓</span> 「空き枠」がトークに送られる<br>
+  自動で案内が返る<span class="free">0通</span><br>
+  <span class="arrow">↓</span> 「受け取る」／「今はやめておく」のボタン付き<br>
+  「受け取る」を押す<span class="free">0通</span><br>
+  <span class="arrow">↓</span><br>
+  以後、お席が空いたときにお知らせが届く
+</div>
+
+<div class="callout callout--ok">
+  <p>
+    ここまで<strong>配信通数は1通も消費しません。</strong>
+    自動返信とボタンの操作は、LINEの通数にカウントされないためです。
+    既存の318名にも、一斉送信なしでこの入口が届きます。
+  </p>
+</div>
+
+<p>
+  止めたいときは、同じボタンから「空き枠」→「今はやめておく」で解除できます。
+  お客様がご自身で切り替えられるので、こちらの操作は不要です。
+</p>
+
+<h2>ボタンを変えたいとき</h2>
+
+<p>
+  文言・色・並び順は変更できます。画像を作り直してお渡しします。
+  ボタンを減らして「2列 × 2段」などにすることもできます。
+</p>
+
+<footer>
+  ビューティサロン ミエーレ ／ リッチメニュー設定手順<br>
+  画像ファイル：2500 × 1686 ピクセル。管理画面の上限（1MB）に収まっています。
+</footer>
+
+</div>

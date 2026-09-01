@@ -46,3 +46,9 @@ cp preview/slot.html out-slot/index.html
 printf 'User-agent: *\nDisallow: /\n' > out-slot/robots.txt
 
 echo "built: out-slot/index.html, out-slot/robots.txt"
+
+# リッチメニューの設定手順（画像を埋め込んだ単独ファイル）
+B64="$(base64 -w0 design/richmenu.png)"
+sed "s|/\*__RICHMENU_PNG__\*/|data:image/png;base64,${B64}|" preview/richmenu-shell.html > preview/richmenu.html
+cp preview/richmenu.html out/richmenu.html
+echo "built: out/richmenu.html"
