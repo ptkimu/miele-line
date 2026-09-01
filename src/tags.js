@@ -7,6 +7,15 @@
 
 import { nowIso } from './handlers.js';
 
+/**
+ * 空き枠のお知らせを受け取りたい方に付けるタグ。
+ *
+ * 稼働の初日は、このタグを持つ方が0名です。
+ * 一斉送信で募らずに集めるため、リッチメニューの
+ * 「空き枠のお知らせを受け取る」から付けられるようにしています（通数0）。
+ */
+export const OPEN_SLOT_TAG = '希望:空き枠のお知らせ';
+
 /** 診断ツールの回答を、そのままタグの名前に変換する */
 export function tagsFromDiagnosis(answers) {
   const out = [];
@@ -35,6 +44,28 @@ export async function grantTags(env, lineUserId, tags) {
       .bind(lineUserId, nowIso(), tag.name)
       .run();
   }
+}
+
+/** タグを外す（「もう受け取らない」を選ばれたとき） */
+export async function revokeTag(env, lineUserId, name) {
+  await env.DB.prepare(
+    `DELETE FROM customer_tags
+      WHERE line_user_id = ?
+        AND tag_id = (SELECT id FROM tags WHERE name = ?)`
+  )
+    .bind(lineUserId, name)
+    .run();
+}
+
+/** そのタグを持っているか */
+export async function hasTag(env, lineUserId, name) {
+  const row = await env.DB.prepare(
+    `SELECT 1 AS yes FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
+      WHERE ct.line_user_id = ? AND t.name = ?`
+  )
+    .bind(lineUserId, name)
+    .first();
+  return !!row;
 }
 
 /** 1人のお客様に付いているタグ */

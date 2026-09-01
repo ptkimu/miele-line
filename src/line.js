@@ -112,3 +112,11 @@ async function call(env, path, body) {
  * ------------------------------------------------------------------ */
 
 export const text = (t) => ({ type: 'text', text: t });
+
+/** メッセージの下に出るボタン。タップしても通数は消費しない */
+export const withButtons = (message, items) => ({ ...message, quickReply: { items } });
+
+export const button = (label, data, displayText) => ({
+  type: 'action',
+  action: { type: 'postback', label, data, displayText: displayText ?? label }
+});

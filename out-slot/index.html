@@ -148,14 +148,6 @@
           <span>このメニューに関心のある方だけに送る<small>診断でその希望を選んだ方だけ。関係のない方に届かない</small></span>
         </label>
 
-        <h4 style="font-family:var(--f-display);font-size:14px;margin:22px 0 4px">
-          この枠をキャンセルされた方</h4>
-        <p class="note" style="margin:0 0 6px">
-          対象から外します。ご本人に案内が届くと「自分のせいで穴埋めしている」と
-          感じさせてしまうためです。
-        </p>
-        <div id="slotExclude"></div>
-
         <label class="chk" style="margin-top:10px">
           <input type="checkbox" id="slotRecent" checked>
           <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span>
@@ -329,6 +321,14 @@ async function call(env, path, body) {
 
 const text = (t) => ({ type: 'text', text: t });
 
+/** メッセージの下に出るボタン。タップしても通数は消費しない */
+const withButtons = (message, items) => ({ ...message, quickReply: { items } });
+
+const button = (label, data, displayText) => ({
+  type: 'action',
+  action: { type: 'postback', label, data, displayText: displayText ?? label }
+});
+
 /* ---------- src/replies.js ---------- */
 /**
  * キーワード応答
@@ -346,6 +346,27 @@ const text = (t) => ({ type: 'text', text: t });
 
 
 const RULES = [
+  /* 空き枠の受け取り希望。
+     稼働の初日は希望者が0名なので、こことリッチメニューから集めます。
+     一斉送信で募る必要はありません。 */
+  {
+    name: 'open_slot_optin',
+    keys: ['空き枠', 'キャンセル待ち', '空きが出たら', 'お知らせ希望'],
+    build: () => [
+      withButtons(
+        text([
+          '空き枠のお知らせについてです。',
+          '',
+          'ご予約のキャンセルなどで空きが出たとき、LINEにご登録の方へ先にお知らせしています。',
+          '',
+          '受け取りをご希望の場合は、下のボタンを押してください。いつでも止められます。'
+        ].join('\n')),
+        [button('受け取る', 'action=optin', '受け取ります'),
+         button('今はやめておく', 'action=optout', '今はやめておきます')]
+      )
+    ]
+  },
+
   {
     name: 'booking',
     keys: ['予約', 'よやく', '空き', 'あき', '空いて', 'キャンセル'],
@@ -501,8 +522,51 @@ async function handleEvent(env, event) {
       return onUnfollow(env, event);
     case 'message':
       return onMessage(env, event);
+    case 'postback':
+      return onPostback(env, event);
     default:
       return;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * ボタンが押されたとき
+ * ------------------------------------------------------------------ */
+
+/**
+ * リッチメニューや応答メッセージのボタンから届きます。
+ * 空き枠のお知らせを受け取るかどうかは、ここで切り替えます。
+ *
+ * 返信は応答メッセージなので通数は消費しません。
+ * 一斉送信で受け取り希望を募る必要がないのは、この経路があるためです。
+ */
+async function onPostback(env, event) {
+  const userId = event.source?.userId;
+  if (!userId) return;
+
+  const action = new URLSearchParams(event.postback?.data ?? '').get('action');
+
+  if (action === 'optin') {
+    await grantTags(env, userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
+    return reply(env, event.replyToken, [
+      text([
+        '空き枠のお知らせを受け取る設定にしました。',
+        '',
+        'ご予約のキャンセルなどでお席が空いたとき、こちらにお送りします。',
+        '止めたいときは「空き枠」とお送りください。'
+      ].join('\n'))
+    ]);
+  }
+
+  if (action === 'optout') {
+    await revokeTag(env, userId, OPEN_SLOT_TAG);
+    return reply(env, event.replyToken, [
+      text([
+        '空き枠のお知らせは送らない設定にしました。',
+        '',
+        'またご希望のときは「空き枠」とお送りください。'
+      ].join('\n'))
+    ]);
   }
 }
 
@@ -597,6 +661,15 @@ function todayJst() {
  */
 
 
+/**
+ * 空き枠のお知らせを受け取りたい方に付けるタグ。
+ *
+ * 稼働の初日は、このタグを持つ方が0名です。
+ * 一斉送信で募らずに集めるため、リッチメニューの
+ * 「空き枠のお知らせを受け取る」から付けられるようにしています（通数0）。
+ */
+const OPEN_SLOT_TAG = '希望:空き枠のお知らせ';
+
 /** 診断ツールの回答を、そのままタグの名前に変換する */
 function tagsFromDiagnosis(answers) {
   const out = [];
@@ -625,6 +698,28 @@ async function grantTags(env, lineUserId, tags) {
       .bind(lineUserId, nowIso(), tag.name)
       .run();
   }
+}
+
+/** タグを外す（「もう受け取らない」を選ばれたとき） */
+async function revokeTag(env, lineUserId, name) {
+  await env.DB.prepare(
+    `DELETE FROM customer_tags
+      WHERE line_user_id = ?
+        AND tag_id = (SELECT id FROM tags WHERE name = ?)`
+  )
+    .bind(lineUserId, name)
+    .run();
+}
+
+/** そのタグを持っているか */
+async function hasTag(env, lineUserId, name) {
+  const row = await env.DB.prepare(
+    `SELECT 1 AS yes FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
+      WHERE ct.line_user_id = ? AND t.name = ?`
+  )
+    .bind(lineUserId, name)
+    .first();
+  return !!row;
 }
 
 /** 1人のお客様に付いているタグ */
@@ -1058,9 +1153,9 @@ const PRESETS = [
   },
   {
     id: 'open_slot',
-    label: 'キャンセル枠のお知らせ',
+    label: '空き枠のお知らせ',
     note: '受け取りを希望した方だけ。Instagramで告知して、枠はLINEだけで出す',
-    spec: { tags: ['希望:キャンセル枠'] }
+    spec: { tags: ['希望:空き枠のお知らせ'] }
   },
   {
     id: 'sleeping',
@@ -1072,7 +1167,7 @@ const PRESETS = [
 
 /* ---------- src/openslot.js ---------- */
 /**
- * 空き枠・キャンセル枠のお知らせ
+ * 空き枠のお知らせ
  *
  * 「LINEだけが先に知る」を、続けられる形にするための道具です。
  * 空きが出るたびに文面を考えていては続かないので、
@@ -1088,9 +1183,6 @@ const PRESETS = [
  * LINEで完結させることが、そのままLINEに登録する価値になるためです。
  */
 
-
-/** 受け取りを希望した方に付けるタグ */
-const OPEN_SLOT_TAG = '希望:キャンセル枠';
 
 /**
  * 部屋。セルフブースと施術ルームは独立していて、同時に稼働できます。
@@ -1143,7 +1235,7 @@ function tagForSlots(slots) {
 
 /**
  * 1週間に出す上限。
- * 毎日のように「キャンセルが出ました」と送っていると、
+ * 毎日のように空き枠を流していると、
  * 「人気がない店」という印象になり逆効果になるため。
  */
 const MAX_PER_WEEK = 2;
@@ -1224,8 +1316,11 @@ function buildInstagramText(slots) {
       ? [`本日${list[0].time}に空きが出ました`]
       : groupByDate(list).map(([date, ss]) => `${formatDate(date)}　${ss.map((s) => s.time).join(' / ')}`);
 
+  /* 「キャンセルが出ました」とは書きません。
+     キャンセルされたご本人がこれを見たとき、自分のことだと分かってしまうためです。
+     LINEの表示名はニックネームが多く、ご本人を配信対象から外せるとは限りません。 */
   return [
-    list.length === 1 ? 'CANCEL INFO' : 'OPEN SLOTS',
+    list.length === 1 ? 'OPEN SLOT' : 'OPEN SLOTS',
     '',
     ...head,
     '',
@@ -1272,22 +1367,25 @@ async function recentSendCount(env, today = todayJst(), room = null) {
  * 送る前の確認。
  * 対象者・通数・文面・注意点をまとめて返します。
  *
+ * その枠に入っていた方を個別に外す機能は持ちません。
+ * LINEの表示名はニックネームのことが多く、サロンボードの予約者と
+ * 突き合わせられないためです。代わりに文面から「キャンセル」の語を外し、
+ * ご本人に届いてもご自身のことだと分からないようにしています。
+ *
  * @param {object[]} slots 空き枠
  * @param {object}   opts
- * @param {string[]} opts.excludeUserIds その日にキャンセルされた方など、外したい相手
- * @param {boolean}  opts.excludeRecent  直近7日に配信を受け取った方を外すか
+ * @param {boolean}  opts.narrow        メニューに関心のある方だけに絞るか（既定は絞る）
+ * @param {boolean}  opts.excludeRecent 直近7日に配信を受け取った方を外すか
  */
 async function previewOpenSlot(env, slots, opts = {}) {
   const today = opts.today ?? todayJst();
-  const exclude = new Set(opts.excludeUserIds ?? []);
   const room = opts.room ?? roomOfMenu(slots?.[0]?.menu);
 
   // 既定では、そのメニューに関心のある方だけに絞る
   const narrowTag = opts.narrow === false ? null : tagForSlots(slots);
 
   const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
-  const pick = async (tags) =>
-    (await listSegment(env, { ...base, tags }, today)).filter((c) => !exclude.has(c.line_user_id));
+  const pick = (tags) => listSegment(env, { ...base, tags }, today);
 
   const targets = await pick(narrowTag ? [OPEN_SLOT_TAG, narrowTag] : [OPEN_SLOT_TAG]);
   // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
@@ -1304,13 +1402,6 @@ async function previewOpenSlot(env, slots, opts = {}) {
             `絞り込みを外すと、空き枠を希望された${wide.length}名にお送りできます。`
     });
   }
-  if (exclude.size) {
-    notes.push({
-      kind: 'excluded',
-      text: `${exclude.size}名を対象から外しました。キャンセルされたご本人に案内が届くと、` +
-            `「自分のせいで穴埋めしている」と感じさせてしまうためです。`
-    });
-  }
   if (weekCount >= MAX_PER_WEEK) {
     notes.push({
       kind: 'too-often',
@@ -1322,7 +1413,7 @@ async function previewOpenSlot(env, slots, opts = {}) {
     notes.push({
       kind: 'empty',
       text: `お知らせを希望された方がいません。あいさつメッセージで` +
-            `「キャンセル枠のお知らせを受け取りますか」をご案内すると増えていきます。`
+            `「空き枠のお知らせを受け取りますか」をご案内すると増えていきます。`
     });
   }
 
@@ -1968,7 +2059,7 @@ const state = {
     { line_user_id:'U06', display_name:'ひなの', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-40), followed_at:shift(REAL_TODAY,-300) }
   ],
   tags: [
-    { id:1, name:'希望:キャンセル枠' },
+    { id:1, name:'希望:空き枠のお知らせ' },
     { id:2, name:'希望:セルフ脱毛' },
     { id:3, name:'希望:セラピスト脱毛' },
     { id:4, name:'希望:毛穴・シミ・くすみ' },
@@ -2085,7 +2176,6 @@ function weekendSlots(r) {
 
 let room = 'room';
 let slots = todaySlots(room);
-const excluded = new Set();
 
 ROOMS.forEach(r => {
   const b = document.createElement('button');
@@ -2144,22 +2234,9 @@ async function render() {
   $('slotList').querySelectorAll('[data-del]').forEach(b =>
     b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); render(); }));
 
-  const holders = await listSegment(env, { tags: [OPEN_SLOT_TAG] }, REAL_TODAY);
-  $('slotExclude').innerHTML = holders.length
-    ? holders.map(c => `<label class="chk" style="padding:4px 0">
-        <input type="checkbox" value="${esc2(c.line_user_id)}"${excluded.has(c.line_user_id) ? ' checked' : ''}>
-        <span>${esc2(c.display_name)}</span></label>`).join('')
-    : '<p class="empty">お知らせを希望された方がまだいません。</p>';
-  $('slotExclude').querySelectorAll('input').forEach(el =>
-    el.addEventListener('change', () => {
-      el.checked ? excluded.add(el.value) : excluded.delete(el.value);
-      render();
-    }));
-
   const p = await previewOpenSlot(env, slots, {
     today: REAL_TODAY, quota: state.quota, room,
     narrow: $('slotNarrow').checked,
-    excludeUserIds: [...excluded],
     excludeRecent: $('slotRecent').checked
   });
 
@@ -2170,7 +2247,7 @@ async function render() {
       : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(p.quota.reason ?? '')}</div>`;
 
   const notes = p.notes.map(n =>
-    `<div class="verdict ${n.kind === 'excluded' ? 'verdict--go' : 'verdict--stop'}"
+    `<div class="verdict ${'verdict--stop'}"
           style="margin-top:8px">${esc2(n.text)}</div>`).join('');
 
   $('slotOut').innerHTML =
@@ -2196,8 +2273,7 @@ async function render() {
   const btn = $('slotSend');
   if (btn) btn.addEventListener('click', async () => {
     await sendOpenSlot(env, slots, {
-      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked,
-      excludeUserIds: [...excluded], excludeRecent: $('slotRecent').checked, dryRun: true
+      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked, excludeRecent: $('slotRecent').checked, dryRun: true
     });
     state.openSlots.push({ kind: room, created_at: new Date().toISOString() });
     render();

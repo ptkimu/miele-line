@@ -148,14 +148,6 @@
           <span>このメニューに関心のある方だけに送る<small>診断でその希望を選んだ方だけ。関係のない方に届かない</small></span>
         </label>
 
-        <h4 style="font-family:var(--f-display);font-size:14px;margin:22px 0 4px">
-          この枠をキャンセルされた方</h4>
-        <p class="note" style="margin:0 0 6px">
-          対象から外します。ご本人に案内が届くと「自分のせいで穴埋めしている」と
-          感じさせてしまうためです。
-        </p>
-        <div id="slotExclude"></div>
-
         <label class="chk" style="margin-top:10px">
           <input type="checkbox" id="slotRecent" checked>
           <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span>
@@ -199,7 +191,7 @@ const state = {
     { line_user_id:'U06', display_name:'ひなの', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-40), followed_at:shift(REAL_TODAY,-300) }
   ],
   tags: [
-    { id:1, name:'希望:キャンセル枠' },
+    { id:1, name:'希望:空き枠のお知らせ' },
     { id:2, name:'希望:セルフ脱毛' },
     { id:3, name:'希望:セラピスト脱毛' },
     { id:4, name:'希望:毛穴・シミ・くすみ' },
@@ -316,7 +308,6 @@ function weekendSlots(r) {
 
 let room = 'room';
 let slots = todaySlots(room);
-const excluded = new Set();
 
 ROOMS.forEach(r => {
   const b = document.createElement('button');
@@ -375,22 +366,9 @@ async function render() {
   $('slotList').querySelectorAll('[data-del]').forEach(b =>
     b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); render(); }));
 
-  const holders = await listSegment(env, { tags: [OPEN_SLOT_TAG] }, REAL_TODAY);
-  $('slotExclude').innerHTML = holders.length
-    ? holders.map(c => `<label class="chk" style="padding:4px 0">
-        <input type="checkbox" value="${esc2(c.line_user_id)}"${excluded.has(c.line_user_id) ? ' checked' : ''}>
-        <span>${esc2(c.display_name)}</span></label>`).join('')
-    : '<p class="empty">お知らせを希望された方がまだいません。</p>';
-  $('slotExclude').querySelectorAll('input').forEach(el =>
-    el.addEventListener('change', () => {
-      el.checked ? excluded.add(el.value) : excluded.delete(el.value);
-      render();
-    }));
-
   const p = await previewOpenSlot(env, slots, {
     today: REAL_TODAY, quota: state.quota, room,
     narrow: $('slotNarrow').checked,
-    excludeUserIds: [...excluded],
     excludeRecent: $('slotRecent').checked
   });
 
@@ -401,7 +379,7 @@ async function render() {
       : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(p.quota.reason ?? '')}</div>`;
 
   const notes = p.notes.map(n =>
-    `<div class="verdict ${n.kind === 'excluded' ? 'verdict--go' : 'verdict--stop'}"
+    `<div class="verdict ${'verdict--stop'}"
           style="margin-top:8px">${esc2(n.text)}</div>`).join('');
 
   $('slotOut').innerHTML =
@@ -427,8 +405,7 @@ async function render() {
   const btn = $('slotSend');
   if (btn) btn.addEventListener('click', async () => {
     await sendOpenSlot(env, slots, {
-      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked,
-      excludeUserIds: [...excluded], excludeRecent: $('slotRecent').checked, dryRun: true
+      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked, excludeRecent: $('slotRecent').checked, dryRun: true
     });
     state.openSlots.push({ kind: room, created_at: new Date().toISOString() });
     render();

@@ -13,9 +13,30 @@
  */
 
 import { SALON, has } from './salon.js';
-import { text } from './line.js';
+import { text, withButtons, button } from './line.js';
 
 const RULES = [
+  /* 空き枠の受け取り希望。
+     稼働の初日は希望者が0名なので、こことリッチメニューから集めます。
+     一斉送信で募る必要はありません。 */
+  {
+    name: 'open_slot_optin',
+    keys: ['空き枠', 'キャンセル待ち', '空きが出たら', 'お知らせ希望'],
+    build: () => [
+      withButtons(
+        text([
+          '空き枠のお知らせについてです。',
+          '',
+          'ご予約のキャンセルなどで空きが出たとき、LINEにご登録の方へ先にお知らせしています。',
+          '',
+          '受け取りをご希望の場合は、下のボタンを押してください。いつでも止められます。'
+        ].join('\n')),
+        [button('受け取る', 'action=optin', '受け取ります'),
+         button('今はやめておく', 'action=optout', '今はやめておきます')]
+      )
+    ]
+  },
+
   {
     name: 'booking',
     keys: ['予約', 'よやく', '空き', 'あき', '空いて', 'キャンセル'],

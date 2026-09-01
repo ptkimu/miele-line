@@ -159,9 +159,9 @@ export const PRESETS = [
   },
   {
     id: 'open_slot',
-    label: 'キャンセル枠のお知らせ',
+    label: '空き枠のお知らせ',
     note: '受け取りを希望した方だけ。Instagramで告知して、枠はLINEだけで出す',
-    spec: { tags: ['希望:キャンセル枠'] }
+    spec: { tags: ['希望:空き枠のお知らせ'] }
   },
   {
     id: 'sleeping',

@@ -6,8 +6,9 @@
  * （来店の記録をスタッフ用ページで行っているのはこのためです）
  */
 
-import { reply, getProfile } from './line.js';
+import { reply, getProfile, text } from './line.js';
 import { matchReply } from './replies.js';
+import { grantTags, revokeTag, OPEN_SLOT_TAG } from './tags.js';
 
 export async function handleEvent(env, event) {
   // LINE はイベントを再送することがある。二度処理しないよう先に記録する
@@ -27,8 +28,51 @@ export async function handleEvent(env, event) {
       return onUnfollow(env, event);
     case 'message':
       return onMessage(env, event);
+    case 'postback':
+      return onPostback(env, event);
     default:
       return;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * ボタンが押されたとき
+ * ------------------------------------------------------------------ */
+
+/**
+ * リッチメニューや応答メッセージのボタンから届きます。
+ * 空き枠のお知らせを受け取るかどうかは、ここで切り替えます。
+ *
+ * 返信は応答メッセージなので通数は消費しません。
+ * 一斉送信で受け取り希望を募る必要がないのは、この経路があるためです。
+ */
+async function onPostback(env, event) {
+  const userId = event.source?.userId;
+  if (!userId) return;
+
+  const action = new URLSearchParams(event.postback?.data ?? '').get('action');
+
+  if (action === 'optin') {
+    await grantTags(env, userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
+    return reply(env, event.replyToken, [
+      text([
+        '空き枠のお知らせを受け取る設定にしました。',
+        '',
+        'ご予約のキャンセルなどでお席が空いたとき、こちらにお送りします。',
+        '止めたいときは「空き枠」とお送りください。'
+      ].join('\n'))
+    ]);
+  }
+
+  if (action === 'optout') {
+    await revokeTag(env, userId, OPEN_SLOT_TAG);
+    return reply(env, event.replyToken, [
+      text([
+        '空き枠のお知らせは送らない設定にしました。',
+        '',
+        'またご希望のときは「空き枠」とお送りください。'
+      ].join('\n'))
+    ]);
   }
 }
 

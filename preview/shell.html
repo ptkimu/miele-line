@@ -403,14 +403,6 @@ LINEの方に先にご案内しています。ご希望の方はこのままお�
             <span>このメニューに関心のある方だけに送る<small>診断でその希望を選んだ方だけ。関係のない方に届かない</small></span>
           </label>
 
-          <h4 style="font-family:var(--f-display);font-size:14px;margin:22px 0 4px">
-            この枠をキャンセルされた方</h4>
-          <p class="note" style="padding:0 0 6px">
-            対象から外します。ご本人に案内が届くと「自分のせいで穴埋めしている」と
-            感じさせてしまうためです。
-          </p>
-          <div id="slotExclude"></div>
-
           <label class="chk" style="margin-top:10px">
             <input type="checkbox" id="slotRecent" checked>
             <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span>
@@ -485,9 +477,9 @@ let state = seed();
 
 /* 最初から少しタグが貯まっている状態にしておく */
 const PRESEED = [
-  ['U01', ['性別:女性','希望:セラピスト脱毛','予算:5,000〜10,000円','希望:キャンセル枠']],
-  ['U02', ['性別:女性','希望:毛穴・シミ・くすみ','希望:キャンセル枠']],
-  ['U03', ['性別:女性','希望:たるみ・小顔','希望:キャンセル枠']],
+  ['U01', ['性別:女性','希望:セラピスト脱毛','予算:5,000〜10,000円','希望:空き枠のお知らせ']],
+  ['U02', ['性別:女性','希望:毛穴・シミ・くすみ','希望:空き枠のお知らせ']],
+  ['U03', ['性別:女性','希望:たるみ・小顔','希望:空き枠のお知らせ']],
   ['U06', ['性別:女性','希望:お腹・太ももの脂肪']]
 ];
 
@@ -1152,7 +1144,6 @@ function weekendSlots(r) {
 
 let room = 'room';
 let slots = todaySlots(room);
-const excluded = new Set();
 
 /* 部屋の切り替え。セルフと施術ルームは同時に稼働できるので、
    セラピストが埋まっていてもセルフ枠は出せる */
@@ -1203,27 +1194,12 @@ async function renderSlot() {
   $('slotList').querySelectorAll('[data-del]').forEach(b =>
     b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); renderSlot(); }));
 
-  /* --- 除外する方（この枠をキャンセルされた方） --- */
-  const holders = await listSegment(env, { tags: [OPEN_SLOT_TAG] }, REAL_TODAY);
-  $('slotExclude').innerHTML = holders.length
-    ? holders.map(c => `<label class="chk" style="padding:4px 0">
-         <input type="checkbox" value="${esc2(c.line_user_id)}"${excluded.has(c.line_user_id) ? ' checked' : ''}>
-         <span>${esc2(c.display_name)}</span></label>`).join('')
-    : '<p class="empty">お知らせを希望された方がまだいません。</p>';
-
-  $('slotExclude').querySelectorAll('input').forEach(el =>
-    el.addEventListener('change', () => {
-      el.checked ? excluded.add(el.value) : excluded.delete(el.value);
-      renderSlot();
-    }));
-
   /* --- 送る前の確認 --- */
   const p = await previewOpenSlot(env, slots, {
     today: REAL_TODAY,
     quota: state.quota,
     room,
     narrow: $('slotNarrow').checked,
-    excludeUserIds: [...excluded],
     excludeRecent: $('slotRecent').checked
   });
 
@@ -1234,7 +1210,7 @@ async function renderSlot() {
       : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(p.quota.reason ?? '')}</div>`;
 
   const notes = p.notes.map(n =>
-    `<div class="verdict ${n.kind === 'excluded' ? 'verdict--go' : 'verdict--stop'}"
+    `<div class="verdict ${'verdict--stop'}"
           style="margin-top:8px">${esc2(n.text)}</div>`).join('');
 
   $('slotOut').innerHTML =
@@ -1263,8 +1239,7 @@ async function renderSlot() {
   const btn = $('slotSend');
   if (btn) btn.addEventListener('click', async () => {
     await sendOpenSlot(env, slots, {
-      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked,
-      excludeUserIds: [...excluded], excludeRecent: $('slotRecent').checked, dryRun: true
+      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked, excludeRecent: $('slotRecent').checked, dryRun: true
     });
     // 履歴だけ残して、出しすぎの警告が動くところまで見せる
     state.openSlots.push({ kind: room, created_at: new Date().toISOString() });

@@ -1,5 +1,5 @@
 /**
- * 空き枠・キャンセル枠のお知らせ
+ * 空き枠のお知らせ
  *
  * 「LINEだけが先に知る」を、続けられる形にするための道具です。
  * 空きが出るたびに文面を考えていては続かないので、
@@ -18,10 +18,8 @@
 import { push, text } from './line.js';
 import { checkQuota } from './quota.js';
 import { listSegment, RECENT_DAYS } from './segments.js';
+import { OPEN_SLOT_TAG } from './tags.js';
 import { todayJst, nowIso } from './handlers.js';
-
-/** 受け取りを希望した方に付けるタグ */
-export const OPEN_SLOT_TAG = '希望:キャンセル枠';
 
 /**
  * 部屋。セルフブースと施術ルームは独立していて、同時に稼働できます。
@@ -74,7 +72,7 @@ export function tagForSlots(slots) {
 
 /**
  * 1週間に出す上限。
- * 毎日のように「キャンセルが出ました」と送っていると、
+ * 毎日のように空き枠を流していると、
  * 「人気がない店」という印象になり逆効果になるため。
  */
 export const MAX_PER_WEEK = 2;
@@ -155,8 +153,11 @@ export function buildInstagramText(slots) {
       ? [`本日${list[0].time}に空きが出ました`]
       : groupByDate(list).map(([date, ss]) => `${formatDate(date)}　${ss.map((s) => s.time).join(' / ')}`);
 
+  /* 「キャンセルが出ました」とは書きません。
+     キャンセルされたご本人がこれを見たとき、自分のことだと分かってしまうためです。
+     LINEの表示名はニックネームが多く、ご本人を配信対象から外せるとは限りません。 */
   return [
-    list.length === 1 ? 'CANCEL INFO' : 'OPEN SLOTS',
+    list.length === 1 ? 'OPEN SLOT' : 'OPEN SLOTS',
     '',
     ...head,
     '',
@@ -203,22 +204,25 @@ export async function recentSendCount(env, today = todayJst(), room = null) {
  * 送る前の確認。
  * 対象者・通数・文面・注意点をまとめて返します。
  *
+ * その枠に入っていた方を個別に外す機能は持ちません。
+ * LINEの表示名はニックネームのことが多く、サロンボードの予約者と
+ * 突き合わせられないためです。代わりに文面から「キャンセル」の語を外し、
+ * ご本人に届いてもご自身のことだと分からないようにしています。
+ *
  * @param {object[]} slots 空き枠
  * @param {object}   opts
- * @param {string[]} opts.excludeUserIds その日にキャンセルされた方など、外したい相手
- * @param {boolean}  opts.excludeRecent  直近7日に配信を受け取った方を外すか
+ * @param {boolean}  opts.narrow        メニューに関心のある方だけに絞るか（既定は絞る）
+ * @param {boolean}  opts.excludeRecent 直近7日に配信を受け取った方を外すか
  */
 export async function previewOpenSlot(env, slots, opts = {}) {
   const today = opts.today ?? todayJst();
-  const exclude = new Set(opts.excludeUserIds ?? []);
   const room = opts.room ?? roomOfMenu(slots?.[0]?.menu);
 
   // 既定では、そのメニューに関心のある方だけに絞る
   const narrowTag = opts.narrow === false ? null : tagForSlots(slots);
 
   const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
-  const pick = async (tags) =>
-    (await listSegment(env, { ...base, tags }, today)).filter((c) => !exclude.has(c.line_user_id));
+  const pick = (tags) => listSegment(env, { ...base, tags }, today);
 
   const targets = await pick(narrowTag ? [OPEN_SLOT_TAG, narrowTag] : [OPEN_SLOT_TAG]);
   // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
@@ -235,13 +239,6 @@ export async function previewOpenSlot(env, slots, opts = {}) {
             `絞り込みを外すと、空き枠を希望された${wide.length}名にお送りできます。`
     });
   }
-  if (exclude.size) {
-    notes.push({
-      kind: 'excluded',
-      text: `${exclude.size}名を対象から外しました。キャンセルされたご本人に案内が届くと、` +
-            `「自分のせいで穴埋めしている」と感じさせてしまうためです。`
-    });
-  }
   if (weekCount >= MAX_PER_WEEK) {
     notes.push({
       kind: 'too-often',
@@ -253,7 +250,7 @@ export async function previewOpenSlot(env, slots, opts = {}) {
     notes.push({
       kind: 'empty',
       text: `お知らせを希望された方がいません。あいさつメッセージで` +
-            `「キャンセル枠のお知らせを受け取りますか」をご案内すると増えていきます。`
+            `「空き枠のお知らせを受け取りますか」をご案内すると増えていきます。`
     });
   }
 
