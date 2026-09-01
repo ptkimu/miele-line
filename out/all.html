@@ -152,7 +152,49 @@
                 box-shadow:0 8px 24px rgba(43,39,36,.10);background:#FAF7F5}
   .story .side{flex:1;min-width:220px}
 
-  /*EDITOR-CSS-HERE*/
+  .preview{background:var(--sunk);padding:20px;display:flex;justify-content:center}
+  canvas{max-width:100%;height:auto;border-radius:10px;border:1px solid var(--rule);
+         box-shadow:0 8px 24px rgba(43,39,36,.10);background:#FAF7F5}
+
+  .cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .cell{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;background:var(--surface)}
+  .cell h3{font-family:var(--f-display);font-size:13px;margin:0 0 10px;color:var(--accent)}
+  .f{margin-bottom:10px}
+  .f label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px}
+  .f input,.f select,.f textarea{width:100%;padding:9px 11px;border:1px solid var(--rule);
+    border-radius:9px;font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)}
+  .f textarea{min-height:76px;line-height:1.7;resize:vertical}
+  .f input:focus-visible,.f select:focus-visible,.f textarea:focus-visible{
+    outline:2px solid var(--accent);outline-offset:1px}
+  .f small{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.6}
+
+  .btn{border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:700;font-size:13.5px;
+       cursor:pointer;background:var(--accent);color:#fff}
+  .btn--ghost{background:var(--surface);color:var(--accent);border:1px solid var(--rule-hard)}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  .blank{border-left:4px solid var(--stop);background:var(--stop-wash);border-radius:0 10px 10px 0;
+         padding:12px 16px;margin:0 0 16px;font-size:13px;color:var(--stop)}
+  .filled{border-left-color:var(--free);background:var(--free-wash);color:var(--free)}
+
+  .reply{background:var(--sunk);border-radius:10px;padding:12px 15px;font-size:12.5px;
+         white-space:pre-wrap;line-height:1.8;margin-top:6px}
+  .reply.none{color:var(--muted);font-style:normal;white-space:normal}
+  .rep{border-bottom:1px solid var(--rule);padding:14px 0}
+  .rep:last-child{border-bottom:0}
+  .rep h3{font-family:var(--f-display);font-size:14px;margin:0 0 2px}
+  .rep .kw{font-size:11.5px;color:var(--muted)}
+
+  .scrollx{overflow-x:auto;margin:0 0 6px}
+  table.setup{width:100%;border-collapse:collapse;font-size:13.5px;line-height:1.75;min-width:460px}
+  table.setup th,table.setup td{text-align:left;padding:9px 14px 9px 0;
+    border-bottom:1px solid var(--rule);vertical-align:top}
+  table.setup thead th{font-size:10.5px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+  table.setup tbody tr:last-child td{border-bottom:0}
+  table.setup .on{color:var(--free);font-weight:700;white-space:nowrap}
+  table.setup .off{color:var(--stop);font-weight:700;white-space:nowrap}
+  table.setup code{background:var(--sunk);border:1px solid var(--rule);border-radius:5px;
+    padding:1px 7px;font-size:12.5px;white-space:nowrap}
 
   footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
@@ -346,7 +388,73 @@
     </div>
   </section>
 
-  <!--EDITOR-HERE-->
+  <section class="panel">
+    <h2>できあがり</h2>
+    <div class="pad" style="padding-bottom:0">
+      <div class="f" style="max-width:340px">
+        <label for="layout">区切り方</label>
+        <select id="layout"></select>
+      </div>
+    </div>
+    <div class="preview"><canvas id="cv"></canvas></div>
+    <div class="pad">
+      <div class="btnrow">
+        <button class="btn" id="dl">画像を保存</button>
+        <button class="btn btn--ghost" id="reset">最初に戻す</button>
+      </div>
+      <p class="note" id="sizeNote"></p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>ボタンの文字</h2>
+    <div class="pad">
+      <div class="cells" id="cells"></div>
+      <p class="note">
+        「送信テキスト」は、LINEの管理画面でアクションの種類を「テキスト」にして入れる内容です。
+        空にすると、そのボタンは押しても何も起きません。
+      </p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>空欄になっている店舗情報</h2>
+    <div class="pad">
+      <div id="blankState"></div>
+      <div class="cells" id="salon"></div>
+      <p class="note">
+        埋めるまでの間、その話題は<b style="color:var(--ink-soft)">あえて自動返信しません</b>。
+        間違った営業時間を自動で答えるより、スタッフがお答えするほうが確実だからです。
+      </p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>お客様に返る内容</h2>
+    <div class="pad" id="replies"></div>
+  </section>
+
+  <section class="panel">
+    <h2>LINE公式アカウント側で設定すること</h2>
+    <div class="pad">
+      <p style="margin:0 0 14px;font-size:14px">
+        <b>管理画面での作業はこれだけです。</b>費用はかかりません。
+        上でボタンを変えると、この表も変わります。
+      </p>
+      <div id="lineSetup"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>設定の書き出し</h2>
+    <div class="pad">
+      <p style="margin:0 0 12px;font-size:14px">
+        編集した内容です。この内容をお送りいただければ、システムに反映します。
+      </p>
+      <div class="f"><textarea id="out" readonly style="min-height:200px"></textarea></div>
+      <div class="btnrow"><button class="btn btn--ghost" id="copy">コピー</button></div>
+    </div>
+  </section>
   <footer>
     トータル・ビューティー・サロン ミエーレ ／ 空き枠のお知らせ<br>
     このデモは実際のプログラムをそのまま動かしています。お客様の画面に出る文面も、
@@ -2820,7 +2928,246 @@ for (const [uid, names] of PRESEED) {
 }
 
 bubble('sys', '下のリッチメニューを押してみてください');
-/*EDITOR-JS-HERE*/
+/* 編集中の内容。src の既定値から始める */
+const DEFAULT_CELLS = JSON.parse(JSON.stringify(MENU));
+let cells = JSON.parse(JSON.stringify(MENU));
+let layout = LAYOUTS[0];
+
+/* 空欄になっている店舗情報。ここを埋めると応答が有効になる */
+const BLANKS = [
+  { key:'hours',   label:'営業時間',   ph:'9:00〜19:00' },
+  { key:'closed',  label:'定休日',     ph:'年中無休' },
+  { key:'tel',     label:'電話番号',   ph:'090-3286-4994' },
+  { key:'parking', label:'駐車場',     ph:'専用駐車場あり' },
+  { key:'payment', label:'お支払い方法', ph:'現金 / Visa / Mastercard / JCB / American Express' },
+  { key:'reservation', label:'ご予約', ph:'完全予約制' },
+  { key:'diagnosisUrl', label:'コース診断のURL', ph:'https://liff.line.me/＜LIFF_ID＞' }
+];
+
+/* ---------- 画像 ---------- */
+
+const menuCv = $('cv');
+const menuCtx = menuCv.getContext('2d');
+
+function paintMenu() {
+  menuCv.width = layout.w;
+  menuCv.height = layout.h;
+  menuCv.style.width = 'min(100%, 760px)';
+  drawRichMenu(menuCtx, cellsFor(cells, layout), layout);
+  $('sizeNote').textContent =
+    `${layout.w} × ${layout.h} ピクセル。LINEの管理画面で「${layout.label}」のテンプレートを選んでください。`;
+}
+
+LAYOUTS.forEach(l => {
+  const o = document.createElement('option');
+  o.value = l.id; o.textContent = l.label;
+  $('layout').appendChild(o);
+});
+$('layout').addEventListener('change', () => { layout = layoutById($('layout').value); renderMenu(); });
+
+$('dl').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = 'miele-richmenu-' + layout.id + '.png';
+  a.href = menuCv.toDataURL('image/png');
+  a.click();
+});
+
+$('reset').addEventListener('click', () => {
+  cells = JSON.parse(JSON.stringify(DEFAULT_CELLS));
+  BLANKS.forEach(b => { SALON[b.key] = null; });
+  renderMenu();
+});
+
+/* ---------- ボタンの編集 ---------- */
+
+function renderCells() {
+  const need = layout.cols * layout.rows;
+  $('cells').innerHTML = cells.slice(0, need).map((c, i) => `
+    <div class="cell">
+      <h3>${i + 1}つ目のボタン${c.lead ? '（目立たせる枠）' : ''}</h3>
+      <div class="f"><label>文字</label>
+        <input data-i="${i}" data-k="label" value="${esc2(c.label)}"></div>
+      <div class="f"><label>その下の小さい文字</label>
+        <input data-i="${i}" data-k="sub" value="${esc2(c.sub ?? '')}"></div>
+      <div class="f"><label>アイコン</label>
+        <select data-i="${i}" data-k="icon">
+          ${Object.keys(ICONS).map(k =>
+            `<option value="${k}"${k === c.icon ? ' selected' : ''}>${k}</option>`).join('')}
+        </select></div>
+      <div class="f"><label>送信テキスト</label>
+        <input data-i="${i}" data-k="keyword" value="${esc2(c.keyword ?? '')}"
+               placeholder="${c.link ? 'リンクのボタン（' + esc2(c.link) + '）' : '空にすると反応しません'}">
+        ${c.link ? '<small>このボタンはリンクです。LIFFのURLを発行したら管理画面で設定します。</small>' : ''}
+      </div>
+    </div>`).join('');
+
+  $('cells').querySelectorAll('input,select').forEach(el =>
+    el.addEventListener('input', () => {
+      const v = el.value;
+      cells[Number(el.dataset.i)][el.dataset.k] = v === '' ? null : v;
+      renderMenu();
+    }));
+}
+
+/* ---------- 空欄の編集 ---------- */
+
+function renderSalon() {
+  const remaining = BLANKS.filter(b => !has(SALON[b.key])).length;
+  $('blankState').innerHTML = remaining
+    ? `<div class="blank">まだ <b>${remaining}項目</b> が空欄です。埋めるとその話題に自動で答えられるようになります。</div>`
+    : '<div class="blank filled">すべて埋まりました。6つのボタンとも自動で答えられます。</div>';
+
+  $('salon').innerHTML = BLANKS.map(b => `
+    <div class="cell">
+      <div class="f"><label>${esc2(b.label)}</label>
+        <input data-s="${b.key}" value="${esc2(SALON[b.key] ?? '')}" placeholder="${esc2(b.ph)}">
+        <small>${has(SALON[b.key]) ? '設定済み' : '未設定のため、この話題には返信しません'}</small>
+      </div>
+    </div>`).join('');
+
+  $('salon').querySelectorAll('input').forEach(el =>
+    el.addEventListener('input', () => {
+      SALON[el.dataset.s] = el.value.trim() === '' ? null : el.value.trim();
+      renderMenu();
+    }));
+}
+
+/* ---------- 応答のプレビュー ---------- */
+
+function renderReplies() {
+  const need = layout.cols * layout.rows;
+  $('replies').innerHTML = cells.slice(0, need).map(c => {
+    const hit = c.keyword ? matchReply(c.keyword) : null;
+    return `
+      <div class="rep">
+        <h3>${esc2(c.label)}</h3>
+        <p class="kw">${c.keyword ? '「' + esc2(c.keyword) + '」が送られます' : 'リンク、または設定なし'}</p>
+        ${hit
+          ? `<div class="reply">${esc2(hit.messages[0].text)}</div>` +
+            (hit.messages[0].quickReply
+              ? `<p class="note">下にボタンが付きます：${
+                  hit.messages[0].quickReply.items.map(i => esc2(i.action.label)).join(' / ')}</p>`
+              : '')
+          : '<div class="reply none">いまは自動返信しません。スタッフがお答えします。</div>'}
+      </div>`;
+  }).join('');
+}
+
+/* ---------- 書き出し ---------- */
+
+function renderOut() {
+  const need = layout.cols * layout.rows;
+  const lines = [
+    '【リッチメニューの設定】',
+    '区切り方　' + layout.label,
+    '',
+    ...cells.slice(0, need).flatMap((c, i) => [
+      `${i + 1}つ目`,
+      `　文字　　　${c.label}`,
+      `　小さい文字　${c.sub ?? '（なし）'}`,
+      `　アイコン　　${c.icon}`,
+      `　送信テキスト　${c.keyword ?? (c.link ? 'リンク：' + c.link : '（設定なし）')}`,
+      ''
+    ]),
+    '【店舗情報】',
+    ...BLANKS.map(b => `${b.label}　${SALON[b.key] ?? '（未設定）'}`)
+  ];
+  $('out').value = lines.join('\n');
+}
+
+$('copy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('out').value);
+    $('copy').textContent = 'コピーしました';
+    setTimeout(() => { $('copy').textContent = 'コピー'; }, 1800);
+  } catch {
+    $('out').select();
+  }
+});
+
+/* ---------- まとめて描き直す ---------- */
+
+/* LINE公式アカウントの管理画面で何をするか。編集中の内容から作る */
+function renderLineSetup() {
+  const need = layout.cols * layout.rows;
+  const pos = ['左上','中上','右上','左下','中下','右下'];
+  const posFor = (i) => layout.rows === 1 ? `左から${i + 1}番目` : (pos[i] ?? `${i + 1}番目`);
+
+  $('lineSetup').innerHTML = `
+    <h4 style="font-family:var(--f-display);font-size:14px;margin:0 0 8px">
+      1. トークルーム管理 → 応答設定</h4>
+    <div class="scrollx"><table class="setup">
+      <thead><tr><th>項目</th><th>設定</th><th>なぜ</th></tr></thead>
+      <tbody>
+        <tr><td>応答メッセージ</td><td class="off">オフ</td>
+            <td>このシステムが返すため。両方オンだと二重に返信されます</td></tr>
+        <tr><td>あいさつメッセージ</td><td class="on">オン</td>
+            <td>友だち追加時の案内。通数は無料です</td></tr>
+        <tr><td>Webhook</td><td class="on">オン</td>
+            <td>お客様のメッセージをシステムが受け取れるようにします</td></tr>
+        <tr><td>チャット</td><td class="on">オン</td>
+            <td>スタッフが手動でお返事するため。通数は無料です</td></tr>
+      </tbody>
+    </table></div>
+
+    <h4 style="font-family:var(--f-display);font-size:14px;margin:24px 0 8px">
+      2. トークルーム管理 → リッチメニュー</h4>
+    <p class="note" style="margin:0 0 10px">
+      テンプレートは「${esc2(layout.label)}」を選び、上で保存した画像をアップロードします。
+      各エリアのアクションは次のとおりです。
+    </p>
+    <div class="scrollx"><table class="setup">
+      <thead><tr><th>位置</th><th>ボタン</th><th>種類</th><th>内容</th></tr></thead>
+      <tbody>
+        ${cells.slice(0, need).map((c, i) => `
+          <tr>
+            <td>${esc2(posFor(i))}</td>
+            <td>${esc2(c.label)}</td>
+            <td>${c.link ? 'リンク' : (c.keyword ? 'テキスト' : '設定しない')}</td>
+            <td>${c.link ? esc2(c.link) : (c.keyword ? '<code>' + esc2(c.keyword) + '</code>' : '—')}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table></div>
+    <p class="note">
+      ポストバックは管理画面から選べないため、すべて「テキスト」で受けています。
+      押すとそのテキストがお客様の発言として送られ、システムが自動で返信します。
+    </p>
+
+    <h4 style="font-family:var(--f-display);font-size:14px;margin:24px 0 8px">
+      3. Messaging API の設定</h4>
+    <p class="note" style="margin:0">
+      LINE Developers で、チャネルシークレットとチャネルアクセストークンを発行し、
+      Webhook URL を登録します。ここだけは私の側で設定します。
+      <b style="color:var(--ink-soft)">オーナー様には管理画面の権限だけご用意いただければ大丈夫です。</b>
+    </p>`;
+}
+
+function renderMenu() {
+  paintMenu();
+  renderLineSetup();
+  if (typeof syncToDemo === 'function') syncToDemo();
+  renderCells();
+  renderSalon();
+  renderReplies();
+  renderOut();
+}
+
+renderMenu();
+if (document.fonts?.ready) document.fonts.ready.then(paintMenu);
+
+/* 編集した画像を、上のお客様の画面にも反映する。
+   区切り方を変えたら押せる範囲も合わせる */
+function syncToDemo() {
+  const img = document.getElementById('rmImg');
+  if (!img) return;
+  img.src = menuCv.toDataURL('image/png');
+  const hit = document.getElementById('rmHit');
+  if (hit) {
+    hit.style.gridTemplateColumns = 'repeat(' + layout.cols + ',1fr)';
+    hit.style.gridTemplateRows = 'repeat(' + layout.rows + ',1fr)';
+    [...hit.children].forEach((b, i) => { b.style.display = i < layout.cols * layout.rows ? '' : 'none'; });
+  }
+}
 renderSim();
 await refresh();
 

@@ -152,6 +152,8 @@
                 box-shadow:0 8px 24px rgba(43,39,36,.10);background:#FAF7F5}
   .story .side{flex:1;min-width:220px}
 
+  /*EDITOR-CSS-HERE*/
+
   footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -187,7 +189,7 @@
         リッチメニューはトーク画面の下にいつも出ています。<b>押してみてください。</b>6つとも動きます。
       </p>
       <div class="menu">
-        <img src="/*__RICHMENU_PNG__*/" alt="リッチメニュー">
+        <img id="rmImg" src="/*__RICHMENU_PNG__*/" alt="リッチメニュー">
         <div class="hit" id="rmHit"></div>
       </div>
       <p class="menucap">左上が今回追加するボタンです。</p>
@@ -344,6 +346,7 @@
     </div>
   </section>
 
+  <!--EDITOR-HERE-->
   <footer>
     トータル・ビューティー・サロン ミエーレ ／ 空き枠のお知らせ<br>
     このデモは実際のプログラムをそのまま動かしています。お客様の画面に出る文面も、
@@ -819,6 +822,7 @@ for (const [uid, names] of PRESEED) {
 }
 
 bubble('sys', '下のリッチメニューを押してみてください');
+/*EDITOR-JS-HERE*/
 renderSim();
 await refresh();
 

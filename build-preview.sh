@@ -94,3 +94,26 @@ awk -v file="$TMP" '
 cp preview/menu.html out/menu.html
 check_dupes preview/menu.html
 echo "built: out/menu.html"
+
+# 空き枠のしくみ ＋ リッチメニュー編集 を1枚にした画面
+EDCSS="$(awk '/\/\*EDITOR-CSS\*\//{f=1;next} /\/\*\/EDITOR-CSS\*\//{f=0} f' preview/menu-shell.html)"
+EDSEC="$(awk '/<!--EDITOR-SECTIONS-->/{f=1;next} /<!--\/EDITOR-SECTIONS-->/{f=0} f' preview/menu-shell.html)"
+EDJS="$(awk '/\/\*EDITOR-JS\*\//{f=1;next} /\/\*\/EDITOR-JS\*\//{f=0} f' preview/menu-shell.html)"
+
+printf '%s\n' "$EDCSS" > "$TMP.css"
+printf '%s\n' "$EDSEC" > "$TMP.sec"
+printf '%s\n' "$EDJS"  > "$TMP.js"
+
+awk -v css="$TMP.css" -v sec="$TMP.sec" -v js="$TMP.js" -v mod="$TMP" '
+  /\/\*EDITOR-CSS-HERE\*\// { while ((getline l < css) > 0) print l; next }
+  /<!--EDITOR-HERE-->/      { while ((getline l < sec) > 0) print l; next }
+  /\/\*EDITOR-JS-HERE\*\//  { while ((getline l < js)  > 0) print l; next }
+  /\/\*__MODULES__\*\//     { while ((getline l < mod) > 0) print l; next }
+  { print }
+' preview/slot-shell.html > "$TMP.all"
+
+sed "s|/\*__RICHMENU_PNG__\*/|data:image/png;base64,${B64}|" "$TMP.all" > preview/all.html
+rm -f "$TMP.css" "$TMP.sec" "$TMP.js" "$TMP.all"
+cp preview/all.html out/all.html
+check_dupes preview/all.html
+echo "built: out/all.html"

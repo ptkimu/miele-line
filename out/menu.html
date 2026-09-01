@@ -51,6 +51,7 @@
   .pad{padding:18px 20px 22px}
   .note{font-size:12.5px;color:var(--muted);line-height:1.75;margin:10px 0 0}
 
+  /*EDITOR-CSS*/
   .preview{background:var(--sunk);padding:20px;display:flex;justify-content:center}
   canvas{max-width:100%;height:auto;border-radius:10px;border:1px solid var(--rule);
          box-shadow:0 8px 24px rgba(43,39,36,.10);background:#FAF7F5}
@@ -84,6 +85,17 @@
   .rep h3{font-family:var(--f-display);font-size:14px;margin:0 0 2px}
   .rep .kw{font-size:11.5px;color:var(--muted)}
 
+  .scrollx{overflow-x:auto;margin:0 0 6px}
+  table.setup{width:100%;border-collapse:collapse;font-size:13.5px;line-height:1.75;min-width:460px}
+  table.setup th,table.setup td{text-align:left;padding:9px 14px 9px 0;
+    border-bottom:1px solid var(--rule);vertical-align:top}
+  table.setup thead th{font-size:10.5px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+  table.setup tbody tr:last-child td{border-bottom:0}
+  table.setup .on{color:var(--free);font-weight:700;white-space:nowrap}
+  table.setup .off{color:var(--stop);font-weight:700;white-space:nowrap}
+  table.setup code{background:var(--sunk);border:1px solid var(--rule);border-radius:5px;
+    padding:1px 7px;font-size:12.5px;white-space:nowrap}
+  /*/EDITOR-CSS*/
   footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -101,6 +113,7 @@
     </p>
   </header>
 
+  <!--EDITOR-SECTIONS-->
   <section class="panel">
     <h2>できあがり</h2>
     <div class="pad" style="padding-bottom:0">
@@ -148,6 +161,17 @@
   </section>
 
   <section class="panel">
+    <h2>LINE公式アカウント側で設定すること</h2>
+    <div class="pad">
+      <p style="margin:0 0 14px;font-size:14px">
+        <b>管理画面での作業はこれだけです。</b>費用はかかりません。
+        上でボタンを変えると、この表も変わります。
+      </p>
+      <div id="lineSetup"></div>
+    </div>
+  </section>
+
+  <section class="panel">
     <h2>設定の書き出し</h2>
     <div class="pad">
       <p style="margin:0 0 12px;font-size:14px">
@@ -158,6 +182,7 @@
     </div>
   </section>
 
+  <!--/EDITOR-SECTIONS-->
   <footer>
     トータル・ビューティー・サロン ミエーレ ／ リッチメニュー編集<br>
     画像は 1MB 以内であればLINEの管理画面にそのままアップロードできます。
@@ -2168,6 +2193,7 @@ function html(inner) {
 const $ = (id) => document.getElementById(id);
 const esc2 = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+/*EDITOR-JS*/
 /* 編集中の内容。src の既定値から始める */
 const DEFAULT_CELLS = JSON.parse(JSON.stringify(MENU));
 let cells = JSON.parse(JSON.stringify(MENU));
@@ -2186,14 +2212,14 @@ const BLANKS = [
 
 /* ---------- 画像 ---------- */
 
-const cv = $('cv');
-const ctx = cv.getContext('2d');
+const menuCv = $('cv');
+const menuCtx = menuCv.getContext('2d');
 
-function paint() {
-  cv.width = layout.w;
-  cv.height = layout.h;
-  cv.style.width = 'min(100%, 760px)';
-  drawRichMenu(ctx, cellsFor(cells, layout), layout);
+function paintMenu() {
+  menuCv.width = layout.w;
+  menuCv.height = layout.h;
+  menuCv.style.width = 'min(100%, 760px)';
+  drawRichMenu(menuCtx, cellsFor(cells, layout), layout);
   $('sizeNote').textContent =
     `${layout.w} × ${layout.h} ピクセル。LINEの管理画面で「${layout.label}」のテンプレートを選んでください。`;
 }
@@ -2203,19 +2229,19 @@ LAYOUTS.forEach(l => {
   o.value = l.id; o.textContent = l.label;
   $('layout').appendChild(o);
 });
-$('layout').addEventListener('change', () => { layout = layoutById($('layout').value); render(); });
+$('layout').addEventListener('change', () => { layout = layoutById($('layout').value); renderMenu(); });
 
 $('dl').addEventListener('click', () => {
   const a = document.createElement('a');
   a.download = 'miele-richmenu-' + layout.id + '.png';
-  a.href = cv.toDataURL('image/png');
+  a.href = menuCv.toDataURL('image/png');
   a.click();
 });
 
 $('reset').addEventListener('click', () => {
   cells = JSON.parse(JSON.stringify(DEFAULT_CELLS));
   BLANKS.forEach(b => { SALON[b.key] = null; });
-  render();
+  renderMenu();
 });
 
 /* ---------- ボタンの編集 ---------- */
@@ -2245,7 +2271,7 @@ function renderCells() {
     el.addEventListener('input', () => {
       const v = el.value;
       cells[Number(el.dataset.i)][el.dataset.k] = v === '' ? null : v;
-      render();
+      renderMenu();
     }));
 }
 
@@ -2268,7 +2294,7 @@ function renderSalon() {
   $('salon').querySelectorAll('input').forEach(el =>
     el.addEventListener('input', () => {
       SALON[el.dataset.s] = el.value.trim() === '' ? null : el.value.trim();
-      render();
+      renderMenu();
     }));
 }
 
@@ -2327,14 +2353,86 @@ $('copy').addEventListener('click', async () => {
 
 /* ---------- まとめて描き直す ---------- */
 
-function render() {
-  paint();
+/* LINE公式アカウントの管理画面で何をするか。編集中の内容から作る */
+function renderLineSetup() {
+  const need = layout.cols * layout.rows;
+  const pos = ['左上','中上','右上','左下','中下','右下'];
+  const posFor = (i) => layout.rows === 1 ? `左から${i + 1}番目` : (pos[i] ?? `${i + 1}番目`);
+
+  $('lineSetup').innerHTML = `
+    <h4 style="font-family:var(--f-display);font-size:14px;margin:0 0 8px">
+      1. トークルーム管理 → 応答設定</h4>
+    <div class="scrollx"><table class="setup">
+      <thead><tr><th>項目</th><th>設定</th><th>なぜ</th></tr></thead>
+      <tbody>
+        <tr><td>応答メッセージ</td><td class="off">オフ</td>
+            <td>このシステムが返すため。両方オンだと二重に返信されます</td></tr>
+        <tr><td>あいさつメッセージ</td><td class="on">オン</td>
+            <td>友だち追加時の案内。通数は無料です</td></tr>
+        <tr><td>Webhook</td><td class="on">オン</td>
+            <td>お客様のメッセージをシステムが受け取れるようにします</td></tr>
+        <tr><td>チャット</td><td class="on">オン</td>
+            <td>スタッフが手動でお返事するため。通数は無料です</td></tr>
+      </tbody>
+    </table></div>
+
+    <h4 style="font-family:var(--f-display);font-size:14px;margin:24px 0 8px">
+      2. トークルーム管理 → リッチメニュー</h4>
+    <p class="note" style="margin:0 0 10px">
+      テンプレートは「${esc2(layout.label)}」を選び、上で保存した画像をアップロードします。
+      各エリアのアクションは次のとおりです。
+    </p>
+    <div class="scrollx"><table class="setup">
+      <thead><tr><th>位置</th><th>ボタン</th><th>種類</th><th>内容</th></tr></thead>
+      <tbody>
+        ${cells.slice(0, need).map((c, i) => `
+          <tr>
+            <td>${esc2(posFor(i))}</td>
+            <td>${esc2(c.label)}</td>
+            <td>${c.link ? 'リンク' : (c.keyword ? 'テキスト' : '設定しない')}</td>
+            <td>${c.link ? esc2(c.link) : (c.keyword ? '<code>' + esc2(c.keyword) + '</code>' : '—')}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table></div>
+    <p class="note">
+      ポストバックは管理画面から選べないため、すべて「テキスト」で受けています。
+      押すとそのテキストがお客様の発言として送られ、システムが自動で返信します。
+    </p>
+
+    <h4 style="font-family:var(--f-display);font-size:14px;margin:24px 0 8px">
+      3. Messaging API の設定</h4>
+    <p class="note" style="margin:0">
+      LINE Developers で、チャネルシークレットとチャネルアクセストークンを発行し、
+      Webhook URL を登録します。ここだけは私の側で設定します。
+      <b style="color:var(--ink-soft)">オーナー様には管理画面の権限だけご用意いただければ大丈夫です。</b>
+    </p>`;
+}
+
+function renderMenu() {
+  paintMenu();
+  renderLineSetup();
+  if (typeof syncToDemo === 'function') syncToDemo();
   renderCells();
   renderSalon();
   renderReplies();
   renderOut();
 }
 
-render();
-if (document.fonts?.ready) document.fonts.ready.then(paint);
+renderMenu();
+if (document.fonts?.ready) document.fonts.ready.then(paintMenu);
+
+/* 編集した画像を、上のお客様の画面にも反映する。
+   区切り方を変えたら押せる範囲も合わせる */
+function syncToDemo() {
+  const img = document.getElementById('rmImg');
+  if (!img) return;
+  img.src = menuCv.toDataURL('image/png');
+  const hit = document.getElementById('rmHit');
+  if (hit) {
+    hit.style.gridTemplateColumns = 'repeat(' + layout.cols + ',1fr)';
+    hit.style.gridTemplateRows = 'repeat(' + layout.rows + ',1fr)';
+    [...hit.children].forEach((b, i) => { b.style.display = i < layout.cols * layout.rows ? '' : 'none'; });
+  }
+}
+/*/EDITOR-JS*/
 </script>
