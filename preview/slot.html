@@ -128,6 +128,15 @@
   .days button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
   .days button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
+  /* 画面を開いた瞬間に分かる帯 */
+  .banner{border-radius:12px;padding:14px 18px;margin:0 0 14px;background:var(--sunk);
+          border:1px solid var(--rule)}
+  .banner b{display:block;font-family:var(--f-display);font-size:16px;color:var(--ink-soft)}
+  .banner span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+  .banner--on{background:var(--accent);border-color:var(--accent)}
+  .banner--on b{color:#fff;font-size:18px}
+  .banner--on span{color:#F1DCD3}
+
   /* 役割分担の表 */
   table.split{width:100%;border-collapse:collapse;font-size:13px;line-height:1.7}
   table.split th,table.split td{text-align:left;padding:8px 12px 8px 0;
@@ -192,6 +201,7 @@
         空きが出たら、部屋と時刻とメニューを選ぶだけ。<b>LINEの文面もInstagramの画像も同時にできます。</b>
       </p>
       <div class="pad">
+        <div id="todayBanner"></div>
         <div class="btnrow" style="margin-bottom:8px" id="roomBtns"></div>
         <p class="note" id="roomNote" style="margin:0 0 12px"></p>
         <div class="btnrow" style="margin-bottom:6px">
@@ -258,12 +268,44 @@
       どの枠を出すかは人が決めるので、送信そのものは自動化しません。
     </p>
     <div class="pad">
+      <h4 style="margin-top:0">気づく方法は3つあります</h4>
+      <div class="scroll">
+        <table class="split">
+          <thead><tr><th>方法</th><th>費用</th><th>準備</th><th>向き不向き</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>ブラウザのホームページにする</b><br>
+                  <span style="color:var(--muted)">店舗PCでブラウザを開くと、この画面が出る</span></td>
+              <td class="auto">0円</td><td>1回だけ</td>
+              <td><b style="color:var(--free)">店舗PCならこれが確実</b></td>
+            </tr>
+            <tr>
+              <td>LINEに通知<br>
+                  <span style="color:var(--muted)">スタッフのLINEへ1通</span></td>
+              <td>月8通</td><td>ユーザーIDの取得</td>
+              <td>スマホで見る運用なら</td>
+            </tr>
+            <tr>
+              <td>メールに通知<br>
+                  <span style="color:var(--muted)">店舗のメールアドレスへ</span></td>
+              <td class="auto">0円</td><td>送信サービスの契約</td>
+              <td>PCでメールを見る習慣があれば</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin:0 0 18px">
+        <b style="color:var(--ink-soft)">店舗PCで作業されるなら、1つ目をお勧めします。</b>
+        通知のしくみを足さずに済み、サロンボードを開くついでに必ず目に入ります。
+        上のスタッフ画面の先頭に、送信日かどうかが大きく出ます。
+      </p>
+
+      <h4>LINEで受け取る場合に届くもの</h4>
       <p class="note" style="margin:0 0 10px">曜日を押すと、その日の朝に何が起きるか分かります。</p>
       <div class="days" id="simDays" style="margin-bottom:14px"></div>
 
       <div class="cols" style="gap:20px">
         <div>
-          <h4 style="margin-top:0">スタッフのLINEに届くもの</h4>
           <div id="simOut"></div>
         </div>
         <div>
@@ -2331,12 +2373,23 @@ async function refresh() {
   const lead = DEFAULT_SCHEDULE.leadDays;
   $('schedNote').innerHTML = !next
     ? '曜日が選ばれていません。定期のお知らせは出ません。'
-    : (isSendDay(TODAY, sendDays)
-        ? '<b style="color:var(--accent)">本日は送信日です。</b>'
-        : '次の送信日は <b style="color:var(--ink-soft)">' + esc2(formatDate(next)) + '</b> です。') +
-      `　${lead[0]}〜${lead[lead.length - 1]}日後の空きをまとめてご案内します。` +
-      `<br>週${sendDays.length}回。上限は同じ部屋で週${MAX_PER_WEEK}回までなので、` +
+    : `${lead[0]}〜${lead[lead.length - 1]}日後の空きをまとめてご案内します。` +
+      `週${sendDays.length}回。上限は同じ部屋で週${MAX_PER_WEEK}回までなので、` +
       `突発の空きをあと${Math.max(0, MAX_PER_WEEK - sendDays.length)}回出せます。`;
+
+  /* 画面を開いた時点で送信日かどうかが分かるようにする。
+     店舗PCのブラウザのホームページにしておけば、これが通知の代わりになる */
+  $('todayBanner').innerHTML = !next
+    ? ''
+    : isSendDay(TODAY, sendDays)
+      ? `<div class="banner banner--on">
+           <b>本日は空き枠のお知らせの日です</b>
+           <span>${esc2(scheduleDates(TODAY, lead).map(formatDate).join('・'))} の空きをご確認ください</span>
+         </div>`
+      : `<div class="banner">
+           <b>本日は送信日ではありません</b>
+           <span>次は ${esc2(formatDate(next))}</span>
+         </div>`;
 
   $('slotList').innerHTML = slots.map((s, i) => `
     <div class="step">
