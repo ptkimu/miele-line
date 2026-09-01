@@ -667,23 +667,47 @@ async function refresh() {
            <span>次は ${esc2(formatDate(next))}</span>
          </div>`;
 
+  /* 同じ日に何枠でも足せる。日付・時刻・メニューをそれぞれ変えられる */
+  const fld = 'padding:8px 10px;border:1px solid var(--rule);border-radius:9px;' +
+              'font:inherit;font-size:13px;background:var(--ground);color:var(--ink)';
   $('slotList').innerHTML = slots.map((s, i) => `
     <div class="step">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${esc2(formatDate(s.date))}</div>
-      <div class="btnrow">
-        <input type="time" value="${esc2(s.time)}" data-i="${i}" data-f="time"
-               style="padding:8px 10px;border:1px solid var(--rule);border-radius:9px;
-                      font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)">
-        <select data-i="${i}" data-f="menu"
-                style="flex:1;min-width:0;padding:8px 10px;border:1px solid var(--rule);
-                       border-radius:9px;font:inherit;font-size:13px;background:var(--ground);color:var(--ink)">
-          ${menusOf(room).map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
-        </select>
+      <div class="btnrow" style="margin-bottom:6px">
+        <input type="date" value="${esc2(s.date)}" data-i="${i}" data-f="date" style="${fld}">
+        <input type="time" value="${esc2(s.time)}" data-i="${i}" data-f="time" style="${fld}">
+        <span style="flex:1"></span>
+        ${slots.length > 1
+          ? `<button class="btn btn--ghost" data-del="${i}" aria-label="この枠を消す"
+               style="padding:8px 12px">消す</button>`
+          : ''}
       </div>
-    </div>`).join('');
+      <select data-i="${i}" data-f="menu" style="${fld};width:100%">
+        ${menusOf(room).map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
+      </select>
+    </div>`).join('') +
+    `<div class="btnrow" style="margin-bottom:12px">
+       <button class="btn btn--ghost" id="slotAdd">＋ 枠を追加</button>
+       <span class="note" style="margin:0">${slots.length}枠</span>
+     </div>`;
 
   $('slotList').querySelectorAll('input,select').forEach(el =>
     el.addEventListener('change', () => { slots[Number(el.dataset.i)][el.dataset.f] = el.value; refresh(); }));
+
+  $('slotList').querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); refresh(); }));
+
+  /* 直前の枠と同じ日の、1時間後を初期値にする。同じ日に続けて足しやすい */
+  $('slotAdd').addEventListener('click', () => {
+    const last = slots[slots.length - 1];
+    const h = Math.min(21, Number(String(last.time).slice(0, 2)) + 1);
+    slots.push({
+      date: last.date,
+      time: String(h).padStart(2, '0') + ':00',
+      menu: last.menu,
+      minutes: last.minutes
+    });
+    refresh();
+  });
 
   const p = await previewOpenSlot(env, slots, {
     today: TODAY, quota: state.quota, room,

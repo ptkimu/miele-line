@@ -1712,11 +1712,15 @@ function drawStory(ctx, slots, opts = {}) {
     center(ctx, s.menu, cx, y, `400 40px ${BODY}`, C.muted, 1);
     y += 90;
   } else {
-    for (const s of list) {
-      center(ctx, formatDate(s.date), cx, y, `400 38px ${BODY}`, C.muted, 1);
-      y += 62;
-      center(ctx, s.time, cx, y, `700 96px ${DISPLAY}`, C.ink, 2);
-      y += 118;
+    /* 同じ日は1行にまとめる。「9月3日（木） 11:00 / 14:30」のように出す */
+    const groups = groupDates(list);
+    const big = groups.length >= 3 ? 76 : 96;
+    for (const [date, ss] of groups) {
+      center(ctx, formatDate(date), cx, y, `400 38px ${BODY}`, C.muted, 1);
+      y += 60;
+      center(ctx, ss.map((s) => s.time).join('  /  '), cx, y,
+             `700 ${big}px ${DISPLAY}`, C.ink, 2);
+      y += big + 26;
     }
     y += 20;
   }
@@ -1752,6 +1756,12 @@ function center(ctx, textValue, cx, y, font, color, spacing = 0) {
     ctx.fillText(ch, x, y);
     x += ctx.measureText(ch).width + spacing;
   }
+}
+
+function groupDates(list) {
+  const m = new Map();
+  list.forEach((s) => m.set(s.date, [...(m.get(s.date) ?? []), s]));
+  return [...m.entries()];
 }
 
 function rule(ctx, cx, y, half) {
