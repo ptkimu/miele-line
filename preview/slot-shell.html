@@ -1,0 +1,439 @@
+<title>ミエーレ 空き枠のお知らせ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
+    --ink:#2B2724; --ink-soft:#5D534E; --muted:#8B7F79;
+    --rule:#E7DBD4; --rule-hard:#D6C6BD;
+    --accent:#98543F; --accent-wash:#F7EBE5;
+    --free:#1F7A4C; --free-fill:#1F9D57; --free-wash:#E8F3EC;
+    --cost:#8E6415; --cost-fill:#B5822A; --cost-wash:#F7EFDF;
+    --stop:#A73A2A; --stop-wash:#FBE6E2;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+      --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
+      --rule:#3A3331; --rule-hard:#4C4340;
+      --accent:#D9967C; --accent-wash:#33241F;
+      --free:#5CC98C; --free-fill:#2E9E63; --free-wash:#1C2C24;
+      --cost:#DEAC57; --cost-fill:#A87A28; --cost-wash:#2E2619;
+      --stop:#E58775; --stop-wash:#33211E;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+    --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
+    --rule:#3A3331; --rule-hard:#4C4340;
+    --accent:#D9967C; --accent-wash:#33241F;
+    --free:#5CC98C; --free-fill:#2E9E63; --free-wash:#1C2C24;
+    --cost:#DEAC57; --cost-fill:#A87A28; --cost-wash:#2E2619;
+    --stop:#E58775; --stop-wash:#33211E;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
+       font-size:15px;line-height:1.8;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;padding:40px 22px 90px}
+
+  header.top{border-bottom:1px solid var(--rule);padding-bottom:24px;margin-bottom:26px}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.2em;color:var(--accent);margin:0 0 12px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(25px,4.4vw,32px);
+     line-height:1.32;margin:0 0 14px;text-wrap:balance}
+  .lede{color:var(--ink-soft);margin:0 0 20px;max-width:62ch;font-size:15px}
+  .facts{display:flex;flex-wrap:wrap;border-top:1px solid var(--rule);margin:0}
+  .facts div{flex:1 1 170px;padding:14px 18px 12px 0;border-right:1px solid var(--rule)}
+  .facts div:last-child{border-right:0}
+  .facts dt{font-size:10.5px;letter-spacing:.12em;color:var(--muted);margin:0 0 2px}
+  .facts dd{margin:0;font-family:var(--f-display);font-weight:700;font-size:16px;line-height:1.45}
+  .facts dd small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;
+                  color:var(--muted);line-height:1.6}
+  .warn{background:var(--accent-wash);border-left:3px solid var(--accent);
+        border-radius:0 10px 10px 0;padding:13px 18px;font-size:13.5px;margin:22px 0 0;
+        color:var(--ink-soft)}
+  .warn strong{color:var(--ink);font-weight:500}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  @media (max-width:940px){.cols{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
+  .panel > h2{font-family:var(--f-display);margin:0;padding:16px 20px;font-size:15.5px;
+              border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .badge{font-size:10.5px;font-weight:700;color:#fff;border-radius:99px;padding:2px 10px;
+         letter-spacing:.04em;white-space:nowrap;background:var(--cost-fill)}
+  .pad{padding:16px 20px 20px}
+
+  .btn{border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:700;font-size:13.5px;
+       cursor:pointer;background:var(--accent);color:#fff}
+  .btn--ghost{background:var(--surface);color:var(--accent);border:1px solid var(--rule-hard)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  .meter{margin:0 0 6px}
+  .meter .bar{height:12px;border-radius:99px;background:var(--sunk);overflow:hidden;display:flex}
+  .meter .used{background:var(--cost-fill)}
+  .meter .now{background:var(--accent)}
+  .meter .res{background:var(--rule-hard)}
+  .meterlabels{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--muted);margin-top:8px}
+  .meterlabels i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+  .num{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
+
+  .verdict{border-radius:10px;padding:12px 16px;font-size:13.5px;margin:14px 0 0;line-height:1.7}
+  .verdict--go{background:var(--free-wash);color:var(--free)}
+  .verdict--stop{background:var(--stop-wash);color:var(--stop)}
+
+  .step{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:10px;
+        background:var(--surface)}
+  .msg{background:var(--sunk);border-radius:10px;padding:12px 15px;font-size:12.5px;
+       white-space:pre-wrap;line-height:1.8;margin-top:8px}
+  .note{font-size:12.5px;color:var(--muted);line-height:1.75;margin:12px 0 0}
+  .empty{color:var(--muted);font-size:13px}
+
+  label.chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:6px 0;cursor:pointer}
+  label.chk input{margin-top:6px}
+  label.chk small{display:block;color:var(--muted);font-size:11.5px;line-height:1.6}
+
+  .phone{background:#8CABD8;padding:14px}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .phone{background:#3E5470}}
+  :root[data-theme="dark"] .phone{background:#3E5470}
+  .row{display:flex}
+  .bub{max-width:88%;padding:10px 14px;border-radius:17px;font-size:13.5px;line-height:1.75;
+       white-space:pre-wrap;word-break:break-word;background:#FFFFFF;color:#1E1E1E;
+       border-bottom-left-radius:4px}
+
+  footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--muted);line-height:1.9}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">動作デモ</p>
+    <h1>空いた枠を、30秒でお知らせする</h1>
+    <p class="lede">
+      日時とメニューを選ぶだけで、<strong>LINEに送る文面とInstagramに載せる文面が
+      同時にできます。</strong>空きが出るたびに文面を考えていては続かないので、
+      考えなくて済むようにしました。実際に触って動かせます。
+    </p>
+    <dl class="facts">
+      <div><dt>スタッフの操作</dt><dd>3タップ<small>部屋・時刻・メニューを選ぶだけ</small></dd></div>
+      <div><dt>ご予約の受け方</dt><dd>これまで通り<small>LINEで承り、サロンボードへ入力</small></dd></div>
+      <div><dt>Instagram</dt><dd>枠は出しません<small>「LINEに先に案内済み」と伝えるだけ</small></dd></div>
+    </dl>
+    <p class="warn">
+      <strong>これはデモです。</strong>お名前・通数はすべて架空のサンプルで、
+      ここで押したボタンでLINEが送られることはありません。
+    </p>
+  </header>
+
+  <div class="cols">
+    <section class="panel">
+      <h2>空き枠を登録する <span class="badge">通数を使う</span></h2>
+      <div class="pad">
+        <div class="btnrow" style="margin-bottom:8px" id="roomBtns"></div>
+        <p class="note" id="roomNote" style="margin:0 0 12px"></p>
+        <div class="btnrow" style="margin-bottom:14px">
+          <button class="btn btn--ghost" id="slotWeek">今週末をまとめて</button>
+        </div>
+        <div id="slotList"></div>
+
+        <label class="chk" style="margin-top:6px">
+          <input type="checkbox" id="slotNarrow" checked>
+          <span>このメニューに関心のある方だけに送る<small>診断でその希望を選んだ方だけ。関係のない方に届かない</small></span>
+        </label>
+
+        <h4 style="font-family:var(--f-display);font-size:14px;margin:22px 0 4px">
+          この枠をキャンセルされた方</h4>
+        <p class="note" style="margin:0 0 6px">
+          対象から外します。ご本人に案内が届くと「自分のせいで穴埋めしている」と
+          感じさせてしまうためです。
+        </p>
+        <div id="slotExclude"></div>
+
+        <label class="chk" style="margin-top:10px">
+          <input type="checkbox" id="slotRecent" checked>
+          <span>直近1週間に送った方は外す<small>短い間隔で続けて届くとブロックされやすい</small></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>送る前の確認 <span class="badge">通数を使う</span></h2>
+      <div class="pad" id="slotOut"></div>
+    </section>
+  </div>
+
+  <footer>
+    ビューティサロン ミエーレ ／ 空き枠・キャンセル枠のお知らせ<br>
+    このデモは実際のプログラムをそのまま動かしています。データベースだけサンプルに差し替えてあります。
+  </footer>
+</div>
+
+<script type="module">
+/*__MODULES__*/
+
+/* ==================================================================
+   デモ用のサンプルデータ（お名前・通数はすべて架空です）
+   ================================================================== */
+
+const REAL_TODAY = todayJst();
+const shift = (b, d) => new Date(Date.parse(b + 'T00:00:00Z') + d * 86400000).toISOString().slice(0, 10);
+const $ = (id) => document.getElementById(id);
+const esc2 = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const nf = (n) => n.toLocaleString('ja-JP');
+
+const state = {
+  quota: { limit: 5000, used: 1240 },
+  customers: [
+    { line_user_id:'U01', display_name:'さくら', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-11), followed_at:shift(REAL_TODAY,-120) },
+    { line_user_id:'U02', display_name:'みどり', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-3),  followed_at:shift(REAL_TODAY,-90) },
+    { line_user_id:'U03', display_name:'ゆき',   status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-21), followed_at:shift(REAL_TODAY,-200) },
+    { line_user_id:'U04', display_name:'あやの', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-8),  followed_at:shift(REAL_TODAY,-45) },
+    { line_user_id:'U05', display_name:'けんた', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-6),  followed_at:shift(REAL_TODAY,-30) },
+    { line_user_id:'U06', display_name:'ひなの', status:'active', next_booked:0, last_visit_at:shift(REAL_TODAY,-40), followed_at:shift(REAL_TODAY,-300) }
+  ],
+  tags: [
+    { id:1, name:'希望:キャンセル枠' },
+    { id:2, name:'希望:セルフ脱毛' },
+    { id:3, name:'希望:セラピスト脱毛' },
+    { id:4, name:'希望:毛穴・シミ・くすみ' },
+    { id:5, name:'希望:お腹・太ももの脂肪' }
+  ],
+  customerTags: [
+    { line_user_id:'U01', tag_id:1 }, { line_user_id:'U01', tag_id:2 },
+    { line_user_id:'U02', tag_id:1 }, { line_user_id:'U02', tag_id:3 },
+    { line_user_id:'U03', tag_id:1 }, { line_user_id:'U03', tag_id:4 },
+    { line_user_id:'U04', tag_id:1 }, { line_user_id:'U04', tag_id:2 },
+    { line_user_id:'U05', tag_id:1 }, { line_user_id:'U05', tag_id:3 },
+    { line_user_id:'U06', tag_id:1 }, { line_user_id:'U06', tag_id:5 }
+  ],
+  // ゆきさんは2日前に別のお知らせを受け取っている
+  deliveries: [
+    { line_user_id:'U03', dedupe_key:'past', status:'sent', sent_at: shift(REAL_TODAY,-2) + 'T01:00:00.000Z' }
+  ],
+  openSlots: []
+};
+
+/* ==================================================================
+   D1 のふるまいを、この画面で使う範囲だけ再現する
+   ================================================================== */
+
+const active = () => state.customers.filter(c => c.status === 'active');
+const tagId = (name) => state.tags.find(t => t.name === name)?.id ?? null;
+
+function q(sql, args) {
+  if (sql.includes('INSERT INTO open_slots')) {
+    state.openSlots.push({ kind: args[0], created_at: args[3] });
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('FROM open_slots')) {
+    const since = args[0];
+    const room = sql.includes('kind = ?') ? args[1] : null;
+    const n = state.openSlots.filter(s => s.created_at >= since && (!room || s.kind === room)).length;
+    return { first:{ n }, rows:[] };
+  }
+  if (sql.includes('INSERT OR IGNORE INTO deliveries')) {
+    const uid = args[0], key = args[1];
+    if (state.deliveries.some(d => d.line_user_id === uid && d.dedupe_key === key)) {
+      return { first:null, rows:[], changes:0 };
+    }
+    state.deliveries.push({ line_user_id:uid, dedupe_key:key, status:'sending', sent_at:args[2] });
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('UPDATE deliveries SET status')) {
+    const d = state.deliveries.find(x => x.line_user_id === args[2] && x.dedupe_key === args[3]);
+    if (d) { d.status = args[0]; d.sent_at = args[1]; }
+    return { first:null, rows:[], changes:1 };
+  }
+  if (sql.includes('FROM customers')) {
+    let rows = active();
+    let i = 0;
+    const tagCount = (sql.match(/FROM customer_tags ct JOIN tags t/g) ?? []).length;
+    for (let k = 0; k < tagCount; k++) {
+      const name = args[i++];
+      const id = tagId(name);
+      rows = rows.filter(c => id && state.customerTags.some(
+        ct => ct.line_user_id === c.line_user_id && ct.tag_id === id));
+    }
+    if (sql.includes('c.last_visit_at <= ?')) i++;
+    if (sql.includes('c.next_booked = 0')) rows = rows.filter(c => c.next_booked === 0);
+    if (sql.includes('FROM deliveries d') && sql.includes('NOT EXISTS')) {
+      const since = args[i++];
+      rows = rows.filter(c => !state.deliveries.some(
+        d => d.line_user_id === c.line_user_id && d.status === 'sent' && d.sent_at >= since));
+    }
+    if (sql.includes('MAX(d.sent_at)')) {
+      rows = rows.map(c => ({ ...c, last_sent_at: state.deliveries
+        .filter(d => d.line_user_id === c.line_user_id && d.status === 'sent')
+        .map(d => d.sent_at).sort().pop() ?? null }));
+    }
+    return { first:null, rows };
+  }
+  return { first:null, rows:[], changes:0 };
+}
+
+const env = { DB: { prepare(sql) {
+  let args = [];
+  const stmt = {
+    bind(...a) { args = a; return stmt; },
+    async first() { return q(sql, args).first; },
+    async all()   { return { results: q(sql, args).rows }; },
+    async run()   { return { meta: { changes: q(sql, args).changes ?? 0 } }; }
+  };
+  return stmt;
+} } };
+
+/* ==================================================================
+   画面
+   ================================================================== */
+
+const menusOf = (r) => ROOMS.find(x => x.id === r).menus;
+
+function todaySlots(r) {
+  const m = menusOf(r);
+  return r === 'self'
+    ? [{ date: REAL_TODAY, time:'19:00', menu:m[0], minutes:30 }]
+    : [{ date: REAL_TODAY, time:'17:00', menu:m[0], minutes:60 }];
+}
+
+function weekendSlots(r) {
+  const m = menusOf(r);
+  const dow = new Date(Date.parse(REAL_TODAY + 'T00:00:00Z')).getUTCDay();
+  const toSat = ((6 - dow + 7) % 7) || 7;
+  const sat = shift(REAL_TODAY, toSat), sun = shift(REAL_TODAY, toSat + 1);
+  return [
+    { date:sat, time:'11:00', menu:m[0], minutes:60 },
+    { date:sat, time:'14:30', menu:m[0], minutes:60 },
+    { date:sun, time:'13:00', menu:m[Math.min(1, m.length - 1)], minutes:30 }
+  ];
+}
+
+let room = 'room';
+let slots = todaySlots(room);
+const excluded = new Set();
+
+ROOMS.forEach(r => {
+  const b = document.createElement('button');
+  b.className = 'btn btn--ghost';
+  b.dataset.room = r.id;
+  b.textContent = r.label + 'の空き';
+  b.addEventListener('click', () => { room = r.id; slots = todaySlots(room); render(); });
+  $('roomBtns').appendChild(b);
+});
+
+$('slotWeek').addEventListener('click', () => { slots = weekendSlots(room); render(); });
+$('slotRecent').addEventListener('change', render);
+$('slotNarrow').addEventListener('change', render);
+
+function meter(v) {
+  const pct = (n) => Math.max(0, Math.min(100, (n / v.limit) * 100));
+  return `<div class="meter"><div class="bar">
+      <div class="used" style="width:${pct(v.used)}%"></div>
+      <div class="now"  style="width:${pct(v.planned)}%"></div>
+      <div class="res"  style="width:${pct(v.reserve)}%"></div></div>
+    <div class="meterlabels">
+      <span><i style="background:var(--cost-fill)"></i>今月すでに使った <span class="num">${nf(v.used)}</span> 通</span>
+      <span><i style="background:var(--accent)"></i>今回送る <span class="num">${nf(v.planned)}</span> 通</span>
+      <span><i style="background:var(--rule-hard)"></i>いざという時のために残す <span class="num">${nf(v.reserve)}</span> 通</span>
+      <span>上限 <span class="num">${nf(v.limit)}</span> 通</span>
+    </div></div>`;
+}
+
+async function render() {
+  const roomDef = ROOMS.find(r => r.id === room);
+  $('roomBtns').querySelectorAll('button').forEach(b => {
+    const on = b.dataset.room === room;
+    b.style.background = on ? 'var(--accent)' : '';
+    b.style.color = on ? '#fff' : '';
+  });
+  $('roomNote').textContent = roomDef.note;
+
+  $('slotList').innerHTML = slots.map((s, i) => `
+    <div class="step" style="padding:12px 14px;margin-bottom:8px">
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">${esc2(formatDate(s.date))}</div>
+      <div class="btnrow">
+        <input type="time" value="${esc2(s.time)}" data-i="${i}" data-f="time"
+               style="padding:9px 11px;border:1px solid var(--rule);border-radius:9px;
+                      font:inherit;font-size:14px;background:var(--ground);color:var(--ink)">
+        <select data-i="${i}" data-f="menu"
+                style="flex:1;min-width:0;padding:9px 11px;border:1px solid var(--rule);
+                       border-radius:9px;font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)">
+          ${menusOf(room).map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
+        </select>
+        ${slots.length > 1 ? `<button class="btn btn--ghost" data-del="${i}" aria-label="この枠を削除">✕</button>` : ''}
+      </div>
+    </div>`).join('');
+
+  $('slotList').querySelectorAll('input,select').forEach(el =>
+    el.addEventListener('change', () => { slots[Number(el.dataset.i)][el.dataset.f] = el.value; render(); }));
+  $('slotList').querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', () => { slots.splice(Number(b.dataset.del), 1); render(); }));
+
+  const holders = await listSegment(env, { tags: [OPEN_SLOT_TAG] }, REAL_TODAY);
+  $('slotExclude').innerHTML = holders.length
+    ? holders.map(c => `<label class="chk" style="padding:4px 0">
+        <input type="checkbox" value="${esc2(c.line_user_id)}"${excluded.has(c.line_user_id) ? ' checked' : ''}>
+        <span>${esc2(c.display_name)}</span></label>`).join('')
+    : '<p class="empty">お知らせを希望された方がまだいません。</p>';
+  $('slotExclude').querySelectorAll('input').forEach(el =>
+    el.addEventListener('change', () => {
+      el.checked ? excluded.add(el.value) : excluded.delete(el.value);
+      render();
+    }));
+
+  const p = await previewOpenSlot(env, slots, {
+    today: REAL_TODAY, quota: state.quota, room,
+    narrow: $('slotNarrow').checked,
+    excludeUserIds: [...excluded],
+    excludeRecent: $('slotRecent').checked
+  });
+
+  const verdict = p.planned === 0
+    ? '<div class="verdict verdict--stop"><b>送る相手がいません。</b></div>'
+    : p.quota.allowed
+      ? `<div class="verdict verdict--go"><b>${nf(p.planned)}名に届きます。${nf(p.planned)}通を使います。</b></div>`
+      : `<div class="verdict verdict--stop"><b>送れません。</b>${esc2(p.quota.reason ?? '')}</div>`;
+
+  const notes = p.notes.map(n =>
+    `<div class="verdict ${n.kind === 'excluded' ? 'verdict--go' : 'verdict--stop'}"
+          style="margin-top:8px">${esc2(n.text)}</div>`).join('');
+
+  $('slotOut').innerHTML =
+    meter({ ...p.quota, planned: p.planned }) + verdict + notes +
+    `<p class="note">送り先　<b style="color:var(--ink-soft)">${
+      p.narrowTag ? esc2(p.narrowTag) + ' の方' : '空き枠を希望した方 全員'}</b><br>
+      ${esc2(p.roomLabel)}の直近7日間の配信回数　<b class="num">${p.weekCount}</b> / ${p.maxPerWeek} 回まで
+      <span style="color:var(--muted)">（部屋ごとに数えます。送り先が別なので互いに影響しません）</span></p>` +
+
+    '<h4 style="font-family:var(--f-display);font-size:14px;margin:18px 0 8px">LINE に届く文面</h4>' +
+    `<div class="phone"><div class="row"><div class="bub">${esc2(p.lineText)}</div></div></div>` +
+
+    '<h4 style="font-family:var(--f-display);font-size:14px;margin:20px 0 8px">Instagram ストーリーズに載せる文面</h4>' +
+    `<div class="msg" style="margin-top:0">${esc2(p.instagramText)}</div>` +
+    `<p class="note">LINEに送ってから ${INSTAGRAM_DELAY_MIN} 分ほど空けて投稿します。
+      「LINEの方が先に知れた」という事実をつくるためです。</p>` +
+
+    `<div class="btnrow" style="margin-top:18px">
+       <button class="btn" id="slotSend" ${p.quota.allowed && p.planned ? '' : 'disabled'}>この内容で送る</button>
+     </div>
+     <p class="note">デモなので、押しても実際には送信されません。</p>`;
+
+  const btn = $('slotSend');
+  if (btn) btn.addEventListener('click', async () => {
+    await sendOpenSlot(env, slots, {
+      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked,
+      excludeUserIds: [...excluded], excludeRecent: $('slotRecent').checked, dryRun: true
+    });
+    state.openSlots.push({ kind: room, created_at: new Date().toISOString() });
+    render();
+  });
+}
+
+render();
+</script>

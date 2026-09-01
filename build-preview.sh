@@ -34,3 +34,15 @@ echo "built: preview/index.html, out/index.html, out/robots.txt"
 # 説明書（オーナー・スタッフ向け）。モジュールを埋め込む必要はないのでそのまま配置する
 cp preview/guide.html out/guide.html
 echo "built: out/guide.html"
+
+# 空き枠のお知らせだけを取り出した単独ページ（out-slot/ に配布物を生成）
+awk -v file="$TMP" '
+  /\/\*__MODULES__\*\// { while ((getline line < file) > 0) print line; next }
+  { print }
+' preview/slot-shell.html > preview/slot.html
+
+mkdir -p out-slot
+cp preview/slot.html out-slot/index.html
+printf 'User-agent: *\nDisallow: /\n' > out-slot/robots.txt
+
+echo "built: out-slot/index.html, out-slot/robots.txt"
