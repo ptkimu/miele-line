@@ -391,11 +391,17 @@ LINEの方に先にご案内しています。ご希望の方はこのままお�
       <section class="panel">
         <h2>空き枠を登録する <span class="badge badge--cost">通数を使う</span></h2>
         <div class="pad">
+          <div class="btnrow" style="margin-bottom:8px" id="roomBtns"></div>
+          <p class="note" id="roomNote" style="padding:0 0 12px"></p>
           <div class="btnrow" style="margin-bottom:14px">
-            <button class="btn btn--ghost" id="slotToday">本日の急なキャンセル</button>
             <button class="btn btn--ghost" id="slotWeek">今週末をまとめて</button>
           </div>
           <div id="slotList"></div>
+
+          <label class="chk" style="margin-top:6px">
+            <input type="checkbox" id="slotNarrow" checked>
+            <span>このメニューに関心のある方だけに送る<small>診断でその希望を選んだ方だけ。関係のない方に届かない</small></span>
+          </label>
 
           <h4 style="font-family:var(--f-display);font-size:14px;margin:22px 0 4px">
             この枠をキャンセルされた方</h4>
@@ -1343,6 +1349,55 @@ const PRESETS = [
 const OPEN_SLOT_TAG = '希望:キャンセル枠';
 
 /**
+ * 部屋。セルフブースと施術ルームは独立していて、同時に稼働できます。
+ * セラピストが埋まっていてもセルフ枠は出せるので、出せる機会が増えます。
+ *
+ * 予約はどちらもサロンボードへ手入力するため、運用は変わりません。
+ */
+const ROOMS = [
+  {
+    id: 'self',
+    label: 'セルフブース',
+    note: '1室。セラピストの予定と関係なく空きます',
+    menus: ['セルフ脱毛 30分', 'セルフ脱毛 60分（全身OK）']
+  },
+  {
+    id: 'room',
+    label: '施術ルーム',
+    note: 'セラピストの予定で決まります',
+    menus: [
+      'セラピスト脱毛 60分（全身可）',
+      '韓国肌管理 ララピール',
+      'ミルキーフェイシャル 30分',
+      '脂肪冷却 45分'
+    ]
+  }
+];
+
+/** メニュー → そのメニューに関心のある方のタグ */
+const MENU_TAG = {
+  'セルフ脱毛 30分': '希望:セルフ脱毛',
+  'セルフ脱毛 60分（全身OK）': '希望:セルフ脱毛',
+  'セラピスト脱毛 60分（全身可）': '希望:セラピスト脱毛',
+  '韓国肌管理 ララピール': '希望:毛穴・シミ・くすみ',
+  'ミルキーフェイシャル 30分': '希望:毛穴・シミ・くすみ',
+  '脂肪冷却 45分': '希望:お腹・太ももの脂肪'
+};
+
+const roomOfMenu = (menu) =>
+  ROOMS.find((r) => r.menus.includes(menu))?.id ?? 'room';
+
+/**
+ * 送る相手を絞るためのタグ。
+ * 枠のメニューがすべて同じ関心に紐づくときだけ返します。
+ * 種類が混ざっている場合は絞らず、空き枠を希望した方全員に送ります。
+ */
+function tagForSlots(slots) {
+  const tags = [...new Set((slots ?? []).map((s) => MENU_TAG[s.menu]).filter(Boolean))];
+  return tags.length === 1 ? tags[0] : null;
+}
+
+/**
  * 1週間に出す上限。
  * 毎日のように「キャンセルが出ました」と送っていると、
  * 「人気がない店」という印象になり逆効果になるため。
@@ -1452,14 +1507,20 @@ function groupByDate(list) {
  * 配信
  * ------------------------------------------------------------------ */
 
-/** 直近7日間に空き枠のお知らせを何回出したか */
-async function recentSendCount(env, today = todayJst()) {
+/**
+ * 直近7日間に空き枠のお知らせを何回出したか。
+ * 部屋ごとに数えます。セルフ枠を2回出しても、施術ルームの枠は減りません。
+ * 送り先が別なので、受け取る側から見た頻度は変わらないためです。
+ */
+async function recentSendCount(env, today = todayJst(), room = null) {
   const since = new Date(Date.parse(today + 'T00:00:00Z') - 7 * 86400000).toISOString();
-  const row = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ?"
-  )
-    .bind(since)
-    .first();
+  const row = room
+    ? await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ? AND kind = ?'
+      ).bind(since, room).first()
+    : await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ?'
+      ).bind(since).first();
   return row?.n ?? 0;
 }
 
@@ -1475,17 +1536,30 @@ async function recentSendCount(env, today = todayJst()) {
 async function previewOpenSlot(env, slots, opts = {}) {
   const today = opts.today ?? todayJst();
   const exclude = new Set(opts.excludeUserIds ?? []);
+  const room = opts.room ?? roomOfMenu(slots?.[0]?.menu);
 
-  const spec = { tags: [OPEN_SLOT_TAG] };
-  if (opts.excludeRecent) spec.excludeRecentDays = RECENT_DAYS;
+  // 既定では、そのメニューに関心のある方だけに絞る
+  const narrowTag = opts.narrow === false ? null : tagForSlots(slots);
 
-  const all = await listSegment(env, spec, today);
-  const targets = all.filter((c) => !exclude.has(c.line_user_id));
+  const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
+  const pick = async (tags) =>
+    (await listSegment(env, { ...base, tags }, today)).filter((c) => !exclude.has(c.line_user_id));
+
+  const targets = await pick(narrowTag ? [OPEN_SLOT_TAG, narrowTag] : [OPEN_SLOT_TAG]);
+  // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
+  const wide = narrowTag ? await pick([OPEN_SLOT_TAG]) : targets;
 
   const quota = await checkQuota(env, targets.length, opts.quota ?? null);
-  const weekCount = await recentSendCount(env, today);
+  const weekCount = await recentSendCount(env, today, room);
 
   const notes = [];
+  if (narrowTag && !targets.length && wide.length) {
+    notes.push({
+      kind: 'narrow-empty',
+      text: `「${narrowTag}」の方はいませんでした。` +
+            `絞り込みを外すと、空き枠を希望された${wide.length}名にお送りできます。`
+    });
+  }
   if (exclude.size) {
     notes.push({
       kind: 'excluded',
@@ -1511,6 +1585,10 @@ async function previewOpenSlot(env, slots, opts = {}) {
   return {
     today,
     slots,
+    room,
+    roomLabel: ROOMS.find((r) => r.id === room)?.label ?? '',
+    narrowTag,
+    wideCount: wide.length,
     targets,
     planned: targets.length,
     quota,
@@ -1555,7 +1633,7 @@ async function sendOpenSlot(env, slots, opts = {}) {
   await env.DB.prepare(
     'INSERT INTO open_slots (kind, slots, sent_count, created_at) VALUES (?, ?, ?, ?)'
   )
-    .bind(slots.length === 1 ? 'single' : 'multi', JSON.stringify(slots), sent, at)
+    .bind(preview.room, JSON.stringify(slots), sent, at)
     .run();
 
   return { ...preview, sent, campaignId: key };
@@ -2214,12 +2292,14 @@ function run(sql, args) {
   }
   /* --- 空き枠のお知らせ履歴 --- */
   if (sql.includes('INSERT INTO open_slots')) {
-    state.openSlots.push({ created_at: args[3] });
+    state.openSlots.push({ kind: args[0], created_at: args[3] });
     return { first:null, rows:[], changes:1 };
   }
   if (sql.includes('FROM open_slots')) {
     const since = args[0];
-    return { first: { n: state.openSlots.filter(s => s.created_at >= since).length }, rows: [] };
+    const room = sql.includes('kind = ?') ? args[1] : null;
+    const n = state.openSlots.filter(s => s.created_at >= since && (!room || s.kind === room)).length;
+    return { first: { n }, rows: [] };
   }
 
   /* --- 売上（カテゴリ×月に集計済みのものを返す） --- */
@@ -2818,29 +2898,55 @@ async function renderInsights() {
    06 空き枠を出す
    ================================================================== */
 
-const MENUS = ['セラピスト脱毛 60分', '韓国肌管理 ララピール', 'ミルキーフェイシャル 30分', '脂肪冷却 45分'];
+const menusOf = (r) => ROOMS.find((x) => x.id === r).menus;
 
-const todaySlots = () => [{ date: REAL_TODAY, time: '17:00', menu: MENUS[0], minutes: 60 }];
+function todaySlots(r) {
+  const m = menusOf(r);
+  return r === 'self'
+    ? [{ date: REAL_TODAY, time: '19:00', menu: m[0], minutes: 30 }]
+    : [{ date: REAL_TODAY, time: '17:00', menu: m[0], minutes: 60 }];
+}
 
-function weekendSlots() {
+function weekendSlots(r) {
+  const m = menusOf(r);
   const dow = new Date(Date.parse(REAL_TODAY + 'T00:00:00Z')).getUTCDay();
   const toSat = ((6 - dow + 7) % 7) || 7;
   const sat = shift(REAL_TODAY, toSat), sun = shift(REAL_TODAY, toSat + 1);
   return [
-    { date: sat, time: '11:00', menu: MENUS[1], minutes: 60 },
-    { date: sat, time: '14:30', menu: MENUS[0], minutes: 60 },
-    { date: sun, time: '13:00', menu: MENUS[2], minutes: 30 }
+    { date: sat, time: '11:00', menu: m[0], minutes: 60 },
+    { date: sat, time: '14:30', menu: m[0], minutes: 60 },
+    { date: sun, time: '13:00', menu: m[Math.min(1, m.length - 1)], minutes: 30 }
   ];
 }
 
-let slots = todaySlots();
+let room = 'room';
+let slots = todaySlots(room);
 const excluded = new Set();
 
-$('slotToday').addEventListener('click', () => { slots = todaySlots(); renderSlot(); });
-$('slotWeek').addEventListener('click', () => { slots = weekendSlots(); renderSlot(); });
+/* 部屋の切り替え。セルフと施術ルームは同時に稼働できるので、
+   セラピストが埋まっていてもセルフ枠は出せる */
+ROOMS.forEach((r) => {
+  const b = document.createElement('button');
+  b.className = 'btn btn--ghost';
+  b.dataset.room = r.id;
+  b.textContent = r.label + 'の空き';
+  b.addEventListener('click', () => { room = r.id; slots = todaySlots(room); renderSlot(); });
+  $('roomBtns').appendChild(b);
+});
+
+$('slotWeek').addEventListener('click', () => { slots = weekendSlots(room); renderSlot(); });
 $('slotRecent').addEventListener('change', renderSlot);
+$('slotNarrow').addEventListener('change', renderSlot);
 
 async function renderSlot() {
+  const roomDef = ROOMS.find((r) => r.id === room);
+  $('roomBtns').querySelectorAll('button').forEach(b => {
+    const on = b.dataset.room === room;
+    b.style.background = on ? 'var(--accent)' : '';
+    b.style.color = on ? '#fff' : '';
+  });
+  $('roomNote').textContent = roomDef.note;
+
   /* --- 枠の一覧（時刻とメニューはその場で変えられる） --- */
   $('slotList').innerHTML = slots.map((s, i) => `
     <div class="step" style="padding:12px 14px;margin-bottom:8px">
@@ -2852,7 +2958,7 @@ async function renderSlot() {
         <select data-i="${i}" data-f="menu"
                 style="flex:1;min-width:0;padding:9px 11px;border:1px solid var(--rule);
                        border-radius:9px;font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)">
-          ${MENUS.map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
+          ${menusOf(room).map(m => `<option${m === s.menu ? ' selected' : ''}>${esc2(m)}</option>`).join('')}
         </select>
         ${slots.length > 1 ? `<button class="btn btn--ghost" data-del="${i}" aria-label="この枠を削除">✕</button>` : ''}
       </div>
@@ -2884,6 +2990,8 @@ async function renderSlot() {
   const p = await previewOpenSlot(env, slots, {
     today: REAL_TODAY,
     quota: state.quota,
+    room,
+    narrow: $('slotNarrow').checked,
     excludeUserIds: [...excluded],
     excludeRecent: $('slotRecent').checked
   });
@@ -2901,7 +3009,9 @@ async function renderSlot() {
   $('slotOut').innerHTML =
     meter({ ...p.quota, planned: p.planned }) + verdict + notes +
     `<p class="note" style="padding:16px 0 6px">
-       直近7日間の配信回数　<b class="num">${p.weekCount}</b> / ${p.maxPerWeek} 回まで</p>` +
+       送り先　<b style="color:var(--ink-soft)">${p.narrowTag ? esc2(p.narrowTag) + ' の方' : '空き枠を希望した方 全員'}</b><br>
+       ${esc2(p.roomLabel)}の直近7日間の配信回数　<b class="num">${p.weekCount}</b> / ${p.maxPerWeek} 回まで
+       <span style="color:var(--muted)">（部屋ごとに数えます。送り先が別なので互いに影響しません）</span></p>` +
 
     '<h4 style="font-family:var(--f-display);font-size:14px;margin:18px 0 8px">LINE に届く文面</h4>' +
     `<div class="phone" style="height:auto;margin-top:0;padding:14px">
@@ -2922,11 +3032,11 @@ async function renderSlot() {
   const btn = $('slotSend');
   if (btn) btn.addEventListener('click', async () => {
     await sendOpenSlot(env, slots, {
-      today: REAL_TODAY, quota: state.quota,
+      today: REAL_TODAY, quota: state.quota, room, narrow: $('slotNarrow').checked,
       excludeUserIds: [...excluded], excludeRecent: $('slotRecent').checked, dryRun: true
     });
     // 履歴だけ残して、出しすぎの警告が動くところまで見せる
-    state.openSlots.push({ created_at: new Date().toISOString() });
+    state.openSlots.push({ kind: room, created_at: new Date().toISOString() });
     renderSlot();
   });
 }

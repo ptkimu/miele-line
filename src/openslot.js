@@ -24,6 +24,55 @@ import { todayJst, nowIso } from './handlers.js';
 export const OPEN_SLOT_TAG = '希望:キャンセル枠';
 
 /**
+ * 部屋。セルフブースと施術ルームは独立していて、同時に稼働できます。
+ * セラピストが埋まっていてもセルフ枠は出せるので、出せる機会が増えます。
+ *
+ * 予約はどちらもサロンボードへ手入力するため、運用は変わりません。
+ */
+export const ROOMS = [
+  {
+    id: 'self',
+    label: 'セルフブース',
+    note: '1室。セラピストの予定と関係なく空きます',
+    menus: ['セルフ脱毛 30分', 'セルフ脱毛 60分（全身OK）']
+  },
+  {
+    id: 'room',
+    label: '施術ルーム',
+    note: 'セラピストの予定で決まります',
+    menus: [
+      'セラピスト脱毛 60分（全身可）',
+      '韓国肌管理 ララピール',
+      'ミルキーフェイシャル 30分',
+      '脂肪冷却 45分'
+    ]
+  }
+];
+
+/** メニュー → そのメニューに関心のある方のタグ */
+const MENU_TAG = {
+  'セルフ脱毛 30分': '希望:セルフ脱毛',
+  'セルフ脱毛 60分（全身OK）': '希望:セルフ脱毛',
+  'セラピスト脱毛 60分（全身可）': '希望:セラピスト脱毛',
+  '韓国肌管理 ララピール': '希望:毛穴・シミ・くすみ',
+  'ミルキーフェイシャル 30分': '希望:毛穴・シミ・くすみ',
+  '脂肪冷却 45分': '希望:お腹・太ももの脂肪'
+};
+
+export const roomOfMenu = (menu) =>
+  ROOMS.find((r) => r.menus.includes(menu))?.id ?? 'room';
+
+/**
+ * 送る相手を絞るためのタグ。
+ * 枠のメニューがすべて同じ関心に紐づくときだけ返します。
+ * 種類が混ざっている場合は絞らず、空き枠を希望した方全員に送ります。
+ */
+export function tagForSlots(slots) {
+  const tags = [...new Set((slots ?? []).map((s) => MENU_TAG[s.menu]).filter(Boolean))];
+  return tags.length === 1 ? tags[0] : null;
+}
+
+/**
  * 1週間に出す上限。
  * 毎日のように「キャンセルが出ました」と送っていると、
  * 「人気がない店」という印象になり逆効果になるため。
@@ -133,14 +182,20 @@ function groupByDate(list) {
  * 配信
  * ------------------------------------------------------------------ */
 
-/** 直近7日間に空き枠のお知らせを何回出したか */
-export async function recentSendCount(env, today = todayJst()) {
+/**
+ * 直近7日間に空き枠のお知らせを何回出したか。
+ * 部屋ごとに数えます。セルフ枠を2回出しても、施術ルームの枠は減りません。
+ * 送り先が別なので、受け取る側から見た頻度は変わらないためです。
+ */
+export async function recentSendCount(env, today = todayJst(), room = null) {
   const since = new Date(Date.parse(today + 'T00:00:00Z') - 7 * 86400000).toISOString();
-  const row = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ?"
-  )
-    .bind(since)
-    .first();
+  const row = room
+    ? await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ? AND kind = ?'
+      ).bind(since, room).first()
+    : await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ?'
+      ).bind(since).first();
   return row?.n ?? 0;
 }
 
@@ -156,17 +211,30 @@ export async function recentSendCount(env, today = todayJst()) {
 export async function previewOpenSlot(env, slots, opts = {}) {
   const today = opts.today ?? todayJst();
   const exclude = new Set(opts.excludeUserIds ?? []);
+  const room = opts.room ?? roomOfMenu(slots?.[0]?.menu);
 
-  const spec = { tags: [OPEN_SLOT_TAG] };
-  if (opts.excludeRecent) spec.excludeRecentDays = RECENT_DAYS;
+  // 既定では、そのメニューに関心のある方だけに絞る
+  const narrowTag = opts.narrow === false ? null : tagForSlots(slots);
 
-  const all = await listSegment(env, spec, today);
-  const targets = all.filter((c) => !exclude.has(c.line_user_id));
+  const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
+  const pick = async (tags) =>
+    (await listSegment(env, { ...base, tags }, today)).filter((c) => !exclude.has(c.line_user_id));
+
+  const targets = await pick(narrowTag ? [OPEN_SLOT_TAG, narrowTag] : [OPEN_SLOT_TAG]);
+  // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
+  const wide = narrowTag ? await pick([OPEN_SLOT_TAG]) : targets;
 
   const quota = await checkQuota(env, targets.length, opts.quota ?? null);
-  const weekCount = await recentSendCount(env, today);
+  const weekCount = await recentSendCount(env, today, room);
 
   const notes = [];
+  if (narrowTag && !targets.length && wide.length) {
+    notes.push({
+      kind: 'narrow-empty',
+      text: `「${narrowTag}」の方はいませんでした。` +
+            `絞り込みを外すと、空き枠を希望された${wide.length}名にお送りできます。`
+    });
+  }
   if (exclude.size) {
     notes.push({
       kind: 'excluded',
@@ -192,6 +260,10 @@ export async function previewOpenSlot(env, slots, opts = {}) {
   return {
     today,
     slots,
+    room,
+    roomLabel: ROOMS.find((r) => r.id === room)?.label ?? '',
+    narrowTag,
+    wideCount: wide.length,
     targets,
     planned: targets.length,
     quota,
@@ -236,7 +308,7 @@ export async function sendOpenSlot(env, slots, opts = {}) {
   await env.DB.prepare(
     'INSERT INTO open_slots (kind, slots, sent_count, created_at) VALUES (?, ?, ?, ?)'
   )
-    .bind(slots.length === 1 ? 'single' : 'multi', JSON.stringify(slots), sent, at)
+    .bind(preview.room, JSON.stringify(slots), sent, at)
     .run();
 
   return { ...preview, sent, campaignId: key };
