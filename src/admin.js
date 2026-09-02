@@ -32,6 +32,7 @@ import {
   sendOpenSlot
 } from './openslot.js';
 import { OPEN_SLOT_TAG } from './tags.js';
+import { calendarReady, findOpenSlots } from './gcal.js';
 
 export async function adminRequest(request, env, url) {
   if (!checkAuth(request, env)) {
@@ -41,6 +42,9 @@ export async function adminRequest(request, env, url) {
     });
   }
 
+  if (url.pathname === '/admin/scan') {
+    return scanSlots(env, url);
+  }
   if (url.pathname === '/admin/preview' && request.method === 'POST') {
     return previewPage(request, env);
   }
@@ -52,6 +56,49 @@ export async function adminRequest(request, env, url) {
   }
   return slotPage(env);
 }
+
+/* ------------------------------------------------------------------ *
+ * 0. カレンダーから空きを拾う
+ * ------------------------------------------------------------------ */
+
+/**
+ * Googleカレンダーの空きを候補として返します。
+ *
+ * ここで返るのはあくまで「候補」です。そのまま送ることはしません。
+ * カレンダーが空いていても、出したくない枠（移動・休憩・あえて残している枠）が
+ * 混ざることがあるためです。最後は必ず人が選びます。
+ */
+async function scanSlots(env, url) {
+  const room = url.searchParams.get('room') === 'self' ? 'self' : 'room';
+  const minutes = Number(url.searchParams.get('minutes')) || 60;
+  const dates = String(url.searchParams.get('dates') ?? '')
+    .split(',')
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+
+  if (!dates.length) return json({ error: '日付が指定されていません。' }, 400);
+  if (!calendarReady(env)) {
+    return json({ error: 'Googleカレンダーの設定がまだです。手で入れてください。' }, 400);
+  }
+
+  try {
+    const slots = await findOpenSlots(env, {
+      dates,
+      room,
+      minutes,
+      buffer: Number(env.SLOT_BUFFER_MIN) || 0
+    });
+    return json({ slots });
+  } catch (err) {
+    /* 鍵切れ・共有漏れ・通信不良。手入力に戻れるよう、理由をそのまま出す */
+    return json({ error: String(err.message ?? err) }, 502);
+  }
+}
+
+const json = (body, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' }
+  });
 
 /* ------------------------------------------------------------------ *
  * 1. 入力
@@ -118,6 +165,16 @@ async function slotPage(env) {
 
       <section>
         <h2>2. 空いている枠</h2>
+        ${
+          calendarReady(env)
+            ? `<button type="button" id="scan" class="ghost ghost--go">
+                 Googleカレンダーから空きを取り込む
+               </button>
+               <p class="note" id="scanmsg">取り込んだあと、<b>出したくない枠は「消す」で外してください。</b>
+               移動・休憩・あえて残している枠は、カレンダー上では空きに見えます。</p>`
+            : `<p class="note">Googleカレンダーの設定が済むと、ここに「空きを取り込む」ボタンが出ます。
+               それまでは手で入れてください。</p>`
+        }
         <div id="rows"></div>
         <button type="button" id="add" class="ghost">＋ 枠を増やす</button>
       </section>
@@ -149,7 +206,7 @@ async function slotPage(env) {
       const DURATIONS = ${JSON.stringify(DURATIONS)};
       const DATES = ${JSON.stringify(dates)};
       ${admClient}
-    </script>
+    <\/script>
   `);
 }
 
@@ -243,6 +300,36 @@ const admClient = `
       s.menus = [...chosen];
     }
   });
+
+  /* カレンダーの空きを取り込む。返ってくるのは候補なので、
+     そのまま送らず、いつもどおり確認画面を通します */
+  const scanBtn = document.getElementById('scan');
+  if (scanBtn) {
+    scanBtn.addEventListener('click', async () => {
+      const msg = document.getElementById('scanmsg');
+      const minutes = rows[0] ? rows[0].minutes : 60;
+      scanBtn.disabled = true;
+      msg.textContent = 'カレンダーを見ています…';
+      try {
+        const res = await fetch('/admin/scan?room=' + room + '&minutes=' + minutes +
+                                '&dates=' + DATES.join(','));
+        const body = await res.json();
+        if (!res.ok) { msg.textContent = body.error || '取り込めませんでした。'; return; }
+        if (!body.slots.length) {
+          msg.textContent = DATES.join('・') + ' に、' + minutes + '分の空きはありませんでした。';
+          return;
+        }
+        rows = body.slots.map((s) => ({ date: s.date, time: s.time, minutes: s.minutes, menus: null }));
+        msg.innerHTML = body.slots.length + '件の空きを取り込みました。' +
+          '<b>出したくない枠は「消す」で外してください。</b>';
+        render();
+      } catch (err) {
+        msg.textContent = '取り込めませんでした（' + err.message + '）。手で入れてください。';
+      } finally {
+        scanBtn.disabled = false;
+      }
+    });
+  }
 
   document.getElementById('f').addEventListener('submit', (e) => {
     const out = rows
@@ -506,6 +593,8 @@ function admPage(inner) {
   .check--warn{border-color:#E7C8BF}
   .ghost{padding:11px 14px;border:1px dashed var(--line);border-radius:10px;
          background:none;color:var(--accent);font:inherit;width:100%}
+  .ghost--go{border-style:solid;border-color:var(--accent);font-weight:700;margin-bottom:4px}
+  .ghost[disabled]{opacity:.5}
   .primary{width:100%;padding:15px;border:0;border-radius:11px;background:var(--accent);
            color:#fff;font:inherit;font-weight:700;font-size:15.5px;margin-top:6px}
   .primary[disabled]{background:var(--line);color:var(--sub)}

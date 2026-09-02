@@ -1,0 +1,205 @@
+<!doctype html><meta charset="utf-8"><body>
+<iframe id="fr" style="width:900px;height:400px"></iframe>
+<script type="module">
+import { adminRequest } from '../src/admin.js';
+import { resetToken } from '../src/gcal.js';
+
+const log = [];
+const board = document.createElement('pre');
+board.id = 'TESTOUT';
+document.body.appendChild(board);
+const ok = (c, m) => {
+  log.push((c ? 'PASS  ' : 'FAIL  ') + m);
+  board.textContent = log.join('\n');
+};
+
+/* --- LINE API の代わり ---------------------------------------------- */
+const lineFetch = async (url) => ({
+  ok: true,
+  json: async () =>
+    String(url).endsWith('/consumption') ? { totalUsage: 1200 } : { type: 'limited', value: 5000 }
+});
+globalThis.fetch = lineFetch;
+
+/* --- D1 の代わり ----------------------------------------------------- */
+const FRIENDS = Array.from({ length: 42 }, (_, i) => ({
+  line_user_id: 'U' + i, display_name: '様' + i, last_sent_at: null
+}));
+const baseEnv = {
+  CHANNEL_ACCESS_TOKEN: 'x', ADMIN_USER: 'staff', ADMIN_PASS: 'pass',
+  DB: {
+    prepare(sql) {
+      const q = {
+        bind: () => q,
+        first: async () => {
+          if (sql.includes('AS friends')) return { friends: 318, wants: 42 };
+          if (sql.includes('FROM open_slots')) return { n: 1 };
+          return null;
+        },
+        all: async () => ({ results: sql.includes('FROM customers c') ? FRIENDS : [] }),
+        run: async () => ({ meta: { changes: 1 } })
+      };
+      return q;
+    }
+  }
+};
+
+/* カレンダーを設定した状態 */
+const calEnv = {
+  ...baseEnv,
+  GOOGLE_SA_EMAIL: 'sa@x.iam.gserviceaccount.com',
+  GOOGLE_SA_KEY: '-----BEGIN PRIVATE KEY-----\n' + btoa('dummy-key-bytes') +
+                 '\n-----END PRIVATE KEY-----\n',
+  GOOGLE_CALENDARS: JSON.stringify([
+    { id: 'a@g.com', room: 'room', label: 'Aさん' },
+    { id: 'b@g.com', room: 'room', label: 'Bさん' }
+  ]),
+  ROOM_CAPACITY: JSON.stringify({ room: 1, self: 1 })
+};
+
+const req = (path, method = 'GET', form = null) =>
+  new Request('https://x' + path, {
+    method, headers: { Authorization: 'Basic ' + btoa('staff:pass') }, body: form
+  });
+const call = (env, path, method, form) =>
+  adminRequest(req(path, method, form), env, new URL('https://x' + path));
+
+/* --- 1. 認証 --------------------------------------------------------- */
+const noAuth = await adminRequest(new Request('https://x/admin'), baseEnv, new URL('https://x/admin'));
+ok(noAuth.status === 401, '認証なしは401で弾く');
+ok(/Basic realm/.test(noAuth.headers.get('WWW-Authenticate') ?? ''), '認証を求めるヘッダを返す');
+
+/* --- 2. 入力ページ --------------------------------------------------- */
+const top = await call(baseEnv, '/admin');
+const topHtml = await top.text();
+ok(top.status === 200, '入力ページが開く');
+ok(topHtml.includes('セルフブース') && topHtml.includes('施術ルーム'), '2つのお部屋が出る');
+ok(topHtml.includes('318'), '友だち数が出る');
+ok(/本日は(空き枠のお知らせの日です|送信日ではありません)/.test(topHtml), '送信日かどうかを大きく出す');
+ok(topHtml.includes('name="everyone"'), '全員に送るチェック欄がある');
+ok(!topHtml.includes('id="scan"'), 'カレンダー未設定なら取り込みボタンは出さない');
+ok(topHtml.includes('設定が済むと'), '未設定のときは、その旨を書く');
+
+const calTop = await (await call(calEnv, '/admin')).text();
+ok(calTop.includes('id="scan"'), 'カレンダーを設定すると取り込みボタンが出る');
+ok(calTop.includes('出したくない枠は「消す」で外してください'),
+   '取り込んだあと人が選ぶことを、ボタンのそばに書く');
+
+/* 画面のスクリプトを実際に走らせる */
+const fr = document.getElementById('fr');
+await new Promise((r) => { fr.onload = r; fr.srcdoc = topHtml; });
+const d = fr.contentDocument;
+ok(d.querySelectorAll('.row').length === 1, '枠の行が1つ出ている');
+ok(d.querySelector('.room[aria-pressed="true"]')?.dataset.room === 'self', '最初はセルフブース');
+ok(d.querySelectorAll('.menupick input').length === 2, 'セルフ60分の候補は2つ');
+ok(d.querySelectorAll('.menupick input:checked').length === 1, '60分ぴったりのものが選ばれている');
+
+d.querySelector('.room[data-room="room"]').click();
+ok(d.querySelectorAll('.menupick input').length > 10, '施術ルームは候補が増える');
+const checked60 = d.querySelectorAll('.menupick input:checked').length;
+ok(checked60 > 0 && checked60 <= 3, '既定のチェックは多くても3つ（' + checked60 + '件）');
+
+const sel = d.querySelector('[data-f="minutes"]');
+sel.value = '30';
+sel.dispatchEvent(new fr.contentWindow.Event('change', { bubbles: true }));
+const names30 = [...d.querySelectorAll('.menupick input:checked')].map((i) => i.dataset.menu);
+ok(d.querySelectorAll('.menupick input').length < 11, '30分にすると候補が減る');
+ok(!names30.some((n) => n.includes('90分')), '入らないメニューは自動で外れる');
+
+d.getElementById('add').click();
+ok(d.querySelectorAll('.row').length === 2, '枠を増やせる');
+ok(d.querySelectorAll('.del').length === 2, '2つ以上なら消せる');
+
+/* --- 3. カレンダーからの取り込み ------------------------------------- */
+const D = '2026-09-10';
+const busy = (f, t) => ({ start: D + 'T' + f + ':00+09:00', end: D + 'T' + t + ':00+09:00' });
+
+/* 鍵の演算はブラウザの仕事なので差し替える */
+const realImport = crypto.subtle.importKey.bind(crypto.subtle);
+const realSign = crypto.subtle.sign.bind(crypto.subtle);
+crypto.subtle.importKey = async () => ({});
+crypto.subtle.sign = async () => new Uint8Array([1, 2, 3, 4]).buffer;
+
+globalThis.fetch = async (url, init) => {
+  if (String(url).includes('oauth2')) {
+    return { ok: true, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+  }
+  if (String(url).includes('freeBusy')) {
+    return { ok: true, json: async () => ({
+      calendars: { 'a@g.com': { busy: [busy('09:00', '15:00')] }, 'b@g.com': { busy: [] } }
+    }) };
+  }
+  return lineFetch(url, init);
+};
+
+resetToken();
+const scan = await call(calEnv, '/admin/scan?room=room&minutes=60&dates=' + D);
+const scanBody = await scan.json();
+ok(scan.status === 200, 'カレンダーから空きを取り込める');
+ok(scanBody.slots.length > 0, '空きが候補として返る');
+ok(scanBody.slots.every((s) => s.date === D && s.minutes === 60), '日付と長さが入っている');
+ok(!scanBody.slots.some((s) => s.time < '15:00'), '埋まっている時間は候補にしない');
+
+const noCal = await (await call(baseEnv, '/admin/scan?room=room&minutes=60&dates=' + D)).json();
+ok(noCal.error.includes('設定がまだ'), '未設定なら、その理由を返す');
+
+const badDate = await call(calEnv, '/admin/scan?room=room&minutes=60&dates=きょう');
+ok(badDate.status === 400, '日付になっていないものは受け取らない');
+
+globalThis.fetch = async (url, init) => {
+  if (String(url).includes('oauth2')) {
+    return { ok: true, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+  }
+  if (String(url).includes('freeBusy')) {
+    return { ok: false, json: async () => ({ error: { message: '権限がありません' } }) };
+  }
+  return lineFetch(url, init);
+};
+resetToken();
+const failed = await call(calEnv, '/admin/scan?room=room&minutes=60&dates=' + D);
+const failedBody = await failed.json();
+ok(failed.status === 502, 'カレンダーを読めなければ、そのことが分かる');
+ok(failedBody.error.includes('権限がありません'), '理由をそのまま画面に出せる');
+
+crypto.subtle.importKey = realImport;
+crypto.subtle.sign = realSign;
+globalThis.fetch = lineFetch;
+
+/* --- 4. 確認ページ --------------------------------------------------- */
+const slots = JSON.stringify([
+  { date: '2026-09-03', time: '17:00', minutes: 60,
+    menus: ['韓国肌管理 ララピール', 'プラズマシャワー'] }
+]);
+const f1 = new FormData();
+f1.set('slots', slots); f1.set('narrow', '1');
+const pvHtml = await (await call(baseEnv, '/admin/preview', 'POST', f1)).text();
+ok(pvHtml.includes('送る前の確認'), '確認ページが出る');
+ok(pvHtml.includes('韓国肌管理 ララピール'), 'LINEの文面が出る');
+ok(pvHtml.includes('いずれかをお選びいただけます'), '複数メニューの言い回しが入る');
+ok(pvHtml.includes('30分あけて'), 'Instagramは30分あけると書いてある');
+ok(pvHtml.includes('42名に送信する'), '送る人数がボタンに出る');
+ok(pvHtml.includes('3300'), '予備枠500通を引いた残りが出る');
+
+const bad = new FormData();
+bad.set('slots', '[{"date":"きょう","time":"17:00"}]');
+ok((await call(baseEnv, '/admin/preview', 'POST', bad)).status === 303,
+   '日付になっていない入力は入力画面へ戻す');
+
+const xss = new FormData();
+xss.set('slots', JSON.stringify([
+  { date: '2026-09-03', time: '17:00', minutes: 60, menus: ['<script>alert(1)</scr' + 'ipt>'] }
+]));
+const xHtml = await (await call(baseEnv, '/admin/preview', 'POST', xss)).text();
+ok(!xHtml.includes('<script>alert(1)'), 'メニュー名に紛れ込ませた台本は無効にする');
+
+/* --- 5. 送信 --------------------------------------------------------- */
+const f2 = new FormData();
+f2.set('slots', slots); f2.set('narrow', '1');
+const sdHtml = await (await call(baseEnv, '/admin/send', 'POST', f2)).text();
+ok(sdHtml.includes('送信しました'), '送信の結果が出る');
+ok(sdHtml.includes('42名'), '届いた人数が出る');
+ok(sdHtml.includes('OPEN SLOT'), 'Instagram用の文面が出る');
+
+board.textContent = log.join('\n') + '\n----\n' +
+  log.filter((l) => l.startsWith('FAIL')).length + ' 件の失敗 / ' + log.length + ' 件中';
+</script>

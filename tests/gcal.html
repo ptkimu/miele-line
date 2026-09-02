@@ -1,0 +1,176 @@
+<!doctype html><meta charset="utf-8"><body>
+<script type="module">
+import { freeRanges, slotsFrom, toMin, toHm, calendarsOf, capacityOf,
+         calendarReady, findOpenSlots } from './src/gcal.js';
+
+const log = [];
+const board = document.createElement('pre');
+board.id = 'TESTOUT';
+document.body.appendChild(board);
+const ok = (c, m) => {
+  log.push((c ? 'PASS  ' : 'FAIL  ') + m);
+  board.textContent = log.join('\n');
+};
+const D = '2026-09-03';
+
+/* 日本時間で「その日の何時から何時まで」を予定にする小道具 */
+const busy = (from, to) => ({ start: D + 'T' + from + ':00+09:00', end: D + 'T' + to + ':00+09:00' });
+const shown = (ranges) => ranges.map((r) => toHm(r.from) + '-' + toHm(r.to)).join(' ');
+
+/* --- 1. 時刻の変換 --------------------------------------------------- */
+ok(toMin('09:00') === 540, '9:00 は540分');
+ok(toHm(1140) === '19:00', '1140分は19:00');
+
+/* --- 2. 1室・予定なし ----------------------------------------------- */
+ok(shown(freeRanges([[]], { date: D, capacity: 1 })) === '09:00-19:00',
+   '予定がなければ一日中空いている');
+
+/* --- 3. 1室・予定あり ----------------------------------------------- */
+ok(shown(freeRanges([[busy('11:00', '12:00')]], { date: D, capacity: 1 }))
+     === '09:00-11:00 12:00-19:00',
+   '予定の前後が空きになる');
+
+ok(shown(freeRanges([[busy('09:00', '10:00'), busy('18:00', '19:00')]], { date: D, capacity: 1 }))
+     === '10:00-18:00',
+   '営業時間の端にくっついた予定は、空きを削るだけ');
+
+/* --- 4. セラピスト2人・施術ルーム1室 --------------------------------- */
+const twoStaff = [[busy('11:00', '12:00')], [busy('14:00', '15:00')]];
+ok(shown(freeRanges(twoStaff, { date: D, capacity: 1 }))
+     === '09:00-11:00 12:00-14:00 15:00-19:00',
+   '1室なら、どちらかに予定が入っていれば埋まっている');
+
+/* --- 5. 施術ルームが2室あるとき -------------------------------------- */
+ok(shown(freeRanges(twoStaff, { date: D, capacity: 2 })) === '09:00-19:00',
+   '2室あれば、1人ぶんの予定では埋まらない');
+
+ok(shown(freeRanges([[busy('11:00', '12:00')], [busy('11:30', '12:30')]], { date: D, capacity: 2 }))
+     === '09:00-11:30 12:00-19:00',
+   '2室でも、2人が重なっている時間だけは埋まる');
+
+/* --- 6. 予定が重なっている・入れ子になっている ------------------------ */
+ok(shown(freeRanges([[busy('11:00', '13:00'), busy('11:30', '12:00')]], { date: D, capacity: 1 }))
+     === '09:00-11:00 13:00-19:00',
+   '予定の中に予定があっても、空きは増えない');
+
+ok(shown(freeRanges([[busy('11:00', '12:00'), busy('12:00', '13:00')]], { date: D, capacity: 1 }))
+     === '09:00-11:00 13:00-19:00',
+   '続いている予定はひとつながりに扱う');
+
+/* --- 7. 営業時間の外にはみ出した予定 --------------------------------- */
+ok(shown(freeRanges([[busy('07:00', '10:00')]], { date: D, capacity: 1 })) === '10:00-19:00',
+   '開店前から続く予定は、開店時刻から数える');
+ok(shown(freeRanges([[busy('20:00', '21:00')]], { date: D, capacity: 1 })) === '09:00-19:00',
+   '閉店後の予定は空きに影響しない');
+
+/* --- 8. 前後にあける時間 --------------------------------------------- */
+ok(shown(freeRanges([[busy('11:00', '12:00')]], { date: D, capacity: 1, buffer: 15 }))
+     === '09:00-10:45 12:15-19:00',
+   '片付けの時間を前後にあけられる');
+
+/* --- 9. 営業時間を変えたとき ----------------------------------------- */
+ok(shown(freeRanges([[]], { date: D, capacity: 1, from: '10:00', to: '18:00' })) === '10:00-18:00',
+   '営業時間はあとから変えられる');
+
+/* --- 10. 枠に切り出す ------------------------------------------------ */
+const all = freeRanges([[]], { date: D, capacity: 1 });
+const s60 = slotsFrom(all, 60);
+ok(s60.length === 2, '広く空いていても、候補は並べすぎない');
+ok(s60[0] === '09:00', '営業開始から探す');
+ok(s60[1] === '10:00', '2つめは1つめの枠が終わってから');
+
+const tight = freeRanges([[busy('09:00', '16:30')]], { date: D, capacity: 1 });
+ok(slotsFrom(tight, 60).join(',') === '16:30,17:30', '端数のある時刻からでも切り出せる');
+ok(slotsFrom(tight, 90).join(',') === '16:30', '90分は1つしか取れない');
+ok(slotsFrom(tight, 180).length === 0, '入らない長さは候補にしない');
+
+/* --- 11. 設定の読み取り ---------------------------------------------- */
+const env = {
+  GOOGLE_CALENDARS: JSON.stringify([
+    { id: 'a@g.com', room: 'room', label: 'Aさん' },
+    { id: 'b@g.com', room: 'room', label: 'Bさん' },
+    { id: 'self@g.com', room: 'self', label: 'セルフ' }
+  ]),
+  ROOM_CAPACITY: JSON.stringify({ room: 1, self: 1 })
+};
+ok(calendarsOf(env).length === 3, 'カレンダーを3つ読める');
+ok(calendarsOf(env, 'room').length === 2, '施術ルームのカレンダーだけ取れる');
+ok(capacityOf(env, 'room') === 1, '施術ルームは1室');
+ok(calendarReady(env) === true, '設定されていれば使える');
+ok(calendarReady({}) === false, '未設定なら使わない');
+ok(calendarsOf({ GOOGLE_CALENDARS: 'こわれた文字列' }).length === 0, '壊れた設定でも落ちない');
+ok(capacityOf({ ROOM_CAPACITY: '{}' }, 'room') === 1, '書いていなければ1室として扱う');
+
+/* --- 12. 通信して候補を作るところまで -------------------------------- */
+let asked = null;
+const fakeFetch = async (url, init) => {
+  asked = JSON.parse(init.body);
+  return {
+    ok: true,
+    json: async () => ({
+      calendars: {
+        'a@g.com': { busy: [busy('11:00', '12:00')] },
+        'b@g.com': { busy: [busy('13:00', '19:00')] }
+      }
+    })
+  };
+};
+/* 鍵の中身そのものはブラウザの仕事なので、こちらが組み立てる部分
+   （PEMの読み取り・引換券の中身）だけを見る */
+const secretBody = btoa('pretend-this-is-the-key-bytes-0123456789');
+const pem = '-----BEGIN PRIVATE KEY-----\n' +
+            secretBody.replace(/(.{16})/g, '$1\n') + '\n-----END PRIVATE KEY-----\n';
+const withToken = { ...env, GOOGLE_SA_EMAIL: 'sa@x.iam.gserviceaccount.com', GOOGLE_SA_KEY: pem };
+
+let gotKeyBytes = null, signedOver = null;
+const realImport = crypto.subtle.importKey.bind(crypto.subtle);
+const realSign = crypto.subtle.sign.bind(crypto.subtle);
+crypto.subtle.importKey = async (fmt, buf, algo) => {
+  gotKeyBytes = new Uint8Array(buf);
+  return { fmt, algo };
+};
+crypto.subtle.sign = async (algo, key, data) => {
+  signedOver = new TextDecoder().decode(data);
+  return new Uint8Array([1, 2, 3, 4]).buffer;
+};
+
+let sentAssertion = null;
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (url, init) => {
+  sentAssertion = new URLSearchParams(init.body).get('assertion');
+  return { ok: true, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+};
+
+resetToken();
+const found = await findOpenSlots(withToken, {
+  dates: [D], room: 'room', minutes: 60, fetchImpl: fakeFetch
+});
+globalThis.fetch = realFetch;
+crypto.subtle.importKey = realImport;
+crypto.subtle.sign = realSign;
+
+const un64 = (s) => atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+const parts = String(sentAssertion).split('.');
+const head = JSON.parse(un64(parts[0]));
+const claim = JSON.parse(un64(parts[1]));
+
+ok(gotKeyBytes && gotKeyBytes.length === atob(secretBody).length,
+   'PEMの飾り行と改行を外して鍵だけを取り出す');
+ok(parts.length === 3, '引換券は3つの部分でできている');
+ok(signedOver === parts[0] + '.' + parts[1], '署名するのは前の2つの部分');
+ok(head.alg === 'RS256', '署名の方式はRS256');
+ok(claim.iss === 'sa@x.iam.gserviceaccount.com', '差出人はサービスアカウント');
+ok(claim.scope.endsWith('calendar.readonly'), '求める権限は読み取りだけ');
+ok(claim.exp - claim.iat === 3600, '引換券は1時間で切れる');
+ok(!/[+/=]/.test(parts[2]), '署名はURLに載る形に直してある');
+
+ok(asked.items.length === 2, '施術ルームのカレンダーだけを問い合わせる');
+ok(asked.timeZone === 'Asia/Tokyo', '日本時間で問い合わせる');
+ok(found.every((s) => s.date === D && s.minutes === 60), '日付と長さが入った候補が返る');
+ok(found.some((s) => s.time === '09:00'), '朝の空きを拾う');
+ok(!found.some((s) => s.time >= '13:00'), '午後ずっと埋まっている時間は候補にしない');
+ok(!found.some((s) => s.time === '11:00'), '予定の時間は候補にしない');
+
+board.textContent = log.join('\n') + '\n----\n' +
+  log.filter((l) => l.startsWith('FAIL')).length + ' 件の失敗 / ' + log.length + ' 件中';
+</script>

@@ -262,6 +262,9 @@ const SALON = {
   parking: '専用駐車場あり（店舗前にスタッフが駐車場までご案内します）',
 
   hours: '9:00〜19:00',
+  /* 空きを計算するための、機械が読める形の営業時間。
+     hours は文面に出す用なので、両方を合わせて直してください */
+  open: { from: '09:00', to: '19:00' },
   closed: '年中無休',
   tel: '090-3286-4994',
 
@@ -269,6 +272,11 @@ const SALON = {
   reservationNote: 'お一人さま・ペアでのご来店も承ります',
   payment: '現金 / Visa / Mastercard / JCB / American Express',
 
+  /* ご予約の入口。
+     ★ TODO: お使いの予約システムのURLに置き換えてください。
+     ここを書き換えると、自動応答・リッチメニュー・空き枠のご案内の
+     すべてが同じ入口を指すようになります（直す場所はここ1か所だけです）。
+     null にすると、予約のご案内ではURLを出さず「お電話・LINEで承ります」に変わります。 */
   bookingUrl: 'https://beauty.hotpepper.jp/kr/slnH000649391/',
   couponUrl: 'https://beauty.hotpepper.jp/kr/slnH000649391/coupon/',
 

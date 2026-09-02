@@ -25,3 +25,17 @@ enabled = true
 #   STAFF_USER_IDS        空き枠のお知らせの日に声をかけるスタッフのLINEユーザーID
 #                         （カンマ区切り。週2回・1人1通なので月8通程度）
 #   ADMIN_URL             スタッフ用ページのURL。通知の文面に入れる
+#
+# --- Googleカレンダー（空きの取り込み。未設定でも手入力で動きます） ------
+#   GOOGLE_SA_EMAIL       サービスアカウントの client_email
+#   GOOGLE_SA_KEY         サービスアカウントの private_key（-----BEGIN から END まで丸ごと）
+#   GOOGLE_CALENDARS      どのカレンダーがどの部屋かを JSON で
+#                         [{"id":"a@group.calendar.google.com","room":"room","label":"Aさん"},
+#                          {"id":"self@group.calendar.google.com","room":"self","label":"セルフ"}]
+#   ROOM_CAPACITY         同時に施術できる数。{"room":1,"self":1}
+#                         セラピストが2人いても施術ルームが1室なら room は 1
+#   SLOT_BUFFER_MIN       予定の前後にあける時間（片付けなど）。既定は0
+#
+# 読み取り権限は、各カレンダーの共有設定に GOOGLE_SA_EMAIL を
+# 「予定の表示（時間のみ、詳細は非表示）」で追加して渡します。
+# 予定のタイトルもお客様のお名前も、こちらには届きません。
