@@ -111,3 +111,32 @@ CREATE TABLE IF NOT EXISTS open_slots (
 );
 
 CREATE INDEX IF NOT EXISTS idx_open_slots_created ON open_slots(created_at DESC);
+
+-- Instagram と Google への投稿の予約。
+-- LINEに送ってから30分あけて出すため、すぐには投げずにここへ貯める。
+-- status を先に 'sending' へ動かしてから投げるので、cron が重なっても二度出ない。
+CREATE TABLE IF NOT EXISTS scheduled_posts (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel    TEXT    NOT NULL,               -- instagram | gbp
+  body       TEXT    NOT NULL,               -- 投稿する文面
+  image_url  TEXT,                           -- ストーリーズ用の画像（公開URL）
+  due_at     TEXT    NOT NULL,               -- この時刻を過ぎたら出す
+  status     TEXT    NOT NULL,               -- waiting | sending | posted | failed
+  error      TEXT,
+  posted_at  TEXT,
+  created_at TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_scheduled_due ON scheduled_posts(status, due_at);
+
+-- スタッフ用ページから手で出すときに、画像を短い間だけ預かる場所。
+-- Instagram は「公開URLにある画像」しか受け取れないため。
+CREATE TABLE IF NOT EXISTS media (
+  id         TEXT PRIMARY KEY,               -- 推測できない文字列。そのままURLになる
+  mime       TEXT NOT NULL,
+  data       TEXT NOT NULL,                  -- base64
+  expires_on TEXT NOT NULL,                  -- この日を過ぎたら消す
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_expires ON media(expires_on);

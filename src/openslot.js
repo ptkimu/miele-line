@@ -56,6 +56,19 @@ export function menusWithin(roomId, minutes) {
 export const DURATIONS = [30, 45, 60, 90];
 
 /**
+ * その枠に載せるメニューの既定。
+ * 枠の長さぴったりのものを優先し、多くても3つまでにします。
+ * 並べすぎると、お客様がどれを選べばよいか分からなくなるためです。
+ *
+ * 自動送信でも、スタッフ用ページでも、同じ決め方を使います。
+ */
+export function defaultMenusFor(roomId, minutes, limit = 3) {
+  const fit = menusWithin(roomId, minutes);
+  const exact = fit.filter((m) => m.minutes === minutes);
+  return (exact.length ? exact : fit).slice(0, limit).map((m) => m.name);
+}
+
+/**
  * 部屋 → その部屋を希望している方のタグ。
  *
  * 受け取りを申し込んだ直後に「どちらをご希望ですか」と伺い、

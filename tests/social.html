@@ -1,0 +1,258 @@
+<!doctype html><meta charset="utf-8"><body>
+<script type="module">
+import {
+  igReady, gbpReady, storyImageUrl, schedulePost, publishDue,
+  postInstagramStory, postGbp, buildGbpText, sweepMedia, resetGbpToken
+} from '../src/social.js';
+import { runAuto } from '../src/auto.js';
+import { defaultMenusFor } from '../src/openslot.js';
+
+const log = [];
+const board = document.createElement('pre');
+board.id = 'TESTOUT';
+document.body.appendChild(board);
+const ok = (c, m) => { log.push((c ? 'PASS  ' : 'FAIL  ') + m); board.textContent = log.join('\n'); };
+
+const D = '2026-09-10';
+const SLOTS = [
+  { date: D, time: '15:00', minutes: 60, menus: ['韓国肌管理 ララピール', 'プラズマシャワー'] }
+];
+
+/* --- 1. 設定されているかどうか -------------------------------------- */
+ok(igReady({ IG_USER_ID: '1', IG_ACCESS_TOKEN: 't' }) === true, 'Instagramは2つ揃えば使える');
+ok(igReady({ IG_USER_ID: '1' }) === false, '片方だけでは使わない');
+ok(gbpReady({}) === false, 'Googleは未設定なら使わない');
+ok(gbpReady({
+  GBP_ACCOUNT_ID: 'a', GBP_LOCATION_ID: 'l', GOOGLE_OAUTH_CLIENT_ID: 'c',
+  GOOGLE_OAUTH_CLIENT_SECRET: 's', GBP_REFRESH_TOKEN: 'r'
+}) === true, 'Googleは5つ揃えば使える');
+
+/* --- 2. 画像の置き場 ------------------------------------------------- */
+ok(storyImageUrl({}, SLOTS) === null, '画像の置き場が未設定なら null');
+const iu = storyImageUrl({ STORY_IMAGE_URL: 'https://r.example/api/story' }, SLOTS, D);
+ok(iu.startsWith('https://r.example/api/story?d='), '置き場のURLに内容を付けて渡す');
+const decoded = JSON.parse(atob(iu.split('d=')[1].replace(/-/g, '+').replace(/_/g, '/')));
+ok(decoded.slots[0].time === '15:00', '枠の内容が読み取れる形で入っている');
+ok(decoded.slots[0].menus.length === 2, 'メニューも入っている');
+ok(decoded.delay === 30, '何分あけたかも渡している');
+ok(!/[+/=]/.test(iu.split('d=')[1]), 'URLに載せられる文字だけになっている');
+ok(storyImageUrl({ STORY_IMAGE_URL: 'https://r.example/s?v=1' }, SLOTS).includes('&d='),
+   'すでに ? が付いていれば & でつなぐ');
+
+/* --- 3. データベースの代わり ---------------------------------------- */
+let rows = [];
+let seq = 1;
+const sqlLog = [];
+const makeEnv = (extra = {}) => ({
+  CHANNEL_ACCESS_TOKEN: 'x',
+  DB: {
+    prepare(sql) {
+      const q = {
+        binds: [],
+        bind(...a) { q.binds = a; return q; },
+        first: async () => {
+          if (sql.includes('FROM open_slots')) return { n: extra.__week ?? 0 };
+          if (sql.includes('AS friends')) return { friends: 300, wants: 40 };
+          return null;
+        },
+        all: async () => {
+          sqlLog.push(sql);
+          if (sql.includes('FROM scheduled_posts')) {
+            return { results: rows.filter((r) => r.status === 'waiting' && r.due_at <= q.binds[0]) };
+          }
+          if (sql.includes('FROM customers c')) {
+            return { results: [{ line_user_id: 'U1', display_name: '様' }] };
+          }
+          return { results: [] };
+        },
+        run: async () => {
+          sqlLog.push(sql);
+          if (sql.startsWith('INSERT INTO scheduled_posts')) {
+            rows.push({
+              id: seq++, channel: q.binds[0], body: q.binds[1],
+              image_url: q.binds[2], due_at: q.binds[3], status: 'waiting'
+            });
+            return { meta: { changes: 1 } };
+          }
+          if (sql.includes("SET status = 'sending'")) {
+            const r = rows.find((x) => x.id === q.binds[0] && x.status === 'waiting');
+            if (!r) return { meta: { changes: 0 } };
+            r.status = 'sending';
+            return { meta: { changes: 1 } };
+          }
+          if (sql.startsWith('UPDATE scheduled_posts SET status = ?')) {
+            const r = rows.find((x) => x.id === q.binds[3]);
+            if (r) { r.status = q.binds[0]; r.error = q.binds[1]; }
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 1 } };
+        }
+      };
+      return q;
+    }
+  },
+  ...extra
+});
+
+/* --- 4. 予約を入れる ------------------------------------------------- */
+rows = [];
+const env = makeEnv();
+const sched = await schedulePost(env, {
+  channels: ['instagram', 'gbp'], text: 'こんにちは', imageUrl: 'https://img/x.jpg'
+});
+ok(sched.scheduled === 2, '2つの投稿先を予約できる');
+ok(rows.length === 2 && rows.every((r) => r.status === 'waiting'), '待ちの状態で入る');
+ok(new Date(sched.dueAt) - Date.now() > 25 * 60000, '30分ほど先に予約される');
+ok((await schedulePost(env, { channels: ['twitter'] })).scheduled === 0,
+   '知らない投稿先は受け取らない');
+
+/* --- 5. 時間が来たら出す --------------------------------------------- */
+const calls = [];
+globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  calls.push({ url: u, body: init?.body ? String(init.body) : '' });
+  if (u.includes('oauth2.googleapis.com')) {
+    return { ok: true, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+  }
+  if (u.includes('graph.instagram.com') && u.endsWith('/media')) {
+    return { ok: true, json: async () => ({ id: 'container-1' }) };
+  }
+  if (u.includes('graph.instagram.com') && u.endsWith('/media_publish')) {
+    return { ok: true, json: async () => ({ id: 'story-1' }) };
+  }
+  if (u.includes('mybusiness.googleapis.com')) {
+    return { ok: true, json: async () => ({ name: 'accounts/a/locations/l/localPosts/1' }) };
+  }
+  return { ok: true, json: async () => ({}) };
+};
+
+resetGbpToken();
+const full = makeEnv({
+  IG_USER_ID: '999', IG_ACCESS_TOKEN: 'igtok',
+  GBP_ACCOUNT_ID: 'a', GBP_LOCATION_ID: 'l',
+  GOOGLE_OAUTH_CLIENT_ID: 'c', GOOGLE_OAUTH_CLIENT_SECRET: 's', GBP_REFRESH_TOKEN: 'r'
+});
+rows.forEach((r) => { r.due_at = '2000-01-01T00:00:00.000Z'; });
+
+const out = await publishDue(full, '2030-01-01T00:00:00.000Z');
+ok(out.published === 2, '時間が来た2件とも出せた');
+ok(rows.every((r) => r.status === 'posted'), '出したものは「済み」になる');
+ok(calls.some((c) => c.url.endsWith('/999/media') && c.body.includes('STORIES')),
+   'Instagramはストーリーズとして入れ物を作る');
+ok(calls.some((c) => c.url.endsWith('/999/media_publish') && c.body.includes('container-1')),
+   '作った入れ物を出している');
+ok(calls.some((c) => c.url.includes('/accounts/a/locations/l/localPosts')),
+   'Googleは店舗のところに投稿する');
+
+const gbpCall = calls.find((c) => c.url.includes('localPosts'));
+const gbpBody = JSON.parse(gbpCall.body);
+ok(gbpBody.topicType === 'STANDARD', 'Googleは「最新情報」として出す');
+ok(gbpBody.languageCode === 'ja', '日本語として出す');
+ok(gbpBody.callToAction?.actionType === 'BOOK', '「予約」ボタンが付く');
+ok(gbpBody.media?.[0]?.sourceUrl === 'https://img/x.jpg', '画像も一緒に出す');
+
+const again = await publishDue(full, '2030-01-01T00:00:00.000Z');
+ok(again.published === 0, '一度出したものは二度出さない');
+
+/* --- 6. うまくいかなかったとき --------------------------------------- */
+rows = [];
+await schedulePost(full, { channels: ['instagram'], text: 'x', imageUrl: 'https://img/y.jpg' });
+rows[0].due_at = '2000-01-01T00:00:00.000Z';
+globalThis.fetch = async (url) =>
+  String(url).endsWith('/media')
+    ? { ok: false, json: async () => ({ error: { message: '画像を読めません' } }) }
+    : { ok: true, json: async () => ({}) };
+
+const failed = await publishDue(full, '2030-01-01T00:00:00.000Z');
+ok(failed.published === 0, '失敗したら出したことにしない');
+ok(rows[0].status === 'failed', '失敗として残る');
+ok(rows[0].error.includes('画像を読めません'), '理由が残るので後から追える');
+
+ok((await postInstagramStory({}, 'https://x/y.jpg')).error.includes('未設定'),
+   '未設定なら、そう返す');
+ok((await postInstagramStory({ IG_USER_ID: '1', IG_ACCESS_TOKEN: 't' }, null)).error.includes('画像'),
+   '画像が無ければ、ストーリーズは出せないと返す');
+ok((await postGbp({}, { summary: 'x' })).error.includes('未設定'), 'Googleも未設定なら、そう返す');
+
+/* --- 7. Googleに出す文面 --------------------------------------------- */
+const gt = buildGbpText(SLOTS);
+ok(gt.includes('トータル・ビューティー・サロン ミエーレ'), '検索から来た方に店名が分かる');
+ok(gt.includes('JR古河駅から徒歩8分'), '場所も添える');
+ok(!gt.includes('キャンセル'), '「キャンセル」の語は使わない');
+
+/* --- 8. 完全自動で動かす --------------------------------------------- */
+globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  if (u.includes('oauth2.googleapis.com')) {
+    return { ok: true, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+  }
+  if (u.includes('freeBusy')) {
+    return { ok: true, json: async () => ({
+      calendars: { 'a@g.com': { busy: [] } }
+    }) };
+  }
+  if (u.endsWith('/consumption')) return { ok: true, json: async () => ({ totalUsage: 100 }) };
+  if (u.includes('/message/quota')) return { ok: true, json: async () => ({ type: 'limited', value: 5000 }) };
+  return { ok: true, json: async () => ({}) };
+};
+
+const autoEnv = makeEnv({
+  GOOGLE_SA_EMAIL: 'sa@x', GOOGLE_SA_KEY: '-----BEGIN PRIVATE KEY-----\n' + btoa('k') + '\n-----END PRIVATE KEY-----',
+  GOOGLE_CALENDARS: JSON.stringify([{ id: 'a@g.com', room: 'room' }]),
+  ROOM_CAPACITY: JSON.stringify({ room: 1 }),
+  STORY_IMAGE_URL: 'https://r.example/api/story',
+  IG_USER_ID: '999', IG_ACCESS_TOKEN: 'igtok',
+  GBP_ACCOUNT_ID: 'a', GBP_LOCATION_ID: 'l',
+  GOOGLE_OAUTH_CLIENT_ID: 'c', GOOGLE_OAUTH_CLIENT_SECRET: 's', GBP_REFRESH_TOKEN: 'r'
+});
+const realImport = crypto.subtle.importKey.bind(crypto.subtle);
+const realSign = crypto.subtle.sign.bind(crypto.subtle);
+crypto.subtle.importKey = async () => ({});
+crypto.subtle.sign = async () => new Uint8Array([1, 2, 3, 4]).buffer;
+
+/* 火曜日は送信日ではない（送信日は月・木） */
+const tue = await runAuto(autoEnv, { today: '2026-09-08' });
+ok(tue.skipped === '送信日ではありません', '送信日でなければ何もしない');
+
+const noCal = await runAuto(makeEnv(), { today: '2026-09-07' });
+ok(noCal.skipped.includes('カレンダー'), 'カレンダー未設定なら何もしない');
+
+rows = [];
+/* 月曜日 */
+const mon = await runAuto(autoEnv, { today: '2026-09-07' });
+const room = mon.rooms.find((r) => r.room === 'room');
+ok(mon.skipped === undefined, '送信日なら動く');
+ok(room.slots && room.slots.length > 0, 'カレンダーから枠を決めた');
+ok(room.slots.length <= 3, '1回に出す枠は3つまで');
+ok(room.slots.every((s) => s.menus.length > 0), '枠にメニューが載っている');
+ok(room.slots[0].menus.join() === defaultMenusFor('room', 60).join(),
+   'メニューの決め方は、スタッフ用ページと同じ');
+ok(room.sent > 0, 'LINEを送った');
+ok(rows.length === 2, 'Instagram と Google の予約が入った');
+ok(rows.every((r) => r.image_url && r.image_url.includes('r.example')), '画像の置き場が渡っている');
+
+const self = mon.rooms.find((r) => r.room === 'self');
+ok(self.skipped.includes('カレンダー'), 'カレンダーの無いお部屋は飛ばす');
+
+/* 今週すでに3回出していたら止まる */
+const busyWeek = await runAuto(makeEnv({
+  __week: 3,
+  GOOGLE_SA_EMAIL: autoEnv.GOOGLE_SA_EMAIL,
+  GOOGLE_SA_KEY: autoEnv.GOOGLE_SA_KEY,
+  GOOGLE_CALENDARS: autoEnv.GOOGLE_CALENDARS,
+  ROOM_CAPACITY: autoEnv.ROOM_CAPACITY
+}), { today: '2026-09-07' });
+ok(busyWeek.rooms.find((r) => r.room === 'room').skipped.includes('3回'),
+   '出しすぎのときは止まる');
+
+crypto.subtle.importKey = realImport;
+crypto.subtle.sign = realSign;
+
+/* --- 9. 片づけ -------------------------------------------------------- */
+const swept = await sweepMedia(makeEnv(), '2026-09-10');
+ok(typeof swept.media === 'number' && typeof swept.posts === 'number',
+   '古い画像と記録を片づけられる');
+
+board.textContent = log.join('\n') + '\n----\n' +
+  log.filter((l) => l.startsWith('FAIL')).length + ' 件の失敗 / ' + log.length + ' 件中';
+</script>

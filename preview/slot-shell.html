@@ -631,6 +631,10 @@ $('slotEveryone').addEventListener('change', refresh);
 const canvas = $('story');
 const ctx = canvas.getContext('2d');
 
+/* 描く処理は src/story.js が文字列で持っている。
+   スタッフ用ページと同じものを、ここでも関数にして使う */
+const { drawStory } = makeStory();
+
 function paintStory() {
   drawStory(ctx, slots, { today: TODAY, delayMinutes: INSTAGRAM_DELAY_MIN });
 }

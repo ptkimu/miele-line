@@ -17,7 +17,7 @@ SRC="$1"
 # index.js は Worker の入口（export default）なので混ぜない
 MODULES="src/salon.js src/courses.js src/menu.js src/line.js src/replies.js src/handlers.js
          src/tags.js src/quota.js src/segments.js src/openslot.js src/story.js src/richmenu.js
-         src/gcal.js src/liff.js src/api.js src/app.js src/admin.js"
+         src/gcal.js src/liff.js src/api.js src/app.js src/social.js src/auto.js src/admin.js"
 
 OUT="$(mktemp -u).html"
 

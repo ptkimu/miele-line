@@ -14,6 +14,8 @@ import { adminRequest } from './admin.js';
 import { appRequest } from './app.js';
 import { apiRequest, sweepIntake } from './api.js';
 import { remindStaff } from './openslot.js';
+import { runAuto, autoSummary } from './auto.js';
+import { publishDue, serveMedia, sweepMedia } from './social.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -38,6 +40,12 @@ export default {
       return apiRequest(request, env, url);
     }
 
+    /* スタッフの画面で作った画像。Instagram は「公開URLにある画像」しか
+       受け取れないため、ここから読めるようにしている */
+    if (url.pathname.startsWith('/media/')) {
+      return serveMedia(env, url.pathname.slice('/media/'.length));
+    }
+
     if (url.pathname === '/health') {
       return new Response('ok', { headers: { 'Content-Type': 'text/plain' } });
     }
@@ -46,22 +54,43 @@ export default {
   },
 
   /**
-   * 毎朝10時（JST）。送信日かどうかを見て、その日だけスタッフに声をかける。
+   * 時間で動くもの。
+   *   毎朝10時（JST）  空き枠を自動で出す／問診表の掃除
+   *   10分おき        時間が来た Instagram・Google の投稿を出す
    */
   async scheduled(event, env, ctx) {
-    /* 空き枠のお知らせの日だけ、スタッフに声をかける。
-       どの枠を出すかは人が決めるので、送信そのものは自動化しない。 */
-    ctx.waitUntil(
-      remindStaff(env)
-        .then((r) => console.log('staff reminder', JSON.stringify(r.skipped ?? { sent: r.sent })))
-        .catch((err) => console.error('staff reminder failed', err))
-    );
+    const daily = event.cron === '0 1 * * *';
 
-    /* 期限の切れた問診表を消す。健康に関わる内容を長く持たないため */
+    if (daily) {
+      /* カレンダーを見て、空き枠のお知らせを出すところまで自動で行う。
+         出さない時間はカレンダーに予定として入れておく約束。 */
+      ctx.waitUntil(
+        runAuto(env)
+          .then((r) => console.log('auto slot', autoSummary(r)))
+          .catch((err) => console.error('auto slot failed', err))
+      );
+
+      /* カレンダーが未設定のときの保険。送信日の朝、スタッフに声をかける */
+      ctx.waitUntil(
+        remindStaff(env)
+          .then((r) => console.log('staff reminder', JSON.stringify(r.skipped ?? { sent: r.sent })))
+          .catch((err) => console.error('staff reminder failed', err))
+      );
+
+      /* 期限の切れた問診表と、使い終わった画像を消す */
+      ctx.waitUntil(
+        Promise.all([sweepIntake(env), sweepMedia(env)])
+          .then((r) => console.log('sweep', JSON.stringify(r)))
+          .catch((err) => console.error('sweep failed', err))
+      );
+      return;
+    }
+
+    /* 30分あけてから Instagram・Google に出す。10分おきに見に来る */
     ctx.waitUntil(
-      sweepIntake(env)
-        .then((r) => console.log('intake sweep', JSON.stringify(r)))
-        .catch((err) => console.error('intake sweep failed', err))
+      publishDue(env)
+        .then((r) => { if (r.results.length) console.log('social', JSON.stringify(r)); })
+        .catch((err) => console.error('social failed', err))
     );
   }
 };

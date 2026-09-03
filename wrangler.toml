@@ -5,7 +5,7 @@ compatibility_date = "2026-08-01"
 # 毎朝10時（JST）＝ 01:00 UTC。送信日の朝だけ、スタッフに声をかける。
 # 送るかどうか・どの枠を出すかは、スタッフが管理ページで決める。
 [triggers]
-crons = ["0 1 * * *"]
+crons = ["0 1 * * *", "*/10 * * * *"]
 
 [[d1_databases]]
 binding = "DB"
@@ -31,6 +31,23 @@ enabled = true
 #   LIFF_ID               LINE Developers > LIFF タブで発行される LIFF ID
 #   LIFF_CHANNEL_ID       その LIFF を作ったチャネルのチャネルID
 #                         （ページから届いた本人確認に使う）
+#
+# --- 自動投稿（Instagram・Googleビジネスプロフィール） --------------
+#   STORY_IMAGE_URL       ストーリーズ画像を作る場所（renderer/ を Vercel に置いたURL）
+#                         例 https://miele-story.vercel.app/api/story
+#                         未設定なら Instagram は見送り、Googleだけ出す
+#   IG_USER_ID            Instagram のプロアカウントID
+#   IG_ACCESS_TOKEN       Instagram のアクセストークン（Instagram Login。Facebookページ不要）
+#   GBP_ACCOUNT_ID        ビジネスプロフィールのアカウントID
+#   GBP_LOCATION_ID       店舗のロケーションID
+#   GOOGLE_OAUTH_CLIENT_ID     OAuthクライアントID
+#   GOOGLE_OAUTH_CLIENT_SECRET OAuthクライアントシークレット
+#   GBP_REFRESH_TOKEN     店舗を管理しているGoogleアカウントで一度だけ取る
+#   PUBLIC_URL            この Worker のURL。画像を出すときに使う
+#
+# --- 自動送信の加減 ------------------------------------------------
+#   AUTO_SLOT_MINUTES     自動で出す枠の長さ（既定60分）
+#   AUTO_MAX_SLOTS        1回に載せる枠の数（既定3）
 #
 # --- Googleカレンダー（空きの取り込み。未設定でも手入力で動きます） ------
 #   GOOGLE_SA_EMAIL       サービスアカウントの client_email

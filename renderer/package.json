@@ -1,0 +1,10 @@
+{
+  "name": "miele-story-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ミエーレ 空き枠ストーリーズ画像の置き場（Vercel）。Instagram は公開URLのJPEGしか受け取れないため、ここだけ外に置いている",
+  "dependencies": {
+    "@vercel/og": "^0.6.2",
+    "sharp": "^0.33.0"
+  }
+}

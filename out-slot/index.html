@@ -1635,6 +1635,19 @@ function menusWithin(roomId, minutes) {
 const DURATIONS = [30, 45, 60, 90];
 
 /**
+ * その枠に載せるメニューの既定。
+ * 枠の長さぴったりのものを優先し、多くても3つまでにします。
+ * 並べすぎると、お客様がどれを選べばよいか分からなくなるためです。
+ *
+ * 自動送信でも、スタッフ用ページでも、同じ決め方を使います。
+ */
+function defaultMenusFor(roomId, minutes, limit = 3) {
+  const fit = menusWithin(roomId, minutes);
+  const exact = fit.filter((m) => m.minutes === minutes);
+  return (exact.length ? exact : fit).slice(0, limit).map((m) => m.name);
+}
+
+/**
  * 部屋 → その部屋を希望している方のタグ。
  *
  * 受け取りを申し込んだ直後に「どちらをご希望ですか」と伺い、
@@ -2037,20 +2050,26 @@ async function sendOpenSlot(env, slots, opts = {}) {
  * Instagram ストーリーズ用の画像
  *
  * 文面をコピーして文字入れする手間をなくすため、画像そのものを作ります。
- * ブラウザの Canvas に描くので、スタッフの画面（スマホでも）で完結します。
- *
  * 枠そのものは載せますが、「LINEの方には先にお知らせ済み」を必ず入れます。
  * ここが抜けると、LINEに登録する理由が伝わりません。
+ *
+ * 描く処理は「文字列」で持っています。
+ * スタッフ用ページ（Worker が組み立てるHTML）にそのまま埋め込む必要があり、
+ * 同じコードを2か所に置きたくないためです。
+ *   ブラウザ  … makeStory() で関数にして呼ぶ／ページに直接埋め込む
+ *   Worker側  … 文字列のまま <script> に流し込むだけ（実行はしない）
  */
 
 
-const STORY_W = 1080;
-const STORY_H = 1920;
-
 /* Instagram は上下におよそ 250px ぶんの操作領域が重なるため、
    大事な要素はこの範囲に収める */
+const STORY_SRC = `
+const STORY_W = 1080;
+const STORY_H = 1920;
 const SAFE_TOP = 300;
 const SAFE_BOTTOM = 1660;
+const SALON_NAME = ${JSON.stringify(SALON.name)};
+const STORY_WD = ${JSON.stringify(['日', '月', '火', '水', '木', '金', '土'])};
 
 const C = {
   ground: '#FAF7F5',
@@ -2063,19 +2082,62 @@ const C = {
 const DISPLAY = '"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",sans-serif';
 const BODY = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",sans-serif';
 
+/** 2026-09-03 → 9月3日（木） */
+function stDate(ymd) {
+  const d = new Date(Date.parse(ymd + 'T00:00:00Z'));
+  return (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日（' + STORY_WD[d.getUTCDay()] + '）';
+}
+
+/** 枠に入っているメニュー。1つだけの古い形も読む */
+function stMenus(s) {
+  if (Array.isArray(s && s.menus)) return s.menus.filter(Boolean);
+  return (s && s.menu) ? [s.menu] : [];
+}
+
+function stCenter(ctx, textValue, cx, y, font, color, spacing) {
+  spacing = spacing || 0;
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  const chars = Array.from(String(textValue));
+  let width = -spacing;
+  for (const ch of chars) width += ctx.measureText(ch).width + spacing;
+  let x = cx - width / 2;
+  for (const ch of chars) {
+    ctx.fillText(ch, x, y);
+    x += ctx.measureText(ch).width + spacing;
+  }
+}
+
+function stRule(ctx, cx, y, half) {
+  ctx.strokeStyle = C.rule;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - half, y);
+  ctx.lineTo(cx + half, y);
+  ctx.stroke();
+}
+
+function stGroup(list) {
+  const m = new Map();
+  for (const s of list) m.set(s.date, (m.get(s.date) || []).concat([s]));
+  return Array.from(m.entries());
+}
+
 /**
  * @param {CanvasRenderingContext2D} ctx  1080×1920 のコンテキスト
  * @param {object[]} slots  空き枠
- * @param {object} [opts]
- * @param {string} [opts.today]        「本日」と出すかの判定に使う
- * @param {number} [opts.delayMinutes] LINEに送ってからの経過分数
+ * @param {object} [opts]   today / delayMinutes
  */
-function drawStory(ctx, slots, opts = {}) {
-  const list = [...(slots ?? [])].sort(
-    (a, b) => String(a.date + a.time).localeCompare(String(b.date + b.time))
-  );
-  const today = opts.today ?? null;
-  const delay = opts.delayMinutes ?? 30;
+function drawStory(ctx, slots, opts) {
+  opts = opts || {};
+  const list = (slots || []).slice().sort(function (a, b) {
+    return String(a.date + a.time).localeCompare(String(b.date + b.time));
+  });
+  const today = opts.today || null;
+  const delay = opts.delayMinutes == null ? 30 : opts.delayMinutes;
 
   ctx.clearRect(0, 0, STORY_W, STORY_H);
   ctx.fillStyle = C.ground;
@@ -2089,96 +2151,73 @@ function drawStory(ctx, slots, opts = {}) {
   const cx = STORY_W / 2;
   let y = SAFE_TOP;
 
-  center(ctx, 'MIELE', cx, y, `700 40px ${DISPLAY}`, C.accent, 16);
+  stCenter(ctx, 'MIELE', cx, y, '700 40px ' + DISPLAY, C.accent, 16);
   y += 70;
-  rule(ctx, cx, y, 120);
+  stRule(ctx, cx, y, 120);
   y += 90;
 
-  center(ctx, list.length === 1 ? 'OPEN SLOT' : 'OPEN SLOTS', cx, y,
-         `700 34px ${DISPLAY}`, C.accent, 10);
+  stCenter(ctx, list.length === 1 ? 'OPEN SLOT' : 'OPEN SLOTS', cx, y,
+           '700 34px ' + DISPLAY, C.accent, 10);
   y += 110;
 
-  /* 枠の一覧。1枠なら大きく、複数なら並べる */
   if (list.length === 1) {
     const s = list[0];
-    const when = today && s.date === today ? '本日' : formatDate(s.date);
-    center(ctx, when, cx, y, `500 56px ${BODY}`, C.ink, 2);
+    const when = (today && s.date === today) ? '本日' : stDate(s.date);
+    stCenter(ctx, when, cx, y, '500 56px ' + BODY, C.ink, 2);
     y += 130;
-    center(ctx, s.time, cx, y, `700 168px ${DISPLAY}`, C.ink, 2);
+    stCenter(ctx, s.time, cx, y, '700 168px ' + DISPLAY, C.ink, 2);
     y += 190;
     /* メニューが複数なら、画像は先頭だけにして「ほか◯件」と添える。
        ストーリーズは一瞬しか見られないので、詰め込まない */
-    const menus = slotMenus(s);
+    const menus = stMenus(s);
     if (menus.length) {
-      center(ctx, menus[0], cx, y, `400 40px ${BODY}`, C.muted, 1);
+      stCenter(ctx, menus[0], cx, y, '400 40px ' + BODY, C.muted, 1);
       y += 58;
       if (menus.length > 1) {
-        center(ctx, `ほか ${menus.length - 1} メニューも可`, cx, y, `400 34px ${BODY}`, C.muted, 1);
+        stCenter(ctx, 'ほか ' + (menus.length - 1) + ' メニューも可', cx, y,
+                 '400 34px ' + BODY, C.muted, 1);
         y += 46;
       }
     }
     y += 32;
   } else {
     /* 同じ日は1行にまとめる。「9月3日（木） 11:00 / 14:30」のように出す */
-    const groups = groupDates(list);
+    const groups = stGroup(list);
     const big = groups.length >= 3 ? 76 : 96;
-    for (const [date, ss] of groups) {
-      center(ctx, formatDate(date), cx, y, `400 38px ${BODY}`, C.muted, 1);
+    for (const g of groups) {
+      stCenter(ctx, stDate(g[0]), cx, y, '400 38px ' + BODY, C.muted, 1);
       y += 60;
-      center(ctx, ss.map((s) => s.time).join('  /  '), cx, y,
-             `700 ${big}px ${DISPLAY}`, C.ink, 2);
+      stCenter(ctx, g[1].map(function (s) { return s.time; }).join('  /  '), cx, y,
+               '700 ' + big + 'px ' + DISPLAY, C.ink, 2);
       y += big + 26;
     }
     y += 20;
   }
 
   y = Math.max(y, 1120);
-  rule(ctx, cx, y, 220);
+  stRule(ctx, cx, y, 220);
   y += 96;
 
-  center(ctx, 'LINEの方には', cx, y, `500 48px ${BODY}`, C.ink, 2);
+  stCenter(ctx, 'LINEの方には', cx, y, '500 48px ' + BODY, C.ink, 2);
   y += 74;
-  center(ctx, `${delay}分前にお知らせ済みです`, cx, y, `500 48px ${BODY}`, C.ink, 2);
+  stCenter(ctx, delay + '分前にお知らせ済みです', cx, y, '500 48px ' + BODY, C.ink, 2);
   y += 130;
 
-  center(ctx, 'まだ空いていればご案内できます', cx, y, `400 40px ${BODY}`, C.muted, 1);
+  stCenter(ctx, 'まだ空いていればご案内できます', cx, y, '400 40px ' + BODY, C.muted, 1);
   y += 66;
-  center(ctx, 'DM または プロフィールのリンクから', cx, y, `400 40px ${BODY}`, C.muted, 1);
+  stCenter(ctx, 'DM または プロフィールのリンクから', cx, y, '400 40px ' + BODY, C.muted, 1);
 
   /* 下端の署名。安全領域の内側に置く */
-  center(ctx, SALON.name, cx, SAFE_BOTTOM - 20,
-         `400 34px ${BODY}`, C.muted, 4);
+  stCenter(ctx, SALON_NAME, cx, SAFE_BOTTOM - 20, '400 34px ' + BODY, C.muted, 4);
 }
+`;
 
-function center(ctx, textValue, cx, y, font, color, spacing = 0) {
-  ctx.font = font;
-  ctx.fillStyle = color;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-
-  const chars = [...String(textValue)];
-  const width = chars.reduce((w, ch) => w + ctx.measureText(ch).width + spacing, 0) - spacing;
-  let x = cx - width / 2;
-  for (const ch of chars) {
-    ctx.fillText(ch, x, y);
-    x += ctx.measureText(ch).width + spacing;
-  }
-}
-
-function groupDates(list) {
-  const m = new Map();
-  list.forEach((s) => m.set(s.date, [...(m.get(s.date) ?? []), s]));
-  return [...m.entries()];
-}
-
-function rule(ctx, cx, y, half) {
-  ctx.strokeStyle = C.rule;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx - half, y);
-  ctx.lineTo(cx + half, y);
-  ctx.stroke();
-}
+/**
+ * ブラウザで使うときに、上の文字列から関数を取り出す。
+ * Worker では呼びません（Workers は new Function を許していません）。
+ */
+const makeStory = () =>
+  new Function(STORY_SRC + '\nreturn { STORY_W, STORY_H, drawStory };')();
 
 /* ---------- src/richmenu.js ---------- */
 /**
@@ -3563,6 +3602,10 @@ $('slotEveryone').addEventListener('change', refresh);
 
 const canvas = $('story');
 const ctx = canvas.getContext('2d');
+
+/* 描く処理は src/story.js が文字列で持っている。
+   スタッフ用ページと同じものを、ここでも関数にして使う */
+const { drawStory } = makeStory();
 
 function paintStory() {
   drawStory(ctx, slots, { today: TODAY, delayMinutes: INSTAGRAM_DELAY_MIN });
