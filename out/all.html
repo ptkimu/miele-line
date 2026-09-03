@@ -2480,6 +2480,310 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+/* ---------- src/gcal.js ---------- */
+/**
+ * Googleカレンダーから空きを読む
+ *
+ * サロンボードと違い、Googleカレンダーには公式のAPIがあります。
+ * ただしここで読むのは freeBusy —— 「その時間に予定が入っているかどうか」だけです。
+ * 予定のタイトルも、お客様のお名前も、こちらには届きません。
+ * 空き枠を出すのに必要なのは「埋まっているか否か」だけなので、それ以上は取りません。
+ *
+ * カレンダーはセラピストごとに分かれています。
+ * 施術ルームは部屋数までしか同時に施術できないため、
+ * 「予定が入っているカレンダーの数」を数えて空きを判定します。
+ *
+ * 読み取り権限の渡し方（オーナー様の作業）:
+ *   1. Google Cloud でサービスアカウントを作り、鍵（JSON）を作る
+ *   2. 各セラピストのカレンダーの共有設定に、そのサービスアカウントの
+ *      メールアドレスを「予定の表示（時間のみ）」で追加する
+ *   3. 鍵の client_email と private_key を Workers のシークレットに登録する
+ *
+ * 手順2で「時間のみ」を選べば、予定の中身はそもそも共有されません。
+ */
+
+
+const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const FREEBUSY_URL = 'https://www.googleapis.com/calendar/v3/freeBusy';
+const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+
+/** 何分刻みで空きを探すか */
+const STEP_MIN = 15;
+
+/**
+ * どのカレンダーがどの部屋か。
+ * env.GOOGLE_CALENDARS に JSON で入れる。
+ *   [{"id":"therapist-a@group.calendar.google.com","room":"room","label":"Aさん"}, ...]
+ */
+function calendarsOf(env, room = null) {
+  let list;
+  try {
+    list = JSON.parse(env.GOOGLE_CALENDARS ?? '[]');
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(list)) return [];
+  const all = list
+    .map((c) => ({ id: String(c?.id ?? ''), room: c?.room === 'self' ? 'self' : 'room',
+                   label: String(c?.label ?? '') }))
+    .filter((c) => c.id);
+  return room ? all.filter((c) => c.room === room) : all;
+}
+
+/**
+ * 同時に施術できる数。
+ * セラピストが2人いても施術ルームが1室なら、同時に受けられるのは1件です。
+ * env.ROOM_CAPACITY = {"room":1,"self":1}
+ */
+function capacityOf(env, room) {
+  let conf;
+  try {
+    conf = JSON.parse(env.ROOM_CAPACITY ?? '{}');
+  } catch {
+    conf = {};
+  }
+  const n = Number(conf?.[room]);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
+
+const calendarReady = (env) => calendarsOf(env).length > 0;
+
+/* ------------------------------------------------------------------ *
+ * 認証
+ * ------------------------------------------------------------------ */
+
+/* 取ったトークンは1時間有効。毎回取り直す必要はない */
+let cached = null;
+
+async function accessToken(env, now = Date.now()) {
+  if (cached && cached.expires > now + 60_000) return cached.token;
+
+  const email = env.GOOGLE_SA_EMAIL;
+  const pem = env.GOOGLE_SA_KEY;
+  if (!email || !pem) throw new Error('Googleカレンダーの鍵が登録されていません');
+
+  const assertion = await signJwt(email, pem, now);
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion
+    })
+  });
+  const body = await res.json();
+  if (!res.ok || !body.access_token) {
+    throw new Error('Googleの認証に失敗しました: ' + (body.error_description ?? res.status));
+  }
+
+  cached = { token: body.access_token, expires: now + (body.expires_in ?? 3600) * 1000 };
+  return cached.token;
+}
+
+/** テストや、鍵を入れ替えたときのために */
+function resetToken() {
+  cached = null;
+}
+
+async function signJwt(email, pem, now) {
+  const iat = Math.floor(now / 1000);
+  const head = { alg: 'RS256', typ: 'JWT' };
+  const claim = { iss: email, scope: SCOPE, aud: TOKEN_URL, exp: iat + 3600, iat };
+
+  const enc = new TextEncoder();
+  const part = (o) => b64url(enc.encode(JSON.stringify(o)));
+  const data = part(head) + '.' + part(claim);
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    pemToBytes(pem),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, enc.encode(data));
+  return data + '.' + b64url(new Uint8Array(sig));
+}
+
+function pemToBytes(pem) {
+  const body = String(pem)
+    .replace(/-----[^-]+-----/g, '')
+    .replace(/\s+/g, '');
+  const bin = atob(body);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+
+function b64url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/* ------------------------------------------------------------------ *
+ * 予定の取得
+ * ------------------------------------------------------------------ */
+
+/**
+ * 指定した日の、カレンダーごとの「埋まっている時間」。
+ * 返るのは開始と終了だけです。
+ *
+ * @returns {Promise<Record<string, {start:string,end:string}[]>>}
+ */
+async function fetchBusy(env, dates, room, fetchImpl = fetch) {
+  const cals = calendarsOf(env, room);
+  if (!cals.length || !dates.length) return {};
+
+  const sorted = [...dates].sort();
+  const res = await fetchImpl(FREEBUSY_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + (await accessToken(env)),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      timeMin: sorted[0] + 'T00:00:00+09:00',
+      timeMax: sorted[sorted.length - 1] + 'T23:59:59+09:00',
+      timeZone: 'Asia/Tokyo',
+      items: cals.map((c) => ({ id: c.id }))
+    })
+  });
+
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error('カレンダーを読めませんでした: ' + (body?.error?.message ?? res.status));
+  }
+
+  const out = {};
+  for (const c of cals) out[c.id] = body?.calendars?.[c.id]?.busy ?? [];
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * 空きの計算（ここは通信しないので、そのまま試せます）
+ * ------------------------------------------------------------------ */
+
+/** '09:00' → 540 */
+const toMin = (hhmm) => {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+/** 540 → '09:00' */
+const toHm = (min) =>
+  String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+
+/** その日の0時（日本時間）からの経過分に直す */
+function minutesInDay(iso, date) {
+  const base = Date.parse(date + 'T00:00:00+09:00');
+  return Math.round((Date.parse(iso) - base) / 60000);
+}
+
+/**
+ * 予定が「部屋の数」に達していない時間帯を返す。
+ *
+ * セラピストが2人いて施術ルームが1室なら capacity は 1 です。
+ * 1人でも予定が入っていれば、その時間は部屋が埋まっています。
+ *
+ * @param {{start:string,end:string}[][]} busyLists カレンダーごとの予定
+ * @param {object} opts
+ * @param {string} opts.date     YYYY-MM-DD
+ * @param {number} opts.capacity 同時に受けられる数
+ * @param {string} [opts.from]   営業開始
+ * @param {string} [opts.to]     営業終了
+ * @param {number} [opts.buffer] 予定の前後にあける時間（片付けなど）
+ * @returns {{from:number,to:number}[]} 空いている時間帯（分）
+ */
+function freeRanges(busyLists, opts) {
+  const { date, capacity = 1 } = opts;
+  const dayFrom = toMin(opts.from ?? SALON.open.from);
+  const dayTo = toMin(opts.to ?? SALON.open.to);
+  const buffer = opts.buffer ?? 0;
+
+  /* 予定の開始で+1、終了で-1。重なりの数を数えていく */
+  const marks = [];
+  for (const list of busyLists) {
+    for (const b of list ?? []) {
+      const s = minutesInDay(b.start, date) - buffer;
+      const e = minutesInDay(b.end, date) + buffer;
+      if (e <= dayFrom || s >= dayTo) continue; // その日の営業時間の外
+      marks.push([Math.max(s, dayFrom), 1], [Math.min(e, dayTo), -1]);
+    }
+  }
+  marks.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+  const out = [];
+  let count = 0;
+  let openedAt = dayFrom;
+
+  for (const [at, delta] of marks) {
+    const wasFree = count < capacity;
+    count += delta;
+    const nowFree = count < capacity;
+
+    if (wasFree && !nowFree && at > openedAt) out.push({ from: openedAt, to: at });
+    if (!wasFree && nowFree) openedAt = at;
+  }
+  if (count < capacity && dayTo > openedAt) out.push({ from: openedAt, to: dayTo });
+
+  return out.filter((r) => r.to > r.from);
+}
+
+/**
+ * 空いている時間帯を、決まった長さの枠に切り出す。
+ * 15分刻みで探し、同じ時間帯からは先頭の1つだけを候補にします
+ * （2時間空いていても「11:00」「11:15」「11:30」…と並べても選びにくいため）。
+ */
+function slotsFrom(ranges, minutes, opts = {}) {
+  const step = opts.step ?? STEP_MIN;
+  const perRange = opts.perRange ?? 2;
+  const out = [];
+
+  for (const r of ranges) {
+    let found = 0;
+    for (let t = ceilTo(r.from, step); t + minutes <= r.to && found < perRange; t += step) {
+      out.push(toHm(t));
+      found++;
+      /* 次の候補は、いま出した枠の終わりから探す */
+      t = t + minutes - step;
+    }
+  }
+  return out;
+}
+
+const ceilTo = (n, step) => Math.ceil(n / step) * step;
+
+/**
+ * 日付をまたいで空き枠の候補を作る。画面はこれを呼びます。
+ *
+ * @returns {Promise<{date:string,time:string,minutes:number}[]>}
+ */
+async function findOpenSlots(env, opts) {
+  const dates = opts.dates ?? [];
+  const room = opts.room ?? 'room';
+  const minutes = opts.minutes ?? 60;
+  const capacity = opts.capacity ?? capacityOf(env, room);
+
+  const busy = await fetchBusy(env, dates, room, opts.fetchImpl ?? fetch);
+  const lists = Object.values(busy);
+
+  const out = [];
+  for (const date of dates) {
+    const ranges = freeRanges(lists, {
+      date,
+      capacity,
+      from: opts.from,
+      to: opts.to,
+      buffer: opts.buffer
+    });
+    for (const time of slotsFrom(ranges, minutes, opts)) {
+      out.push({ date, time, minutes });
+    }
+  }
+  return out;
+}
+
 /* ---------- src/liff.js ---------- */
 /**
  * LIFF（LINEの中で開くページ）から届いた「どなたか」を確かめる
@@ -3441,6 +3745,493 @@ function appEsc(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+/* ---------- src/social.js ---------- */
+/**
+ * Instagram と Google ビジネスプロフィールへの自動投稿
+ *
+ * 順番が大事です。LINE → 30分あけて → Instagram・Google。
+ * 先に外へ出してしまうと、LINEに登録していただく理由が消えます。
+ * そのため、送信のときにすぐ投げず、予約として貯めて時間が来たら出します。
+ *
+ * どちらも未設定なら、何も起きません（これまでどおり手で投稿できます）。
+ *
+ * ■ Instagram
+ *   Facebookページを経由しない「Instagram API with Instagram Login」を使います。
+ *   ストーリーズは、画像が公開URLに置いてあることと、JPEG であることが要ります。
+ *   そのため、スタッフの画面で作った画像をこちらで預かり、
+ *   /media/＜ID＞.jpg として出したうえで、そのURLを渡します。
+ *
+ * ■ Google ビジネスプロフィール
+ *   画像は任意なので、文面と「予約」ボタンだけでも投稿できます。
+ *   サービスアカウントは使えないため、店舗を管理しているGoogleアカウントで
+ *   一度だけ許可を出していただき、そのリフレッシュトークンを使います。
+ */
+
+
+const IG_HOST = 'https://graph.instagram.com';
+const GBP_HOST = 'https://mybusiness.googleapis.com/v4';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+/** 預かった画像を消すまでの日数。投稿が済めば用済みです */
+const MEDIA_KEEP_DAYS = 3;
+
+const igReady = (env) => !!(env.IG_USER_ID && env.IG_ACCESS_TOKEN);
+const gbpReady = (env) =>
+  !!(env.GBP_ACCOUNT_ID && env.GBP_LOCATION_ID &&
+     env.GOOGLE_OAUTH_CLIENT_ID && env.GOOGLE_OAUTH_CLIENT_SECRET && env.GBP_REFRESH_TOKEN);
+
+/* ------------------------------------------------------------------ *
+ * 画像を預かる
+ * ------------------------------------------------------------------ */
+
+/** 画像が大きすぎるときは受け取らない（D1に入れるため） */
+const MEDIA_MAX_BYTES = 700 * 1024;
+
+/**
+ * スタッフの画面で作った JPEG を預かります。
+ * 返ってきたIDが、そのまま公開URLの一部になります。
+ */
+async function saveMedia(env, base64, mime = 'image/jpeg') {
+  if (!base64) return null;
+  if (base64.length > MEDIA_MAX_BYTES * 1.4) {
+    throw new Error('画像が大きすぎます');
+  }
+  const id = crypto.randomUUID().replace(/-/g, '');
+  const expires = addDays(todayJst(), MEDIA_KEEP_DAYS);
+
+  await env.DB.prepare(
+    'INSERT INTO media (id, mime, data, expires_on, created_at) VALUES (?, ?, ?, ?, ?)'
+  )
+    .bind(id, mime, base64, expires, nowIso())
+    .run();
+  return id;
+}
+
+/** 公開URL。推測できないIDなので、認証は付けません（外から読めないと投稿できないため） */
+const mediaUrl = (env, id) =>
+  (env.PUBLIC_URL ?? '').replace(/\/$/, '') + '/media/' + id + '.jpg';
+
+async function serveMedia(env, id) {
+  const row = await env.DB.prepare('SELECT mime, data FROM media WHERE id = ?')
+    .bind(String(id).replace(/\.jpg$/, ''))
+    .first();
+  if (!row) return new Response('not found', { status: 404 });
+
+  const bin = atob(row.data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+  return new Response(bytes, {
+    headers: {
+      'Content-Type': row.mime || 'image/jpeg',
+      'Cache-Control': 'public, max-age=86400'
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * 投稿の予約
+ * ------------------------------------------------------------------ */
+
+/**
+ * LINEに送ったあと、30分後に外へ出す予約を入れます。
+ * すぐ投げないのは、LINEが先である事実をつくるためです。
+ */
+async function schedulePost(env, opts) {
+  const channels = (opts.channels ?? []).filter((c) => c === 'instagram' || c === 'gbp');
+  if (!channels.length) return { scheduled: 0 };
+
+  const delay = opts.delayMinutes ?? INSTAGRAM_DELAY_MIN;
+  const dueAt = new Date(Date.now() + delay * 60000).toISOString();
+
+  for (const channel of channels) {
+    await env.DB.prepare(
+      `INSERT INTO scheduled_posts (channel, body, image_url, due_at, status, created_at)
+       VALUES (?, ?, ?, ?, 'waiting', ?)`
+    )
+      .bind(channel, opts.text ?? '', opts.imageUrl ?? null, dueAt, nowIso())
+      .run();
+  }
+  return { scheduled: channels.length, dueAt };
+}
+
+/**
+ * ストーリーズの画像を作る場所。
+ *
+ * Cloudflare Workers には絵を描く仕組みがないため、
+ * 画像は外の小さな置き場で作ります（env.STORY_IMAGE_URL）。
+ * そこに枠の内容を渡すと、JPEGが返る約束です。
+ *
+ * 決めていないときは null を返し、Instagram は見送ります。
+ * Google は文面だけで投稿できるので、そちらは動きます。
+ */
+function storyImageUrl(env, slots, today = null) {
+  const base = env.STORY_IMAGE_URL;
+  if (!base) return null;
+
+  const payload = {
+    slots: (slots ?? []).map((s) => ({
+      date: s.date, time: s.time, minutes: s.minutes, menus: s.menus ?? []
+    })),
+    today,
+    delay: INSTAGRAM_DELAY_MIN,
+    salon: SALON.name
+  };
+  const d = socialB64url(JSON.stringify(payload));
+  return base + (base.includes('?') ? '&' : '?') + 'd=' + d;
+}
+
+function socialB64url(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * 時間が来た予約を出します。10分おきの cron から呼びます。
+ * 1件が失敗しても、ほかの投稿は止めません。
+ */
+async function publishDue(env, now = new Date().toISOString()) {
+  const rows = await env.DB.prepare(
+    "SELECT * FROM scheduled_posts WHERE status = 'waiting' AND due_at <= ? ORDER BY due_at LIMIT 10"
+  )
+    .bind(now)
+    .all();
+
+  const done = [];
+  for (const row of rows.results ?? []) {
+    /* 先に「送信中」にして、cron が重なっても二度出さないようにする */
+    const claimed = await env.DB.prepare(
+      "UPDATE scheduled_posts SET status = 'sending' WHERE id = ? AND status = 'waiting'"
+    )
+      .bind(row.id)
+      .run();
+    if (claimed.meta.changes === 0) continue;
+
+    let result;
+    try {
+      const url = row.image_url || null;
+      result = row.channel === 'instagram'
+        ? await postInstagramStory(env, url)
+        : await postGbp(env, { summary: row.body, imageUrl: url });
+    } catch (err) {
+      result = { ok: false, error: String(err.message ?? err) };
+    }
+
+    await env.DB.prepare(
+      'UPDATE scheduled_posts SET status = ?, error = ?, posted_at = ? WHERE id = ?'
+    )
+      .bind(result.ok ? 'posted' : 'failed', result.ok ? null : result.error ?? '', nowIso(), row.id)
+      .run();
+
+    done.push({ id: row.id, channel: row.channel, ok: result.ok, error: result.error ?? null });
+  }
+  return { published: done.filter((d) => d.ok).length, results: done };
+}
+
+/** 使い終わった画像と、古い記録を片づける */
+async function sweepMedia(env, today = todayJst()) {
+  const m = await env.DB.prepare('DELETE FROM media WHERE expires_on < ?').bind(today).run();
+  const p = await env.DB.prepare(
+    "DELETE FROM scheduled_posts WHERE status IN ('posted','failed') AND due_at < ?"
+  )
+    .bind(addDays(today, -30) + 'T00:00:00.000Z')
+    .run();
+  return { media: m.meta?.changes ?? 0, posts: p.meta?.changes ?? 0 };
+}
+
+/* ------------------------------------------------------------------ *
+ * Instagram
+ * ------------------------------------------------------------------ */
+
+/**
+ * ストーリーズに1枚出します。
+ * 「入れ物を作る → 出す」の2段階です。
+ */
+async function postInstagramStory(env, imageUrl) {
+  if (!igReady(env)) return { ok: false, error: 'Instagramが未設定です' };
+  if (!imageUrl) return { ok: false, error: '画像がありません（ストーリーズには画像が要ります）' };
+
+  const base = `${IG_HOST}/${env.IG_USER_ID}`;
+  const token = env.IG_ACCESS_TOKEN;
+
+  const made = await igCall(`${base}/media`, {
+    media_type: 'STORIES',
+    image_url: imageUrl,
+    access_token: token
+  });
+  if (!made.ok) return made;
+
+  const out = await igCall(`${base}/media_publish`, {
+    creation_id: made.body.id,
+    access_token: token
+  });
+  return out.ok ? { ok: true, id: out.body.id } : out;
+}
+
+async function igCall(url, params) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params)
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.error) {
+    return { ok: false, error: body?.error?.message ?? `Instagram ${res.status}` };
+  }
+  return { ok: true, body };
+}
+
+/* ------------------------------------------------------------------ *
+ * Google ビジネスプロフィール
+ * ------------------------------------------------------------------ */
+
+let gbpCache = null;
+
+/** リフレッシュトークンから、1時間有効な鍵をもらう */
+async function gbpToken(env, now = Date.now()) {
+  if (gbpCache && gbpCache.expires > now + 60_000) return gbpCache.token;
+
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.GOOGLE_OAUTH_CLIENT_ID,
+      client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+      refresh_token: env.GBP_REFRESH_TOKEN,
+      grant_type: 'refresh_token'
+    })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.access_token) {
+    throw new Error('Googleの認証に失敗しました: ' + (body.error_description ?? res.status));
+  }
+  gbpCache = { token: body.access_token, expires: now + (body.expires_in ?? 3600) * 1000 };
+  return gbpCache.token;
+}
+
+function resetGbpToken() {
+  gbpCache = null;
+}
+
+/**
+ * 「最新情報」として投稿します。
+ * ご予約の入口があれば「予約」ボタンを、なければ電話ボタンを付けます。
+ */
+async function postGbp(env, { summary, imageUrl = null }) {
+  if (!gbpReady(env)) return { ok: false, error: 'Googleビジネスプロフィールが未設定です' };
+
+  const post = {
+    languageCode: 'ja',
+    summary: String(summary ?? '').slice(0, 1500),
+    topicType: 'STANDARD'
+  };
+
+  if (has(SALON.bookingUrl)) {
+    post.callToAction = { actionType: 'BOOK', url: SALON.bookingUrl };
+  } else if (has(SALON.tel)) {
+    post.callToAction = { actionType: 'CALL' };
+  }
+  if (imageUrl) post.media = [{ mediaFormat: 'PHOTO', sourceUrl: imageUrl }];
+
+  const url =
+    `${GBP_HOST}/accounts/${env.GBP_ACCOUNT_ID}/locations/${env.GBP_LOCATION_ID}/localPosts`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + (await gbpToken(env)),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(post)
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { ok: false, error: body?.error?.message ?? `Google ${res.status}` };
+  }
+  return { ok: true, id: body.name ?? null };
+}
+
+/* ------------------------------------------------------------------ *
+ * 文面
+ * ------------------------------------------------------------------ */
+
+/**
+ * Googleに出す文面。
+ * Instagram と違い、Googleは検索から来た方が読むので、
+ * どこの店の何の話かが分かるように、店名と場所を添えます。
+ */
+function buildGbpText(slots) {
+  const lines = [buildInstagramText(slots)];
+  lines.push('', SALON.name, SALON.access);
+  if (has(SALON.tel)) lines.push('TEL ' + SALON.tel);
+  return lines.join('\n');
+}
+
+/* ------------------------------------------------------------------ */
+
+function addDays(ymd, days) {
+  return new Date(Date.parse(ymd + 'T00:00:00Z') + days * 86400000).toISOString().slice(0, 10);
+}
+
+/* ---------- src/auto.js ---------- */
+/**
+ * 空き枠のお知らせを、人が触らずに出す
+ *
+ * スタッフがGoogleカレンダーを正しく入れている、という前提で動きます。
+ * そのため、次のことは「カレンダーで決まる」ことになります。
+ *
+ *   出さない時間は、カレンダーに予定として入れておく
+ *     （移動・休憩・あえて残している枠。何も入っていなければ空きとして出ます）
+ *
+ * 機械が勝手に増やさないよう、歯止めは残してあります。
+ *   ・送信日（月・木）以外は動かない
+ *   ・同じお部屋は直近7日で3回まで
+ *   ・1回に出す枠は3つまで
+ *   ・通数の予備枠（500通）を割り込むなら送らない
+ *   ・受け取りを希望された方だけ。希望者がいなければ何もしない
+ *
+ * 流れ：
+ *   10:00  カレンダーを見る → 枠を決める → LINEに送る
+ *   10:30  Instagram と Google に出す（LINEが先である事実をつくる）
+ */
+
+
+/** 1回のお知らせに載せる枠の数。多いと「いつも空いている店」に見える */
+const AUTO_MAX_SLOTS = 3;
+
+/** 自動で出すときの枠の長さ。60分あれば多くのメニューが入る */
+const AUTO_MINUTES = 60;
+
+/**
+ * @param {object} [opts]
+ * @param {string}  [opts.today]  日付を差し替える（テスト用）
+ * @param {boolean} [opts.force]  送信日でなくても動かす
+ * @param {boolean} [opts.dryRun] 送らずに、何が起きるかだけ返す
+ */
+async function runAuto(env, opts = {}) {
+  const today = opts.today ?? todayJst();
+  const days = opts.days ?? DEFAULT_SCHEDULE.days;
+
+  if (!opts.force && !isSendDay(today, days)) {
+    return { today, skipped: '送信日ではありません', rooms: [] };
+  }
+  if (!calendarReady(env)) {
+    return { today, skipped: 'Googleカレンダーが未設定です', rooms: [] };
+  }
+
+  const dates = scheduleDates(today, opts.leadDays);
+  const minutes = Number(env.AUTO_SLOT_MINUTES) || AUTO_MINUTES;
+  const maxSlots = Number(env.AUTO_MAX_SLOTS) || AUTO_MAX_SLOTS;
+
+  const rooms = [];
+  for (const room of ROOMS) {
+    rooms.push(await runRoom(env, {
+      today, dates, minutes, maxSlots, room: room.id, dryRun: opts.dryRun
+    }));
+  }
+
+  return { today, dates, rooms, sent: rooms.reduce((n, r) => n + (r.sent ?? 0), 0) };
+}
+
+async function runRoom(env, o) {
+  const label = ROOMS.find((r) => r.id === o.room)?.label ?? o.room;
+
+  if (!calendarsOf(env, o.room).length) {
+    return { room: o.room, label, skipped: 'このお部屋のカレンダーがありません' };
+  }
+
+  const week = await recentSendCount(env, o.today, o.room);
+  if (week >= MAX_PER_WEEK) {
+    return { room: o.room, label, skipped: `直近7日ですでに${week}回出しています` };
+  }
+
+  let found;
+  try {
+    found = await findOpenSlots(env, {
+      dates: o.dates,
+      room: o.room,
+      minutes: o.minutes,
+      buffer: Number(env.SLOT_BUFFER_MIN) || 0
+    });
+  } catch (err) {
+    return { room: o.room, label, skipped: 'カレンダーを読めませんでした: ' + err.message };
+  }
+
+  if (!found.length) {
+    return { room: o.room, label, skipped: 'この日に出せる空きはありませんでした' };
+  }
+
+  /* 枠にメニューを載せる。スタッフ用ページと同じ決め方 */
+  const slots = found.slice(0, o.maxSlots).map((s) => ({
+    ...s,
+    menus: defaultMenusFor(o.room, s.minutes)
+  }));
+
+  const result = await sendOpenSlot(env, slots, { narrow: true, dryRun: o.dryRun });
+
+  if (o.dryRun) {
+    return { room: o.room, label, slots, planned: result.planned, dryRun: true };
+  }
+  if (result.stopped) {
+    return { room: o.room, label, slots, skipped: result.stopped };
+  }
+  if (!result.sent) {
+    return { room: o.room, label, slots, sent: 0, skipped: 'お送りする方がいませんでした' };
+  }
+
+  /* LINEが届いたので、30分後に外へ出す予約を入れる */
+  const scheduled = await scheduleOutside(env, slots, o.today);
+
+  return { room: o.room, label, slots, sent: result.sent, scheduled };
+}
+
+/**
+ * Instagram と Google の予約を入れます。
+ * Instagram はストーリーズに画像が要るため、画像を作る場所が
+ * 決まっていないときは見送ります（Googleは文面だけで出せます）。
+ */
+async function scheduleOutside(env, slots, today) {
+  const channels = [];
+  const imageUrl = storyImageUrl(env, slots, today);
+
+  if (igReady(env) && imageUrl) channels.push('instagram');
+  if (gbpReady(env)) channels.push('gbp');
+  if (!channels.length) return { scheduled: 0 };
+
+  const out = { scheduled: 0 };
+  if (channels.includes('instagram')) {
+    const r = await schedulePost(env, {
+      channels: ['instagram'],
+      text: buildInstagramText(slots),
+      imageUrl,
+      delayMinutes: INSTAGRAM_DELAY_MIN
+    });
+    out.scheduled += r.scheduled;
+    out.dueAt = r.dueAt;
+  }
+  if (channels.includes('gbp')) {
+    const r = await schedulePost(env, {
+      channels: ['gbp'],
+      text: buildGbpText(slots),
+      imageUrl,
+      delayMinutes: INSTAGRAM_DELAY_MIN
+    });
+    out.scheduled += r.scheduled;
+    out.dueAt = r.dueAt;
+  }
+  return out;
+}
+
+/** 記録用の短い文。cron のログに出します */
+const autoSummary = (r) =>
+  r.skipped
+    ? `自動送信なし（${r.skipped}）`
+    : r.rooms
+        .map((x) => `${x.label}: ${x.skipped ?? `${x.sent}名に送信・外部${x.scheduled?.scheduled ?? 0}件を予約`}`)
+        .join(' / ');
 
 
 /* ==================================================================

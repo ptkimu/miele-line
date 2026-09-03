@@ -1,4 +1,4 @@
-<title>ミエーレ リッチメニュー編集</title>
+<title>空き枠が自動で出るまで｜ミエーレ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
@@ -6,190 +6,212 @@
 <style>
   :root{
     --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
-    --ink:#2B2724; --ink-soft:#5D534E; --muted:#8B7F79;
+    --ink:#2B2724; --ink-soft:#574D48; --muted:#8B7F79;
     --rule:#E7DBD4; --rule-hard:#D6C6BD;
     --accent:#98543F; --accent-wash:#F7EBE5;
-    --free:#1F7A4C; --free-wash:#E8F3EC;
+    --ok:#1F7A4C; --ok-wash:#E8F3EC;
+    --warn:#8E6415; --warn-wash:#F7EFDF;
     --stop:#A73A2A; --stop-wash:#FBE6E2;
-    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
-    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
   }
   @media (prefers-color-scheme:dark){
     :root:not([data-theme="light"]){
       --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
-      --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
+      --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
       --rule:#3A3331; --rule-hard:#4C4340;
       --accent:#D9967C; --accent-wash:#33241F;
-      --free:#5CC98C; --free-wash:#1C2C24;
+      --ok:#5CC98C; --ok-wash:#1C2C24;
+      --warn:#DEAC57; --warn-wash:#2E2619;
       --stop:#E58775; --stop-wash:#33211E;
     }
   }
-  :root[data-theme="dark"]{
-    --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
-    --ink:#EFE8E4; --ink-soft:#C6BAB4; --muted:#9C8F89;
-    --rule:#3A3331; --rule-hard:#4C4340;
-    --accent:#D9967C; --accent-wash:#33241F;
-    --free:#5CC98C; --free-wash:#1C2C24;
-    --stop:#E58775; --stop-wash:#33211E;
-  }
-
   *{box-sizing:border-box}
   body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
-       font-size:15px;line-height:1.8;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1180px;margin:0 auto;padding:40px 22px 90px}
+       font-size:15px;line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px 100px}
 
-  header.top{border-bottom:1px solid var(--rule);padding-bottom:22px;margin-bottom:24px}
-  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.2em;color:var(--accent);margin:0 0 12px}
-  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(25px,4.4vw,32px);
-     line-height:1.32;margin:0 0 14px;text-wrap:balance}
-  .lede{color:var(--ink-soft);margin:0;max-width:66ch}
+  .cover{padding:56px 0 26px;border-bottom:2px solid var(--accent);margin-bottom:28px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--accent);margin:0 0 12px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(25px,4.6vw,34px);
+     line-height:1.3;margin:0 0 14px;text-wrap:balance}
+  .cover p{color:var(--ink-soft);margin:0 0 7px;max-width:64ch;font-size:14.5px}
+  b.hl{background:linear-gradient(transparent 62%,var(--accent-wash) 62%);font-weight:500}
 
-  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:16px;
-         overflow:hidden;margin-bottom:24px}
-  .panel > h2{font-family:var(--f-display);margin:0;padding:15px 20px;font-size:15.5px;
-              border-bottom:1px solid var(--rule)}
-  .pad{padding:18px 20px 22px}
-  .note{font-size:12.5px;color:var(--muted);line-height:1.75;margin:10px 0 0}
+  h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:46px 0 6px}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;max-width:64ch}
+  h3{font-family:var(--f-display);font-weight:700;font-size:13.5px;margin:0 0 10px;color:var(--muted)}
 
-  /*EDITOR-CSS*/
-  .preview{background:var(--sunk);padding:20px;display:flex;justify-content:center}
-  canvas{max-width:100%;height:auto;border-radius:10px;border:1px solid var(--rule);
-         box-shadow:0 8px 24px rgba(43,39,36,.10);background:#FAF7F5}
+  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:15px;
+         padding:20px 22px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  @media (max-width:880px){ .grid{grid-template-columns:1fr} }
 
-  .cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
-  .cell{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;background:var(--surface)}
-  .cell h3{font-family:var(--f-display);font-size:13px;margin:0 0 10px;color:var(--accent)}
-  .f{margin-bottom:10px}
-  .f label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px}
-  .f input,.f select,.f textarea{width:100%;padding:9px 11px;border:1px solid var(--rule);
-    border-radius:9px;font:inherit;font-size:13.5px;background:var(--ground);color:var(--ink)}
-  .f textarea{min-height:76px;line-height:1.7;resize:vertical}
-  .f input:focus-visible,.f select:focus-visible,.f textarea:focus-visible{
-    outline:2px solid var(--accent);outline-offset:1px}
-  .f small{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.6}
+  /* カレンダー */
+  .cal{display:grid;grid-template-columns:58px 1fr 1fr;gap:0 10px;font-size:12px}
+  .cal .hd{font-weight:700;color:var(--muted);font-size:11.5px;text-align:center;
+           padding-bottom:6px;border-bottom:1px solid var(--rule);margin-bottom:4px}
+  .cal .hr{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right;
+           padding-right:4px;line-height:26px}
+  .cal button{height:26px;margin-bottom:2px;border:1px solid var(--rule);border-radius:5px;
+              background:var(--ok-wash);color:var(--ok);font:inherit;font-size:10.5px;
+              cursor:pointer;padding:0}
+  .cal button.busy{background:var(--sunk);color:var(--muted);border-color:var(--rule-hard)}
+  .cal button:hover{outline:2px solid var(--accent);outline-offset:-2px}
 
-  .btn{border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:700;font-size:13.5px;
-       cursor:pointer;background:var(--accent);color:#fff}
-  .btn--ghost{background:var(--surface);color:var(--accent);border:1px solid var(--rule-hard)}
-  .btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  /* 時計と操作 */
+  .clock{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+         background:var(--sunk);border-radius:12px;padding:14px 18px;margin-bottom:16px}
+  .clock b{font-family:var(--f-display);font-size:19px;font-variant-numeric:tabular-nums}
+  .clock span{font-size:12.5px;color:var(--muted)}
+  .go{padding:12px 20px;border:0;border-radius:10px;background:var(--accent);color:#fff;
+      font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+  .go:disabled{background:var(--rule);color:var(--muted);cursor:default}
+  .ghost{padding:11px 16px;border:1px solid var(--rule);border-radius:10px;background:none;
+         color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
 
-  .blank{border-left:4px solid var(--stop);background:var(--stop-wash);border-radius:0 10px 10px 0;
-         padding:12px 16px;margin:0 0 16px;font-size:13px;color:var(--stop)}
-  .filled{border-left-color:var(--free);background:var(--free-wash);color:var(--free)}
+  /* 進み具合 */
+  .steps{list-style:none;padding:0;margin:0}
+  .steps li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule);
+            font-size:13.5px;align-items:flex-start}
+  .steps li:last-child{border-bottom:0}
+  .steps .t{flex:0 0 52px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .steps .s{flex:0 0 20px;text-align:center}
+  .steps .done .s{color:var(--ok)}
+  .steps .wait .s,.steps .wait .b{color:var(--muted)}
+  .steps .stop .s,.steps .stop .b{color:var(--stop)}
+  .steps .b{flex:1}
+  .steps small{display:block;color:var(--muted);font-size:12px}
 
-  .reply{background:var(--sunk);border-radius:10px;padding:12px 15px;font-size:12.5px;
-         white-space:pre-wrap;line-height:1.8;margin-top:6px}
-  .reply.none{color:var(--muted);font-style:normal;white-space:normal}
-  .rep{border-bottom:1px solid var(--rule);padding:14px 0}
-  .rep:last-child{border-bottom:0}
-  .rep h3{font-family:var(--f-display);font-size:14px;margin:0 0 2px}
-  .rep .kw{font-size:11.5px;color:var(--muted)}
+  /* 出るもの */
+  .msg{background:var(--sunk);border-radius:11px;padding:14px 16px;font-size:12.5px;
+       white-space:pre-wrap;line-height:1.85;margin:0;word-break:break-word}
+  .empty{color:var(--muted);font-size:12.5px;margin:0}
+  canvas{width:100%;max-width:220px;height:auto;border-radius:9px;border:1px solid var(--rule);
+         display:block;background:#FAF7F5}
+  .gpost{border:1px solid var(--rule);border-radius:11px;overflow:hidden}
+  .gpost .gh{background:var(--sunk);padding:8px 13px;font-size:11.5px;color:var(--muted)}
+  .gpost .gb{padding:13px;font-size:12.5px;white-space:pre-wrap;line-height:1.8}
+  .gpost .gc{border-top:1px solid var(--rule);padding:10px 13px;font-size:12.5px;
+             color:var(--accent);font-weight:700}
 
-  .scrollx{overflow-x:auto;margin:0 0 6px}
-  table.setup{width:100%;border-collapse:collapse;font-size:13.5px;line-height:1.75;min-width:460px}
-  table.setup th,table.setup td{text-align:left;padding:9px 14px 9px 0;
-    border-bottom:1px solid var(--rule);vertical-align:top}
-  table.setup thead th{font-size:10.5px;letter-spacing:.08em;color:var(--muted);font-weight:700}
-  table.setup tbody tr:last-child td{border-bottom:0}
-  table.setup .on{color:var(--free);font-weight:700;white-space:nowrap}
-  table.setup .off{color:var(--stop);font-weight:700;white-space:nowrap}
-  table.setup code{background:var(--sunk);border:1px solid var(--rule);border-radius:5px;
-    padding:1px 7px;font-size:12.5px;white-space:nowrap}
-  /*/EDITOR-CSS*/
-  footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
+  /* 歯止め */
+  .guards{display:grid;gap:8px}
+  .guard{display:flex;gap:11px;align-items:flex-start;background:var(--surface);
+         border:1px solid var(--rule);border-radius:11px;padding:12px 15px;font-size:13.5px}
+  .guard small{display:block;color:var(--muted);font-size:12px}
+  .callout{border-left:4px solid var(--accent);background:var(--accent-wash);
+           border-radius:0 12px 12px 0;padding:15px 20px;margin:0 0 20px;font-size:13.5px}
+  .callout--warn{border-left-color:var(--warn);background:var(--warn-wash)}
+  .callout p{margin:0 0 8px}
+  .callout p:last-child{margin:0}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:var(--sunk);
+       padding:2px 6px;border-radius:5px}
+  footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
-  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
 <div class="wrap">
 
-  <header class="top">
-    <p class="eyebrow">編集ページ</p>
-    <h1>リッチメニューを作る</h1>
-    <p class="lede">
-      ボタンの文字を変えると、<strong>画像がその場で作り直されます。</strong>
-      まだ空欄になっている店舗情報を埋めると、<strong>そのボタンが答えられるようになります。</strong>
-      できた画像を保存して、LINEの管理画面にアップロードしてください。
-    </p>
-  </header>
+<header class="cover">
+  <p class="eyebrow">トータル・ビューティー・サロン ミエーレ</p>
+  <h1>空き枠が、ひとりでに出るまで</h1>
+  <p>スタッフがGoogleカレンダーに予定を入れておくだけで、
+     月曜と木曜の朝、システムが空きを見つけてLINEに送り、30分あけて
+     Instagram と Google に出します。</p>
+  <p><b class="hl">この画面では、その一部始終を早送りで見られます。</b>
+     カレンダーの予定を触ると、出てくる空き枠が変わります。</p>
+</header>
 
-  <!--EDITOR-SECTIONS-->
-  <section class="panel">
-    <h2>できあがり</h2>
-    <div class="pad" style="padding-bottom:0">
-      <div class="f" style="max-width:340px">
-        <label for="layout">区切り方</label>
-        <select id="layout"></select>
-      </div>
-    </div>
-    <div class="preview"><canvas id="cv"></canvas></div>
-    <div class="pad">
-      <div class="btnrow">
-        <button class="btn" id="dl">画像を保存</button>
-        <button class="btn btn--ghost" id="reset">最初に戻す</button>
-      </div>
-      <p class="note" id="sizeNote"></p>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>ボタンの文字</h2>
-    <div class="pad">
-      <div class="cells" id="cells"></div>
-      <p class="note">
-        「送信テキスト」は、LINEの管理画面でアクションの種類を「テキスト」にして入れる内容です。
-        空にすると、そのボタンは押しても何も起きません。
-      </p>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>空欄になっている店舗情報</h2>
-    <div class="pad">
-      <div id="blankState"></div>
-      <div class="cells" id="salon"></div>
-      <p class="note">
-        埋めるまでの間、その話題は<b style="color:var(--ink-soft)">あえて自動返信しません</b>。
-        間違った営業時間を自動で答えるより、スタッフがお答えするほうが確実だからです。
-      </p>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>お客様に返る内容</h2>
-    <div class="pad" id="replies"></div>
-  </section>
-
-  <section class="panel">
-    <h2>LINE公式アカウント側で設定すること</h2>
-    <div class="pad">
-      <p style="margin:0 0 14px;font-size:14px">
-        <b>管理画面での作業はこれだけです。</b>費用はかかりません。
-        上でボタンを変えると、この表も変わります。
-      </p>
-      <div id="lineSetup"></div>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>設定の書き出し</h2>
-    <div class="pad">
-      <p style="margin:0 0 12px;font-size:14px">
-        編集した内容です。この内容をお送りいただければ、システムに反映します。
-      </p>
-      <div class="f"><textarea id="out" readonly style="min-height:200px"></textarea></div>
-      <div class="btnrow"><button class="btn btn--ghost" id="copy">コピー</button></div>
-    </div>
-  </section>
-
-  <!--/EDITOR-SECTIONS-->
-  <footer>
-    トータル・ビューティー・サロン ミエーレ ／ リッチメニュー編集<br>
-    画像は 1MB 以内であればLINEの管理画面にそのままアップロードできます。
-  </footer>
+<div class="callout callout--warn">
+  <p><b>これはデモです。</b>実際のLINE・Instagram・Googleには何も送信されません。
+  ただし<b>判断しているのは本番と同じコード</b>で、
+  カレンダーの読み取りから文面作りまで、そのまま動いています。</p>
 </div>
 
-<script type="module">
+<h2>1. スタッフが入れたカレンダー</h2>
+<p class="sub">
+  予定が入っている時間が「埋まり」、空いている時間が「空き」です。
+  <b class="hl">出したくない時間は、予定として入れておいてください。</b>
+  移動・休憩・あえて残す枠を空けたままにすると、空きとして出てしまいます。
+  マスを押すと、予定を入れたり外したりできます。
+</p>
+
+<div class="panel">
+  <div class="cal" id="cal"></div>
+  <p class="sub" style="margin:14px 0 0">
+    セラピストのカレンダーです。施術ルームは1室なので、
+    どちらかに予定が入っていればその時間は埋まりです。
+    セルフブースも同じしくみで動きます。
+  </p>
+</div>
+
+<h2>2. 月曜の朝、システムが動く</h2>
+<p class="sub">ボタンを押すと、その時刻になったことにします。</p>
+
+<div class="clock">
+  <b id="now">月曜 09:00</b>
+  <span id="nowNote">まだ何も起きていません</span>
+  <button type="button" class="go" id="run">朝10時にする</button>
+  <button type="button" class="go" id="later" disabled>30分たった</button>
+  <button type="button" class="ghost" id="reset">最初に戻す</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h3>起きたこと</h3>
+    <ul class="steps" id="steps"></ul>
+  </div>
+  <div class="panel">
+    <h3>お客様のLINEに届いた文面</h3>
+    <p class="msg" id="line">まだ送っていません。</p>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h3>Instagram ストーリーズ（30分後）</h3>
+    <canvas id="story" width="1080" height="1920"></canvas>
+    <p class="empty" id="storyNote" style="margin-top:10px">まだ出していません。</p>
+  </div>
+  <div class="panel">
+    <h3>Google ビジネスプロフィール（30分後）</h3>
+    <div id="gbp"><p class="empty">まだ出していません。</p></div>
+  </div>
+</div>
+
+<h2>3. 勝手に増やさないための歯止め</h2>
+<p class="sub">
+  カレンダー任せにすると出しすぎてしまい、「いつも空いている店」という印象になります。
+  次の条件のどれかに当たると、システムは黙って止まります。
+  チェックを入れて、朝10時にしてみてください。
+</p>
+
+<div class="guards" id="guards"></div>
+
+<h2>4. スタッフがやること</h2>
+
+<div class="panel">
+  <p style="margin:0 0 12px"><b>カレンダーを正しく入れる。それだけです。</b></p>
+  <ul style="margin:0;padding-left:20px;font-size:13.5px;color:var(--ink-soft)">
+    <li>ご予約が入ったら、これまでどおりカレンダーに入れる</li>
+    <li><b>出したくない時間（移動・休憩・あえて残す枠）も、予定として入れておく</b></li>
+    <li>送信そのものへの操作は要りません。朝10時に自動で動きます</li>
+  </ul>
+  <p class="sub" style="margin:14px 0 0">
+    急な空きが出たときや、内容を確かめたいときのために、
+    スタッフ用ページから手で送ることもできます。
+  </p>
+</div>
+
+<footer>
+  トータル・ビューティー・サロン ミエーレ ／ 空き枠の自動お知らせ デモ<br>
+  〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分
+</footer>
+
+</div>
+
+<script>
 /* ---------- src/salon.js ---------- */
 /**
  * 店舗情報。応答メッセージの文面はすべてここを参照する。
@@ -3954,267 +3976,294 @@ const autoSummary = (r) =>
         .map((x) => `${x.label}: ${x.skipped ?? `${x.sent}名に送信・外部${x.scheduled?.scheduled ?? 0}件を予約`}`)
         .join(' / ');
 
+</script>
 
-const $ = (id) => document.getElementById(id);
-const esc2 = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+<script>
+/* ------------------------------------------------------------------ *
+ * デモの裏側
+ *
+ * 判断は本番のコード（runAuto / publishDue）がそのまま行います。
+ * カレンダー・データベース・LINE・Instagram・Google への通信だけを、
+ * この画面の中の入れ物で代用しています。
+ * ------------------------------------------------------------------ */
 
-/*EDITOR-JS*/
-/* 編集中の内容。src の既定値から始める */
-const DEFAULT_CELLS = JSON.parse(JSON.stringify(MENU));
-let cells = JSON.parse(JSON.stringify(MENU));
-let layout = LAYOUTS[0];
+const esc4 = (s) => String(s ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/* 空欄になっている店舗情報。ここを埋めると応答が有効になる */
-const BLANKS = [
-  { key:'hours',   label:'営業時間',   ph:'9:00〜19:00' },
-  { key:'closed',  label:'定休日',     ph:'年中無休' },
-  { key:'tel',     label:'電話番号',   ph:'090-3286-4994' },
-  { key:'parking', label:'駐車場',     ph:'専用駐車場あり' },
-  { key:'payment', label:'お支払い方法', ph:'現金 / Visa / Mastercard / JCB / American Express' },
-  { key:'reservation', label:'ご予約', ph:'完全予約制' },
-  { key:'diagnosisUrl', label:'コース診断のURL', ph:'https://liff.line.me/＜LIFF_ID＞' }
+/* 月曜。2〜3日先（水・木）の空きを見にいく */
+const MON = '2026-09-07';
+const DATES = scheduleDates(MON);
+const OPEN_FROM = 9, OPEN_TO = 19;
+
+/* はじめは、いくつか予定が入っている状態にしておく */
+const busy = {};
+DATES.forEach((d, i) => {
+  busy[d] = new Set();
+  const preset = i === 0 ? [9, 10, 11, 13, 16, 17, 18] : [9, 10, 12, 13, 14, 17, 18];
+  preset.forEach((h) => busy[d].add(h));
+});
+
+const guards = { week: false, nobody: false, notSendDay: false };
+let posts = [];
+let lastRun = null;
+
+/* ---------- カレンダーの見た目 ---------- */
+
+function paintCal() {
+  const head = '<div class="hd"></div>' +
+    DATES.map((d) => '<div class="hd">' + esc4(formatDate(d)) + '</div>').join('');
+  let body = '';
+  for (let h = OPEN_FROM; h < OPEN_TO; h++) {
+    body += '<div class="hr">' + h + ':00</div>';
+    for (const d of DATES) {
+      const on = busy[d].has(h);
+      body += '<button type="button" class="' + (on ? 'busy' : '') + '" ' +
+              'data-d="' + d + '" data-h="' + h + '">' +
+              (on ? 'ご予約' : '空き') + '</button>';
+    }
+  }
+  document.getElementById('cal').innerHTML = head + body;
+}
+
+document.getElementById('cal').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const set = busy[b.dataset.d];
+  const h = Number(b.dataset.h);
+  set.has(h) ? set.delete(h) : set.add(h);
+  paintCal();
+});
+
+/* ---------- 入れ物（本番では D1・LINE・各社のAPI） ---------- */
+
+let sent = 0;
+let scheduled = [];
+let seq = 1;
+
+const DB = {
+  prepare(sql) {
+    const q = {
+      binds: [],
+      bind(...a) { q.binds = a; return q; },
+      first: async () => {
+        if (sql.includes('FROM open_slots')) return { n: guards.week ? 3 : 0 };
+        return null;
+      },
+      all: async () => {
+        if (sql.includes('FROM scheduled_posts')) {
+          return { results: scheduled.filter((r) => r.status === 'waiting') };
+        }
+        if (sql.includes('FROM customers c')) {
+          /* 空き枠のお知らせを希望された方。0名なら送り先がない */
+          return { results: guards.nobody ? [] :
+            Array.from({ length: 46 }, (_, i) => ({ line_user_id: 'U' + i, display_name: '様' })) };
+        }
+        return { results: [] };
+      },
+      run: async () => {
+        if (sql.startsWith('INSERT INTO deliveries')) { sent++; return { meta: { changes: 1 } }; }
+        if (sql.startsWith('INSERT INTO scheduled_posts')) {
+          scheduled.push({ id: seq++, channel: q.binds[0], body: q.binds[1],
+                           image_url: q.binds[2], due_at: q.binds[3], status: 'waiting' });
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes("SET status = 'sending'")) {
+          const r = scheduled.find((x) => x.id === q.binds[0] && x.status === 'waiting');
+          if (!r) return { meta: { changes: 0 } };
+          r.status = 'sending';
+          return { meta: { changes: 1 } };
+        }
+        if (sql.startsWith('UPDATE scheduled_posts SET status = ?')) {
+          const r = scheduled.find((x) => x.id === q.binds[3]);
+          if (r) r.status = q.binds[0];
+          return { meta: { changes: 1 } };
+        }
+        return { meta: { changes: 1 } };
+      }
+    };
+    return q;
+  }
+};
+
+const ENV = {
+  DB,
+  CHANNEL_ACCESS_TOKEN: 'demo',
+  GOOGLE_SA_EMAIL: 'demo@example.iam.gserviceaccount.com',
+  GOOGLE_SA_KEY: '-----BEGIN PRIVATE KEY-----\n' + btoa('demo') + '\n-----END PRIVATE KEY-----',
+  GOOGLE_CALENDARS: JSON.stringify([{ id: 'therapist@demo', room: 'room', label: 'セラピスト' }]),
+  ROOM_CAPACITY: JSON.stringify({ room: 1 }),
+  STORY_IMAGE_URL: 'https://story.example/api/story',
+  IG_USER_ID: 'demo', IG_ACCESS_TOKEN: 'demo',
+  GBP_ACCOUNT_ID: 'demo', GBP_LOCATION_ID: 'demo',
+  GOOGLE_OAUTH_CLIENT_ID: 'demo', GOOGLE_OAUTH_CLIENT_SECRET: 'demo', GBP_REFRESH_TOKEN: 'demo'
+};
+
+/* 鍵の計算はブラウザに任せず、通ったことにする */
+crypto.subtle.importKey = async () => ({});
+crypto.subtle.sign = async () => new Uint8Array([1, 2, 3, 4]).buffer;
+
+globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  if (u.includes('oauth2.googleapis.com')) {
+    return { ok: true, json: async () => ({ access_token: 'demo', expires_in: 3600 }) };
+  }
+  if (u.includes('freeBusy')) {
+    /* 画面のカレンダーを、そのまま予定として返す */
+    const list = [];
+    for (const d of DATES) {
+      for (const h of [...busy[d]].sort((a, b) => a - b)) {
+        list.push({ start: d + 'T' + String(h).padStart(2, '0') + ':00:00+09:00',
+                    end: d + 'T' + String(h + 1).padStart(2, '0') + ':00:00+09:00' });
+      }
+    }
+    return { ok: true, json: async () => ({ calendars: { 'therapist@demo': { busy: list } } }) };
+  }
+  if (u.endsWith('/consumption')) return { ok: true, json: async () => ({ totalUsage: 900 }) };
+  if (u.includes('/message/quota')) {
+    return { ok: true, json: async () => ({ type: 'limited', value: 5000 }) };
+  }
+  if (u.includes('graph.instagram.com')) {
+    return { ok: true, json: async () => ({ id: 'demo-' + Date.now() }) };
+  }
+  if (u.includes('mybusiness.googleapis.com')) {
+    posts.push(JSON.parse(init.body));
+    return { ok: true, json: async () => ({ name: 'demo' }) };
+  }
+  return { ok: true, json: async () => ({}) };
+};
+
+/* ---------- 進み具合の表示 ---------- */
+
+function step(state, time, label, note) {
+  return '<li class="' + state + '"><span class="t">' + esc4(time) + '</span>' +
+    '<span class="s">' + (state === 'done' ? '●' : state === 'stop' ? '×' : '○') + '</span>' +
+    '<span class="b">' + esc4(label) +
+    (note ? '<small>' + esc4(note) + '</small>' : '') + '</span></li>';
+}
+
+function paintSteps(rows) {
+  document.getElementById('steps').innerHTML = rows.join('');
+}
+
+paintSteps([
+  step('wait', '10:00', 'カレンダーを見る'),
+  step('wait', '10:00', '出す枠を決める'),
+  step('wait', '10:00', 'LINEに送る'),
+  step('wait', '10:30', 'Instagram に出す'),
+  step('wait', '10:30', 'Google に出す')
+]);
+
+/* ---------- 朝10時 ---------- */
+
+document.getElementById('run').addEventListener('click', async () => {
+  sent = 0; scheduled = []; posts = []; seq = 1;
+  document.getElementById('now').textContent = '月曜 10:00';
+
+  /* 送信日でない日を試すときは、火曜として動かす */
+  const today = guards.notSendDay ? '2026-09-08' : MON;
+  const r = await runAuto(ENV, { today });
+  lastRun = r;
+
+  const room = (r.rooms || []).find((x) => x.room === 'room') || {};
+  const stopped = r.skipped || room.skipped;
+
+  if (stopped) {
+    paintSteps([
+      step('done', '10:00', 'カレンダーを見る'),
+      step('stop', '10:00', '止まりました', stopped),
+      step('wait', '10:00', 'LINEに送る'),
+      step('wait', '10:30', 'Instagram に出す'),
+      step('wait', '10:30', 'Google に出す')
+    ]);
+    document.getElementById('nowNote').textContent = stopped;
+    document.getElementById('line').textContent = '送っていません。';
+    document.getElementById('later').disabled = true;
+    return;
+  }
+
+  const slots = room.slots || [];
+  paintSteps([
+    step('done', '10:00', 'カレンダーを見る',
+         formatDate(DATES[0]) + '・' + formatDate(DATES[1]) + ' の空きを確認'),
+    step('done', '10:00', '出す枠を決めた',
+         slots.map((s) => formatDate(s.date) + ' ' + s.time).join(' / ')),
+    step('done', '10:00', room.sent + '名のLINEに送った',
+         '空き枠のお知らせを希望された方だけ'),
+    step('wait', '10:30', 'Instagram に出す', '30分あけます'),
+    step('wait', '10:30', 'Google に出す', '30分あけます')
+  ]);
+
+  document.getElementById('nowNote').textContent =
+    'LINEに送信しました。30分後に外へ出します';
+  document.getElementById('line').textContent = buildLineMessage(slots);
+  document.getElementById('later').disabled = false;
+
+  /* ストーリーズの画像は、本番と同じ描き方でその場に描く */
+  drawStory(storyCtx, slots, { today, delayMinutes: INSTAGRAM_DELAY_MIN });
+  document.getElementById('storyNote').textContent =
+    'この画像を30分後に出します（いまはまだ出していません）。';
+});
+
+/* ---------- 30分後 ---------- */
+
+document.getElementById('later').addEventListener('click', async () => {
+  document.getElementById('now').textContent = '月曜 10:30';
+  const r = await publishDue(ENV, '2030-01-01T00:00:00.000Z');
+
+  const room = (lastRun.rooms || []).find((x) => x.room === 'room') || {};
+  const slots = room.slots || [];
+
+  paintSteps([
+    step('done', '10:00', 'カレンダーを見る'),
+    step('done', '10:00', '出す枠を決めた'),
+    step('done', '10:00', room.sent + '名のLINEに送った'),
+    step('done', '10:30', 'Instagram に出した', 'ストーリーズ'),
+    step('done', '10:30', 'Google に出した', '最新情報として投稿')
+  ]);
+
+  document.getElementById('nowNote').textContent = r.published + '件を投稿しました';
+  document.getElementById('storyNote').textContent = 'Instagram のストーリーズに出しました。';
+
+  const g = posts[0];
+  document.getElementById('gbp').innerHTML = g
+    ? '<div class="gpost"><div class="gh">Google ビジネスプロフィール ／ 最新情報</div>' +
+      '<div class="gb">' + esc4(g.summary) + '</div>' +
+      (g.callToAction ? '<div class="gc">' +
+        (g.callToAction.actionType === 'BOOK' ? '予約' : '電話') + '</div>' : '') +
+      '</div>'
+    : '<p class="empty">出せませんでした。</p>';
+
+  document.getElementById('later').disabled = true;
+});
+
+/* ---------- 歯止め ---------- */
+
+const GUARDS = [
+  ['week', '今週すでに3回出している',
+   '同じお部屋のお知らせは直近7日で3回まで。続けすぎると「いつも空いている店」になります'],
+  ['nobody', '受け取りを希望した方がいない',
+   '頼まれていない方には送りません。リッチメニューから登録していただきます'],
+  ['notSendDay', '送信日ではない（火曜）',
+   '定期のお知らせは月曜と木曜だけ。急な空きはスタッフ用ページから手で出せます']
 ];
 
-/* ---------- 画像 ---------- */
+document.getElementById('guards').innerHTML = GUARDS.map(([id, label, note]) =>
+  '<label class="guard"><input type="checkbox" data-g="' + id + '">' +
+  '<span>' + esc4(label) + '<small>' + esc4(note) + '</small></span></label>'
+).join('');
 
-const menuCv = $('cv');
-const menuCtx = menuCv.getContext('2d');
-
-function paintMenu() {
-  menuCv.width = layout.w;
-  menuCv.height = layout.h;
-  menuCv.style.width = 'min(100%, 760px)';
-  drawRichMenu(menuCtx, cellsFor(cells, layout), layout);
-  $('sizeNote').textContent =
-    `${layout.w} × ${layout.h} ピクセル。LINEの管理画面で「${layout.label}」のテンプレートを選んでください。`;
-}
-
-LAYOUTS.forEach(l => {
-  const o = document.createElement('option');
-  o.value = l.id; o.textContent = l.label;
-  $('layout').appendChild(o);
-});
-$('layout').addEventListener('change', () => { layout = layoutById($('layout').value); renderMenu(); });
-
-$('dl').addEventListener('click', () => {
-  const a = document.createElement('a');
-  a.download = 'miele-richmenu-' + layout.id + '.png';
-  a.href = menuCv.toDataURL('image/png');
-  a.click();
+document.getElementById('guards').addEventListener('change', (e) => {
+  if (!e.target.dataset.g) return;
+  guards[e.target.dataset.g] = e.target.checked;
 });
 
-$('reset').addEventListener('click', () => {
-  cells = JSON.parse(JSON.stringify(DEFAULT_CELLS));
-  BLANKS.forEach(b => { SALON[b.key] = null; });
-  renderMenu();
-});
+/* ---------- 最初に戻す ---------- */
 
-/* ---------- ボタンの編集 ---------- */
+document.getElementById('reset').addEventListener('click', () => location.reload());
 
-function renderCells() {
-  const need = layout.cols * layout.rows;
-  $('cells').innerHTML = cells.slice(0, need).map((c, i) => `
-    <div class="cell">
-      <h3>${i + 1}つ目のボタン${c.lead ? '（目立たせる枠）' : ''}</h3>
-      <div class="f"><label>文字</label>
-        <input data-i="${i}" data-k="label" value="${esc2(c.label)}"></div>
-      <div class="f"><label>その下の小さい文字</label>
-        <input data-i="${i}" data-k="sub" value="${esc2(c.sub ?? '')}"></div>
-      <div class="f"><label>アイコン</label>
-        <select data-i="${i}" data-k="icon">
-          ${Object.keys(ICONS).map(k =>
-            `<option value="${k}"${k === c.icon ? ' selected' : ''}>${k}</option>`).join('')}
-        </select></div>
-      <div class="f"><label>送信テキスト</label>
-        <input data-i="${i}" data-k="keyword" value="${esc2(c.keyword ?? '')}"
-               placeholder="${c.link ? 'リンクのボタン（' + esc2(c.link) + '）' : '空にすると反応しません'}">
-        ${c.link ? '<small>このボタンはリンクです。LIFFのURLを発行したら管理画面で設定します。</small>' : ''}
-      </div>
-    </div>`).join('');
+/* ---------- 立ち上げ ---------- */
 
-  $('cells').querySelectorAll('input,select').forEach(el =>
-    el.addEventListener('input', () => {
-      const v = el.value;
-      cells[Number(el.dataset.i)][el.dataset.k] = v === '' ? null : v;
-      renderMenu();
-    }));
-}
-
-/* ---------- 空欄の編集 ---------- */
-
-function renderSalon() {
-  const remaining = BLANKS.filter(b => !has(SALON[b.key])).length;
-  $('blankState').innerHTML = remaining
-    ? `<div class="blank">まだ <b>${remaining}項目</b> が空欄です。埋めるとその話題に自動で答えられるようになります。</div>`
-    : '<div class="blank filled">すべて埋まりました。6つのボタンとも自動で答えられます。</div>';
-
-  $('salon').innerHTML = BLANKS.map(b => `
-    <div class="cell">
-      <div class="f"><label>${esc2(b.label)}</label>
-        <input data-s="${b.key}" value="${esc2(SALON[b.key] ?? '')}" placeholder="${esc2(b.ph)}">
-        <small>${has(SALON[b.key]) ? '設定済み' : '未設定のため、この話題には返信しません'}</small>
-      </div>
-    </div>`).join('');
-
-  $('salon').querySelectorAll('input').forEach(el =>
-    el.addEventListener('input', () => {
-      SALON[el.dataset.s] = el.value.trim() === '' ? null : el.value.trim();
-      renderMenu();
-    }));
-}
-
-/* ---------- 応答のプレビュー ---------- */
-
-function renderReplies() {
-  const need = layout.cols * layout.rows;
-  $('replies').innerHTML = cells.slice(0, need).map(c => {
-    const hit = c.keyword ? matchReply(c.keyword) : null;
-    return `
-      <div class="rep">
-        <h3>${esc2(c.label)}</h3>
-        <p class="kw">${c.keyword ? '「' + esc2(c.keyword) + '」が送られます' : 'リンク、または設定なし'}</p>
-        ${hit
-          ? `<div class="reply">${esc2(hit.messages[0].text)}</div>` +
-            (hit.messages[0].quickReply
-              ? `<p class="note">下にボタンが付きます：${
-                  hit.messages[0].quickReply.items.map(i => esc2(i.action.label)).join(' / ')}</p>`
-              : '')
-          : '<div class="reply none">いまは自動返信しません。スタッフがお答えします。</div>'}
-      </div>`;
-  }).join('');
-}
-
-/* ---------- 書き出し ---------- */
-
-function renderOut() {
-  const need = layout.cols * layout.rows;
-  const lines = [
-    '【リッチメニューの設定】',
-    '区切り方　' + layout.label,
-    '',
-    ...cells.slice(0, need).flatMap((c, i) => [
-      `${i + 1}つ目`,
-      `　文字　　　${c.label}`,
-      `　小さい文字　${c.sub ?? '（なし）'}`,
-      `　アイコン　　${c.icon}`,
-      `　送信テキスト　${c.keyword ?? (c.link ? 'リンク：' + c.link : '（設定なし）')}`,
-      ''
-    ]),
-    '【店舗情報】',
-    ...BLANKS.map(b => `${b.label}　${SALON[b.key] ?? '（未設定）'}`)
-  ];
-  $('out').value = lines.join('\n');
-}
-
-$('copy').addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText($('out').value);
-    $('copy').textContent = 'コピーしました';
-    setTimeout(() => { $('copy').textContent = 'コピー'; }, 1800);
-  } catch {
-    $('out').select();
-  }
-});
-
-/* ---------- まとめて描き直す ---------- */
-
-/* LINE公式アカウントの管理画面で何をするか。編集中の内容から作る */
-function renderLineSetup() {
-  const need = layout.cols * layout.rows;
-  const pos = ['左上','中上','右上','左下','中下','右下'];
-  const posFor = (i) => layout.rows === 1 ? `左から${i + 1}番目` : (pos[i] ?? `${i + 1}番目`);
-
-  /* 管理画面に貼る内容。LIFFのページは liff.line.me のURLになる */
-  const setupTarget = (c) => {
-    if (c.link === 'booking') {
-      return SALON.bookingUrl
-        ? '<code>' + esc2(SALON.bookingUrl) + '</code>'
-        : '<span class="off">予約システムのURLが未設定です</span>';
-    }
-    if (c.link && c.link.startsWith('/app/')) {
-      return '<code>https://liff.line.me/＜LIFF ID＞/' + esc2(c.link.slice(5)) + '</code>';
-    }
-    if (c.link) return esc2(c.link);
-    return c.keyword ? '<code>' + esc2(c.keyword) + '</code>' : '—';
-  };
-
-  $('lineSetup').innerHTML = `
-    <h4 style="font-family:var(--f-display);font-size:14px;margin:0 0 8px">
-      1. トークルーム管理 → 応答設定</h4>
-    <div class="scrollx"><table class="setup">
-      <thead><tr><th>項目</th><th>設定</th><th>なぜ</th></tr></thead>
-      <tbody>
-        <tr><td>応答メッセージ</td><td class="off">オフ</td>
-            <td>このシステムが返すため。両方オンだと二重に返信されます</td></tr>
-        <tr><td>あいさつメッセージ</td><td class="on">オン</td>
-            <td>友だち追加時の案内。通数は無料です</td></tr>
-        <tr><td>Webhook</td><td class="on">オン</td>
-            <td>お客様のメッセージをシステムが受け取れるようにします</td></tr>
-        <tr><td>チャット</td><td class="on">オン</td>
-            <td>スタッフが手動でお返事するため。通数は無料です</td></tr>
-      </tbody>
-    </table></div>
-
-    <h4 style="font-family:var(--f-display);font-size:14px;margin:24px 0 8px">
-      2. トークルーム管理 → リッチメニュー</h4>
-    <p class="note" style="margin:0 0 10px">
-      テンプレートは「${esc2(layout.label)}」を選び、上で保存した画像をアップロードします。
-      各エリアのアクションは次のとおりです。
-    </p>
-    <div class="scrollx"><table class="setup">
-      <thead><tr><th>位置</th><th>ボタン</th><th>種類</th><th>内容</th></tr></thead>
-      <tbody>
-        ${cells.slice(0, need).map((c, i) => `
-          <tr>
-            <td>${esc2(posFor(i))}</td>
-            <td>${esc2(c.label)}</td>
-            <td>${c.link ? 'リンク' : (c.keyword ? 'テキスト' : '設定しない')}</td>
-            <td>${setupTarget(c)}</td>
-          </tr>`).join('')}
-      </tbody>
-    </table></div>
-    <p class="note">
-      <b style="color:var(--ink-soft)">LIFF のページは「リンク」で設定します。</b>
-      <code>https://liff.line.me/＜LIFF ID＞/menu</code> の形で、
-      LIFF ID を発行したあとに置き換えてください。
-      ポストバックは管理画面から選べないため、テキストで受けるボタンは
-      押すとその言葉がお客様の発言として送られ、システムが自動で返信します。
-    </p>
-
-    <h4 style="font-family:var(--f-display);font-size:14px;margin:24px 0 8px">
-      3. Messaging API の設定</h4>
-    <p class="note" style="margin:0">
-      LINE Developers で、チャネルシークレットとチャネルアクセストークンを発行し、
-      Webhook URL を登録します。ここだけは私の側で設定します。
-      <b style="color:var(--ink-soft)">オーナー様には管理画面の権限だけご用意いただければ大丈夫です。</b>
-    </p>`;
-}
-
-function renderMenu() {
-  paintMenu();
-  renderLineSetup();
-  if (typeof syncToDemo === 'function') syncToDemo();
-  renderCells();
-  renderSalon();
-  renderReplies();
-  renderOut();
-}
-
-renderMenu();
-if (document.fonts?.ready) document.fonts.ready.then(paintMenu);
-
-/* 編集した画像を、上のお客様の画面にも反映する。
-   区切り方を変えたら押せる範囲も合わせる */
-function syncToDemo() {
-  const img = document.getElementById('rmImg');
-  if (!img) return;
-  img.src = menuCv.toDataURL('image/png');
-  const hit = document.getElementById('rmHit');
-  if (hit) {
-    hit.style.gridTemplateColumns = 'repeat(' + layout.cols + ',1fr)';
-    hit.style.gridTemplateRows = 'repeat(' + layout.rows + ',1fr)';
-    [...hit.children].forEach((b, i) => { b.style.display = i < layout.cols * layout.rows ? '' : 'none'; });
-  }
-}
-/*/EDITOR-JS*/
+const storyCtx = document.getElementById('story').getContext('2d');
+const { drawStory } = makeStory();
+paintCal();
 </script>

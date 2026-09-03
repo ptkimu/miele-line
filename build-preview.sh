@@ -10,7 +10,7 @@
 set -e
 cd "$(dirname "$0")"
 
-MODULES="src/salon.js src/courses.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/segments.js src/openslot.js src/story.js src/richmenu.js src/liff.js src/api.js src/app.js"
+MODULES="src/salon.js src/courses.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/segments.js src/openslot.js src/story.js src/richmenu.js src/gcal.js src/liff.js src/api.js src/app.js src/social.js src/auto.js"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
@@ -100,6 +100,15 @@ rm -f "$TMP.app"
 cp preview/app.html out/app.html
 check_dupes preview/app.html
 echo "built: out/app.html"
+
+# 空き枠が自動で出るまで（カレンダー→LINE→30分後にInstagram・Google）
+awk -v file="$TMP" '
+  /\/\*__MODULES__\*\// { while ((getline line < file) > 0) print line; next }
+  { print }
+' preview/auto-shell.html > preview/auto.html
+cp preview/auto.html out/auto.html
+check_dupes preview/auto.html
+echo "built: out/auto.html"
 
 # 空き枠のしくみ ＋ リッチメニュー編集 を1枚にした画面
 EDCSS="$(awk '/\/\*EDITOR-CSS\*\//{f=1;next} /\/\*\/EDITOR-CSS\*\//{f=0} f' preview/menu-shell.html)"
