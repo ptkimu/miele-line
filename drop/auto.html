@@ -1,0 +1,5321 @@
+<title>空き枠が自動で出るまで｜ミエーレ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
+    --ink:#2B2724; --ink-soft:#574D48; --muted:#8B7F79;
+    --rule:#E7DBD4; --rule-hard:#D6C6BD;
+    --accent:#98543F; --accent-wash:#F7EBE5;
+    --ok:#1F7A4C; --ok-wash:#E8F3EC;
+    --warn:#8E6415; --warn-wash:#F7EFDF;
+    --stop:#A73A2A; --stop-wash:#FBE6E2;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+      --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+      --rule:#3A3331; --rule-hard:#4C4340;
+      --accent:#D9967C; --accent-wash:#33241F;
+      --ok:#5CC98C; --ok-wash:#1C2C24;
+      --warn:#DEAC57; --warn-wash:#2E2619;
+      --stop:#E58775; --stop-wash:#33211E;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
+       font-size:15px;line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px 100px}
+
+  .cover{padding:56px 0 26px;border-bottom:2px solid var(--accent);margin-bottom:28px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--accent);margin:0 0 12px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(25px,4.6vw,34px);
+     line-height:1.3;margin:0 0 14px;text-wrap:balance}
+  .cover p{color:var(--ink-soft);margin:0 0 7px;max-width:64ch;font-size:14.5px}
+  b.hl{background:linear-gradient(transparent 62%,var(--accent-wash) 62%);font-weight:500}
+
+  h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:46px 0 6px}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;max-width:64ch}
+  h3{font-family:var(--f-display);font-weight:700;font-size:13.5px;margin:0 0 10px;color:var(--muted)}
+
+  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:15px;
+         padding:20px 22px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  @media (max-width:880px){ .grid{grid-template-columns:1fr} }
+
+  /* カレンダー */
+  .cal{display:grid;grid-template-columns:58px 1fr 1fr;gap:0 10px;font-size:12px}
+  .cal .hd{font-weight:700;color:var(--muted);font-size:11.5px;text-align:center;
+           padding-bottom:6px;border-bottom:1px solid var(--rule);margin-bottom:4px}
+  .cal .hr{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right;
+           padding-right:4px;line-height:26px}
+  .cal button{height:26px;margin-bottom:2px;border:1px solid var(--rule);border-radius:5px;
+              background:var(--ok-wash);color:var(--ok);font:inherit;font-size:10.5px;
+              cursor:pointer;padding:0}
+  .cal button.busy{background:var(--sunk);color:var(--muted);border-color:var(--rule-hard)}
+  .cal button:hover{outline:2px solid var(--accent);outline-offset:-2px}
+
+  /* 時計と操作 */
+  .clock{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+         background:var(--sunk);border-radius:12px;padding:14px 18px;margin-bottom:16px}
+  .clock b{font-family:var(--f-display);font-size:19px;font-variant-numeric:tabular-nums}
+  .clock span{font-size:12.5px;color:var(--muted)}
+  .go{padding:12px 20px;border:0;border-radius:10px;background:var(--accent);color:#fff;
+      font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+  .go:disabled{background:var(--rule);color:var(--muted);cursor:default}
+  .ghost{padding:11px 16px;border:1px solid var(--rule);border-radius:10px;background:none;
+         color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+
+  /* 進み具合 */
+  .steps{list-style:none;padding:0;margin:0}
+  .steps li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule);
+            font-size:13.5px;align-items:flex-start}
+  .steps li:last-child{border-bottom:0}
+  .steps .t{flex:0 0 52px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .steps .s{flex:0 0 20px;text-align:center}
+  .steps .done .s{color:var(--ok)}
+  .steps .wait .s,.steps .wait .b{color:var(--muted)}
+  .steps .stop .s,.steps .stop .b{color:var(--stop)}
+  .steps .b{flex:1}
+  .steps small{display:block;color:var(--muted);font-size:12px}
+
+  /* 出るもの */
+  .msg{background:var(--sunk);border-radius:11px;padding:14px 16px;font-size:12.5px;
+       white-space:pre-wrap;line-height:1.85;margin:0;word-break:break-word}
+  .empty{color:var(--muted);font-size:12.5px;margin:0}
+  canvas{width:100%;max-width:220px;height:auto;border-radius:9px;border:1px solid var(--rule);
+         display:block;background:#FAF7F5}
+  .gpost{border:1px solid var(--rule);border-radius:11px;overflow:hidden}
+  .gpost .gh{background:var(--sunk);padding:8px 13px;font-size:11.5px;color:var(--muted)}
+  .gpost .gb{padding:13px;font-size:12.5px;white-space:pre-wrap;line-height:1.8}
+  .gpost .gc{border-top:1px solid var(--rule);padding:10px 13px;font-size:12.5px;
+             color:var(--accent);font-weight:700}
+
+  /* 歯止め */
+  .guards{display:grid;gap:8px}
+  .guard{display:flex;gap:11px;align-items:flex-start;background:var(--surface);
+         border:1px solid var(--rule);border-radius:11px;padding:12px 15px;font-size:13.5px}
+  .guard small{display:block;color:var(--muted);font-size:12px}
+  .callout{border-left:4px solid var(--accent);background:var(--accent-wash);
+           border-radius:0 12px 12px 0;padding:15px 20px;margin:0 0 20px;font-size:13.5px}
+  .callout--warn{border-left-color:var(--warn);background:var(--warn-wash)}
+  .callout p{margin:0 0 8px}
+  .callout p:last-child{margin:0}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:var(--sunk);
+       padding:2px 6px;border-radius:5px}
+  /* 説明書。見た目が混ざらないよう、別の枠に入れて読み込む */
+  .doc{border:1px solid var(--rule);border-radius:15px;overflow:hidden;background:var(--surface)}
+  .doc iframe{display:block;width:100%;border:0;height:900px;background:var(--ground)}
+
+  footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--muted);line-height:1.9}
+</style>
+
+<div class="wrap">
+
+<header class="cover">
+  <p class="eyebrow">トータル・ビューティー・サロン ミエーレ</p>
+  <h1>空き枠が、ひとりでに出るまで</h1>
+  <p>スタッフがGoogleカレンダーに予定を入れておくだけで、
+     月曜と木曜の朝、システムが空きを見つけてLINEに送り、30分あけて
+     Instagram と Google に出します。</p>
+  <p><b class="hl">この画面では、その一部始終を早送りで見られます。</b>
+     カレンダーの予定を触ると、出てくる空き枠が変わります。</p>
+</header>
+
+<div class="callout callout--warn">
+  <p><b>これはデモです。</b>実際のLINE・Instagram・Googleには何も送信されません。
+  ただし<b>判断しているのは本番と同じコード</b>で、
+  カレンダーの読み取りから文面作りまで、そのまま動いています。</p>
+</div>
+
+<h2>1. スタッフが入れたカレンダー</h2>
+<p class="sub">
+  予定が入っている時間が「埋まり」、空いている時間が「空き」です。
+  <b class="hl">出したくない時間は、予定として入れておいてください。</b>
+  移動・休憩・あえて残す枠を空けたままにすると、空きとして出てしまいます。
+  マスを押すと、予定を入れたり外したりできます。
+</p>
+
+<div class="panel">
+  <div class="cal" id="cal"></div>
+  <p class="sub" style="margin:14px 0 0">
+    セラピストのカレンダーです。施術ルームは1室なので、
+    どちらかに予定が入っていればその時間は埋まりです。
+    セルフブースも同じしくみで動きます。
+  </p>
+</div>
+
+<h2>2. 月曜の朝、システムが動く</h2>
+<p class="sub">ボタンを押すと、その時刻になったことにします。</p>
+
+<div class="clock">
+  <b id="now">月曜 09:00</b>
+  <span id="nowNote">まだ何も起きていません</span>
+  <button type="button" class="go" id="run">朝10時にする</button>
+  <button type="button" class="go" id="later" disabled>30分たった</button>
+  <button type="button" class="ghost" id="reset">最初に戻す</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h3>起きたこと</h3>
+    <ul class="steps" id="steps"></ul>
+  </div>
+  <div class="panel">
+    <h3>お客様のLINEに届いた文面</h3>
+    <p class="msg" id="line">まだ送っていません。</p>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h3>Instagram ストーリーズ（30分後）</h3>
+    <canvas id="story" width="1080" height="1920"></canvas>
+    <p class="empty" id="storyNote" style="margin-top:10px">まだ出していません。</p>
+  </div>
+  <div class="panel">
+    <h3>Google ビジネスプロフィール（30分後）</h3>
+    <div id="gbp"><p class="empty">まだ出していません。</p></div>
+  </div>
+</div>
+
+<h2>3. 勝手に増やさないための歯止め</h2>
+<p class="sub">
+  カレンダー任せにすると出しすぎてしまい、「いつも空いている店」という印象になります。
+  次の条件のどれかに当たると、システムは黙って止まります。
+  チェックを入れて、朝10時にしてみてください。
+</p>
+
+<div class="guards" id="guards"></div>
+
+<h2>4. スタッフがやること</h2>
+
+<div class="panel">
+  <p style="margin:0 0 12px"><b>カレンダーを正しく入れる。それだけです。</b></p>
+  <ul style="margin:0;padding-left:20px;font-size:13.5px;color:var(--ink-soft)">
+    <li>ご予約が入ったら、これまでどおりカレンダーに入れる</li>
+    <li><b>出したくない時間（移動・休憩・あえて残す枠）も、予定として入れておく</b></li>
+    <li>送信そのものへの操作は要りません。朝10時に自動で動きます</li>
+  </ul>
+  <p class="sub" style="margin:14px 0 0">
+    急な空きが出たときや、内容を確かめたいときのために、
+    スタッフ用ページから手で送ることもできます。
+  </p>
+</div>
+
+<h2>5. 運用ガイド（説明書）</h2>
+<p class="sub">
+  ここから下は説明書です。オーナー様向け・スタッフの皆さま向け・設定される方向けに分かれています。
+  同じ内容を1枚で配れるよう、このページの中に入れてあります。
+</p>
+
+<div class="doc">
+  <iframe id="guideFrame" title="運用ガイド" loading="lazy"></iframe>
+</div>
+
+<script type="text/plain" id="guideDoc">
+<title>ミエーレ LINE 運用ガイド</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
+    --ink:#2B2724; --ink-soft:#574D48; --muted:#8B7F79;
+    --rule:#E7DBD4; --rule-hard:#D6C6BD;
+    --accent:#98543F; --accent-wash:#F7EBE5;
+    --ok:#1F7A4C; --ok-wash:#E8F3EC;
+    --warn:#8E6415; --warn-wash:#F7EFDF;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+      --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+      --rule:#3A3331; --rule-hard:#4C4340;
+      --accent:#D9967C; --accent-wash:#33241F;
+      --ok:#5CC98C; --ok-wash:#1C2C24;
+      --warn:#DEAC57; --warn-wash:#2E2619;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+    --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+    --rule:#3A3331; --rule-hard:#4C4340;
+    --accent:#D9967C; --accent-wash:#33241F;
+    --ok:#5CC98C; --ok-wash:#1C2C24;
+    --warn:#DEAC57; --warn-wash:#2E2619;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
+       font-size:15.5px;line-height:1.95;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px 100px}
+
+  /* 表紙 */
+  .cover{padding:64px 0 32px;border-bottom:2px solid var(--accent)}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.22em;color:var(--accent);margin:0 0 14px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,5.4vw,38px);
+     line-height:1.3;margin:0 0 16px;text-wrap:balance}
+  .cover p{color:var(--ink-soft);margin:0 0 8px;max-width:60ch}
+
+  /* もくじ */
+  .toc{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+       padding:20px 24px;margin:28px 0 0}
+  .toc h2{font-family:var(--f-display);font-size:13px;letter-spacing:.1em;color:var(--muted);
+          margin:0 0 12px;font-weight:700}
+  .toc ol{margin:0;padding-left:20px}
+  .toc li{margin-bottom:6px;font-size:14px}
+  .toc a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+  .toc a:hover{border-bottom-color:var(--accent)}
+  .toc .who{font-size:11.5px;color:var(--muted);margin-left:8px}
+
+  /* 部 */
+  .part{margin-top:64px;padding-top:28px;border-top:1px solid var(--rule)}
+  .part-label{display:inline-block;font-family:var(--f-display);font-size:11.5px;font-weight:700;
+              letter-spacing:.14em;color:#fff;background:var(--accent);border-radius:99px;
+              padding:4px 14px;margin-bottom:16px}
+  .part > h2{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1.35;
+             margin:0 0 10px;text-wrap:balance}
+  .part > p.sub{color:var(--muted);font-size:14px;margin:0 0 8px}
+
+  h3{font-family:var(--f-display);font-weight:700;font-size:19px;line-height:1.45;
+     margin:44px 0 12px;text-wrap:balance}
+  h4{font-family:var(--f-display);font-weight:700;font-size:15.5px;margin:26px 0 8px}
+  p{margin:0 0 18px}
+  strong{font-weight:500;color:var(--ink);background:linear-gradient(transparent 62%,var(--accent-wash) 62%)}
+  a{color:var(--accent)}
+
+  ul,ol{margin:0 0 20px;padding-left:22px}
+  li{margin-bottom:9px}
+  li::marker{color:var(--accent)}
+
+  /* 手順 */
+  ol.steps{list-style:none;padding:0;counter-reset:s;margin:0 0 24px}
+  ol.steps > li{counter-increment:s;position:relative;padding:0 0 0 52px;margin-bottom:22px}
+  ol.steps > li::before{content:counter(s);position:absolute;left:0;top:0;width:34px;height:34px;
+    border-radius:99px;background:var(--accent);color:#fff;font-family:var(--f-display);
+    font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  ol.steps b{display:block;font-family:var(--f-display);font-size:16.5px;font-weight:700;
+             margin-bottom:2px}
+  ol.steps p{margin:0;font-size:14.5px;color:var(--ink-soft)}
+
+  /* カード */
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+        padding:20px 24px;margin:0 0 20px}
+  .card h4{margin-top:0}
+  .card p:last-child,.card ul:last-child{margin-bottom:0}
+
+  .callout{border-left:4px solid var(--accent);background:var(--accent-wash);
+           border-radius:0 12px 12px 0;padding:16px 22px;margin:0 0 22px}
+  .callout p:last-child{margin-bottom:0}
+  .callout--ok{border-left-color:var(--ok);background:var(--ok-wash)}
+  .callout--warn{border-left-color:var(--warn);background:var(--warn-wash)}
+
+  /* 表 */
+  .scroll{overflow-x:auto;margin:0 0 22px}
+  table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.75;min-width:400px}
+  th,td{text-align:left;padding:11px 16px 11px 0;border-bottom:1px solid var(--rule);
+        vertical-align:top}
+  thead th{font-size:11.5px;letter-spacing:.08em;color:var(--muted);font-weight:700;
+           border-bottom:1px solid var(--rule-hard);padding-bottom:8px}
+  td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+
+  /* Q&A */
+  .qa{border-top:1px solid var(--rule);padding:18px 0}
+  .qa:last-of-type{border-bottom:1px solid var(--rule)}
+  .qa h4{margin:0 0 6px;display:flex;gap:10px;align-items:baseline}
+  .qa h4::before{content:"Q";font-family:var(--f-display);color:var(--accent);font-size:13px;
+                 flex:0 0 auto}
+  .qa p{margin:0;font-size:14.5px;color:var(--ink-soft);padding-left:23px}
+
+  /* 図 */
+  figure{margin:0 0 26px}
+  figure svg{display:block;width:100%;height:auto}
+  figcaption{font-size:13px;color:var(--muted);margin-top:12px;line-height:1.8}
+
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
+        background:var(--sunk);padding:2px 6px;border-radius:5px;word-break:break-all}
+
+  .big{font-family:var(--f-display);font-weight:700;font-size:19px;
+       font-variant-numeric:tabular-nums}
+
+  footer{margin-top:72px;padding-top:24px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--muted);line-height:1.9}
+
+  @media print{
+    body{background:#fff;color:#000;font-size:11pt}
+    .toc,footer{page-break-inside:avoid}
+    .part{page-break-before:always}
+    .card,.callout,figure{page-break-inside:avoid}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="cover">
+  <p class="eyebrow">トータル・ビューティー・サロン ミエーレ</p>
+  <h1>LINE 運用ガイド</h1>
+  <p>空き枠のお知らせと、LINEの中で開く6つのページのご説明です。</p>
+  <p>オーナー様とスタッフの皆さまで知りたいことが違うため、4部に分けています。
+     ご自身に関係のある部分だけお読みいただければ大丈夫です。</p>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <ol>
+    <li><a href="#owner">導入のご判断に</a><span class="who">オーナー様</span></li>
+    <li><a href="#what">何をするしくみか</a></li>
+    <li><a href="#cost">かかる費用のすべて</a></li>
+    <li><a href="#care">お客様に嫌がられないための工夫</a></li>
+    <li><a href="#privacy">お客様の情報の扱い</a></li>
+    <li><a href="#staff">毎日の使い方</a><span class="who">スタッフの皆さま</span></li>
+    <li><a href="#regular">月曜と木曜に起きること</a></li>
+    <li><a href="#calendar-rule">カレンダーが約束事になります</a></li>
+    <li><a href="#sudden">急な空きが出たとき</a></li>
+    <li><a href="#menu">メニューについて</a></li>
+    <li><a href="#qa">よくある質問</a></li>
+    <li><a href="#setup">LINE公式アカウント側の設定</a><span class="who">設定される方</span></li>
+    <li><a href="#config">つなぎこみの手順</a><span class="who">設定される方</span></li>
+    <li><a href="#booking-url">予約システムのURLを入れる</a></li>
+    <li><a href="#gcal">Googleカレンダーをつなぐ</a></li>
+    <li><a href="#social">Instagram と Google への自動投稿</a></li>
+    <li><a href="#liff">LIFFとLINEミニアプリ・審査について</a></li>
+  </ol>
+</nav>
+
+<!-- ================= 第1部 ================= -->
+
+<section class="part" id="owner">
+  <span class="part-label">第1部　オーナー様へ</span>
+  <h2>導入のご判断に</h2>
+  <p class="sub">何ができて、いくらかかり、何に気をつけるか</p>
+
+  <p>
+    いまLINEでつながっているお客様は<strong>318名</strong>、Instagramのフォロワーは
+    <strong>1,019名</strong>です。このしくみは、その方々に向けて
+    <strong>空いてしまった枠をお知らせし、当日・数日先の予約を埋めるためのもの</strong>です。
+  </p>
+
+  <h3 id="what">何をするしくみか</h3>
+
+  <figure>
+    <svg viewBox="0 0 720 250" role="img"
+         aria-label="月曜と木曜の朝、カレンダーの空きからシステムが枠を決め、希望された方にだけLINEで届き、30分後にInstagramとGoogleへ出す">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+                orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="8"   y="30" width="150" height="66" rx="10"/>
+        <rect x="208" y="30" width="150" height="66" rx="10"/>
+        <rect x="408" y="8"  width="150" height="66" rx="10" stroke="#98543F" stroke-width="2.5"/>
+        <rect x="408" y="112" width="150" height="66" rx="10"/>
+        <line x1="158" y1="63" x2="200" y2="63" marker-end="url(#ar)"/>
+        <line x1="358" y1="55" x2="400" y2="41" marker-end="url(#ar)"/>
+        <line x1="358" y1="75" x2="400" y2="145" marker-end="url(#ar)"/>
+      </g>
+      <g font-family="'Noto Sans JP',sans-serif" fill="currentColor">
+        <text x="83"  y="58"  font-size="13" font-weight="500" text-anchor="middle">カレンダーの空き</text>
+        <text x="83"  y="80"  font-size="11" text-anchor="middle" opacity=".7">スタッフが入れた予定から</text>
+        <text x="283" y="58"  font-size="13" font-weight="500" text-anchor="middle">システムが枠を決める</text>
+        <text x="283" y="80"  font-size="11" text-anchor="middle" opacity=".7">空きから3枠まで・メニュー付き</text>
+        <text x="483" y="36"  font-size="13" font-weight="500" text-anchor="middle" fill="#98543F">LINE</text>
+        <text x="483" y="56"  font-size="11" text-anchor="middle" fill="#98543F">お知らせを希望された方だけ</text>
+        <text x="483" y="140" font-size="13" font-weight="500" text-anchor="middle">Instagram ストーリーズ</text>
+        <text x="483" y="160" font-size="11" text-anchor="middle" opacity=".7">30分あけてから</text>
+        <text x="380" y="118" font-size="11" text-anchor="middle" opacity=".7">30分</text>
+        <text x="360" y="215" font-size="12" text-anchor="middle" opacity=".85">
+          「LINEの方には30分前にお知らせ済みです」と書き添える
+        </text>
+        <text x="360" y="234" font-size="12" text-anchor="middle" opacity=".85">
+          ＝ LINEに登録していただく理由になる
+        </text>
+      </g>
+    </svg>
+    <figcaption>
+      月曜と木曜の朝10時、人が触らずにここまで進みます。
+      Instagramを先に出すと、LINEに登録する理由がなくなります。順番と30分の差が、このしくみの要です。
+    </figcaption>
+  </figure>
+
+  <div class="card">
+    <h4>1. 空きを、欲しい方にだけお届けする</h4>
+    <p>
+      全員には送りません。<strong>リッチメニューから「空き枠のお知らせを受け取る」を
+      押してくださった方だけ</strong>にお送りします。さらに、セルフブースと施術ルームの
+      どちらを希望されたかで分けるので、関係のないお知らせは届きません。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>2. Googleカレンダーから空きを拾う</h4>
+    <p>
+      月曜と木曜の朝10時、セラピストの皆さまのカレンダーを見て、空いている時間を拾います。
+      日付や時間を打ち込む必要はありません。
+    </p>
+    <p>
+      読むのは<strong>「その時間に予定が入っているかどうか」だけ</strong>です。
+      予定のタイトルも、お客様のお名前も、こちらには届きません。
+      共有設定で「予定の表示（時間のみ）」を選ぶので、そもそも中身が渡らない仕組みです。
+    </p>
+    <p>
+      セラピストが2人いても施術ルームが1室であれば、どちらかに予定が入っている時間は
+      「埋まっている」と判定します。部屋数は設定で変えられます。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>3. そのままLINEに送り、30分あけて外へ出す</h4>
+    <p>
+      <strong>送信の操作は要りません。</strong>拾った空きから3枠までを選び、
+      その時間に入るメニューを載せて、受け取りを希望された方にお送りします。
+      30分あけてから Instagram のストーリーズと Google の最新情報に出ます。
+    </p>
+    <p>
+      順番を守るのは、<strong>「LINEの方が30分早い」という事実</strong>をつくるためです。
+      これがLINEに登録していただく理由になります。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>4. Instagram と Google にも、ひとりでに出る</h4>
+    <p>
+      LINEに送って30分後、<strong>Instagram のストーリーズ</strong>と
+      <strong>Google ビジネスプロフィールの最新情報</strong>に自動で出ます。
+      画像づくりも文面書きも要りません。
+    </p>
+    <p>
+      Google の投稿には「予約」ボタンが付き、店名と場所も添えます。
+      Googleマップの検索から来られた方に向けた文面になっています。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>5. LINEの中で開くページ（6つのボタン）</h4>
+    <p>
+      リッチメニューの各ボタンから、LINEを離れずに開けるページです。
+      <strong>コース診断・メニュー料金・ご予約・問診表・空き枠の設定・アクセス</strong>の6つで、
+      それぞれがつながっています。
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>ボタン</th><th>中身</th><th>つながり</th></tr></thead>
+        <tbody>
+          <tr><td>コース診断</td><td>4つの質問でおすすめをご提案</td>
+              <td><strong>お答えがタグになり、空き枠の絞り込みに効きます</strong></td></tr>
+          <tr><td>メニュー・料金</td><td>掲載メニューを新規価格で一覧</td>
+              <td>診断済みの方には「お悩みに合うメニュー」が上に出ます</td></tr>
+          <tr><td>ご予約</td><td>お使いの予約システムへ</td>
+              <td>独自フォームは作りません（二重予約を防ぐため）</td></tr>
+          <tr><td>問診表</td><td>ご来店前のご記入</td>
+              <td>スタッフに届き、<strong>14日で自動消去</strong></td></tr>
+          <tr><td>空き枠のお知らせ</td><td>受け取り設定</td>
+              <td>お客様ご自身でいつでも止められます</td></tr>
+          <tr><td>アクセス・営業時間</td><td>店舗情報・地図・お電話</td>
+              <td>店舗情報の1か所から出ています</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      メニューの内容は<strong>1か所にまとめてあります</strong>。
+      料金が変わったときに直すのは1回で、診断・料金ページ・空き枠のメニュー候補の
+      すべてに反映されます。3か所に書き写す作業はありません。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>6. Instagram の文面と画像まで作る</h4>
+    <p>
+      枠を入れると、ストーリーズ用の画像（1080×1920）がその場で出来上がります。
+      ダウンロードして投稿するだけです。文字入れの手間はありません。
+    </p>
+  </div>
+
+  <h3 id="cost">かかる費用のすべて</h3>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>項目</th><th>内容</th><th class="n">月額</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>LINE公式アカウント</td><td>ライトプラン（すでにご契約中）</td><td class="n">¥5,000</td></tr>
+        <tr><td>システムの動作費用</td><td>Cloudflare Workers ＋ D1（無料の範囲で収まります）</td><td class="n">¥0</td></tr>
+        <tr><td>Googleカレンダー</td><td>読み取りのみ。審査も費用もありません</td><td class="n">¥0</td></tr>
+        <tr><td>Instagram</td><td>ストーリーズへ自動投稿</td><td class="n">¥0</td></tr>
+        <tr><td>Google ビジネスプロフィール</td><td>最新情報へ自動投稿</td><td class="n">¥0</td></tr>
+        <tr><td>ストーリーズ画像の置き場</td><td>Vercel（無料の範囲で収まります）</td><td class="n">¥0</td></tr>
+        <tr><td><strong>追加でかかる費用</strong></td><td>ありません</td><td class="n"><strong>¥0</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>通数について</h4>
+
+  <p>
+    ライトプランは<strong>5,000通/月で、追加購入ができません</strong>。
+    使い切ると月末まで一切送れなくなります。そのため送信の前に必ず残数を確かめ、
+    <strong>予備の500通は常に残す</strong>ようにしています。
+  </p>
+
+  <p>
+    通数を使うのは<strong>空き枠のお知らせ</strong>と<strong>朝のスタッフへの声かけ</strong>だけです。
+    自動応答・あいさつメッセージ・LINEチャットでのやりとりは、何通でも無料です。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>送るもの</th><th>頻度</th><th class="n">月の目安</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>空き枠のお知らせ</td><td>週2回・希望された方へ（仮に50名）</td><td class="n">400通</td></tr>
+        <tr><td>朝のスタッフへの声かけ</td><td>月・木の朝・1人1通</td><td class="n">8通</td></tr>
+        <tr><td>受け取り申込への返信</td><td>自動応答のため無料</td><td class="n">0通</td></tr>
+        <tr><td><strong>合計</strong></td><td></td><td class="n"><strong>約410通</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    5,000通に対して十分な余裕があります。新メニューやキャンペーンの一斉配信をなさる場合も、
+    残数を圧迫しません。
+  </p>
+
+  <h3 id="care">お客様に嫌がられないための工夫</h3>
+
+  <div class="callout callout--warn">
+    <p>
+      空き枠のお知らせは、やりすぎると<strong>「いつも空いている店」</strong>という印象になり、
+      かえって予約が後回しにされます。歯止めを2つ入れています。
+    </p>
+  </div>
+
+  <ul>
+    <li><strong>同じお部屋のお知らせは、直近7日で3回まで</strong>。
+      定期の2回に、突発の1回ぶんの余地を足した回数です。
+      超えると画面に警告が出ます（セルフブースと施術ルームは送り先が別なので、別々に数えます）</li>
+    <li><strong>「キャンセル」という言葉を使いません</strong>。
+      文面は「空き枠のお知らせ」で統一しています。理由は次のとおりです</li>
+  </ul>
+
+  <div class="card">
+    <h4>キャンセルされたご本人にも届いてしまう問題</h4>
+    <p>
+      LINEの表示名はニックネームのことが多く、サロンボードの予約者と突き合わせられません。
+      つまり「その枠をキャンセルされた方だけを外して送る」ことは技術的にできません。
+    </p>
+    <p>
+      そこで文面から「キャンセル」の語を外しました。
+      <strong>ご本人に届いても、ご自身のことだとは分かりません。</strong>
+      外せない機能を無理に作るより、届いても角が立たない文面にするほうが確実です。
+    </p>
+  </div>
+
+  <h3 id="privacy">お客様の情報の扱い</h3>
+
+  <p>
+    保存するのは<strong>LINEのユーザーIDと表示名だけ</strong>です。
+    氏名・電話番号・住所・施術履歴は保存しません。予約の情報はサロンボード側に置いたままです。
+  </p>
+
+  <p>
+    お客様が「受け取りをやめる」を押されたら、その場でお知らせが止まります。
+    ブロックされた場合も自動で対象から外れます。
+  </p>
+
+  <h4>コース診断について</h4>
+
+  <p>
+    診断で残すのは<strong>選んでいただいた選択肢だけ</strong>です
+    （お悩み・ご予算・通い方・性別）。自由に入力していただく欄はありません。
+    もう一度診断されると、前回のタグは消えて新しいものに置き換わります。
+    お悩みが変わった方に、古い案内が届き続けないようにするためです。
+  </p>
+
+  <h4>問診表について — ここだけ扱いが違います</h4>
+
+  <div class="callout callout--warn">
+    <p>
+      問診表は、アレルギー・お薬・妊娠といった<strong>健康に関わる内容</strong>をお預かりします。
+      ほかの機能とは扱いを分けています。
+    </p>
+  </div>
+
+  <ul>
+    <li><strong>ご同意のチェックが無ければ受け取りません</strong>。何を何のためにお預かりするかを、
+      記入していただく前に画面でお示しします</li>
+    <li><strong>14日で自動的に消去します</strong>。スタッフがカルテに転記したあとは、こちらには残りません</li>
+    <li><strong>LINEのトークには内容を残しません</strong>。スタッフには「届きました」とだけ通知し、
+      中身はスタッフ用ページでご確認いただきます</li>
+  </ul>
+
+  <p>
+    問診表を使わないという選択もできます。その場合はリッチメニューからボタンを外すだけで、
+    お預かりする情報は<strong>LINEのIDと表示名だけ</strong>に戻ります。
+  </p>
+</section>
+
+<!-- ================= 第2部 ================= -->
+
+<section class="part" id="staff">
+  <span class="part-label">第2部　スタッフの皆さまへ</span>
+  <h2>毎日の使い方</h2>
+  <p class="sub">月曜と木曜の朝、自動で動きます</p>
+
+  <div class="callout">
+    <p>
+      <strong>送信の操作はありません。</strong>
+      月曜と木曜の朝10時、システムがカレンダーを見て、そのまま送ります。
+      スタッフの皆さまにお願いするのは
+      <strong>「カレンダーを正しく入れる」</strong>ことだけです。
+    </p>
+  </div>
+
+  <h3 id="regular">月曜と木曜に起きること</h3>
+
+  <div class="callout callout--ok">
+    <p>
+      <strong>スタッフの皆さまがすることは、ありません。</strong>
+      月曜と木曜の朝、システムがひとりでに動きます。
+      下は「裏側で何が起きているか」のご説明です。操作は不要です。
+    </p>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <b>10:00　カレンダーを見る</b>
+      <p>セラピストの皆さまのカレンダーから、2〜3日先の空いている時間を拾います。</p>
+    </li>
+    <li>
+      <b>10:00　出す枠を決める</b>
+      <p>空きの中から<strong>3枠まで</strong>を選び、その時間に入るメニューを載せます。
+         セルフブースと施術ルームは別々に判断します。</p>
+    </li>
+    <li>
+      <b>10:00　LINEに送る</b>
+      <p>空き枠のお知らせを希望された方だけに届きます。
+         お部屋の希望を選ばれている方には、そのお部屋の枠だけが届きます。</p>
+    </li>
+    <li>
+      <b>10:30　Instagram と Google に出す</b>
+      <p>ストーリーズ用の画像も自動で作られます。文面には
+         「LINEの方には30分前にお知らせ済みです」と入ります。</p>
+    </li>
+  </ol>
+
+  <h3 id="calendar-rule">そのかわり、カレンダーが約束事になります</h3>
+
+  <div class="callout callout--warn">
+    <p>
+      <strong>出したくない時間は、カレンダーに予定として入れておいてください。</strong>
+      移動・休憩・あえて残している枠を空けたままにすると、
+      <strong>空きとしてお客様にお知らせしてしまいます。</strong>
+    </p>
+    <p>
+      これが、人の確認を挟まないことと引き換えの、たったひとつのお願いです。
+    </p>
+  </div>
+
+  <p>
+    予定の名前は何でも構いません。「移動」「休憩」「ブロック」など、
+    分かるように入れておいていただければ大丈夫です。中身はこちらには届きません。
+  </p>
+
+  <h3 id="check">ちゃんと出たか確かめたいとき</h3>
+
+  <p>
+    スタッフ用ページを開くと、その週に何回出したかが分かります。
+    ご自身のLINEで受け取りを希望しておいていただくと、
+    <strong>お客様と同じものが届く</strong>ので、いちばん確実です。
+  </p>
+
+  <h3 id="sudden">急な空きが出たとき</h3>
+
+  <p>
+    自動で動くのは月曜と木曜だけです。当日のキャンセルなど、
+    <strong>その場ですぐお知らせしたいときは、スタッフ用ページから手で出せます。</strong>
+    カレンダーから空きを取り込むボタンもあるので、入力は最小限です。
+  </p>
+
+  <ol class="steps">
+    <li><b>お部屋を選ぶ</b><p>セルフブースか施術ルームか。</p></li>
+    <li><b>「Googleカレンダーから空きを取り込む」を押す</b>
+      <p>空いている時間が並びます。<strong>出したくない枠は「消す」で外してください。</strong></p></li>
+    <li><b>メニューのチェックを確認する</b>
+      <p>機材の不調や材料切れのものは、チェックを外してください。</p></li>
+    <li><b>確認して送信する</b>
+      <p>お送りする人数・残り通数・実際に届く文面が出ます。おかしければ戻れます。</p></li>
+  </ol>
+
+  <div class="callout callout--warn">
+    <p>
+      ただし<strong>直近7日で3回を超えると警告が出ます</strong>。
+      自動で出したぶんも数に入ります。
+      その週にすでに何度も出している場合は、見送っていただくのが無難です。
+    </p>
+  </div>
+
+  <h3 id="menu">メニューについて</h3>
+
+  <p>
+    自動で出すときは、<strong>その枠の長さに入るメニューが3つまで自動で載ります</strong>。
+    60分の枠なら、60分ちょうどのメニューが優先されます。
+  </p>
+
+  <div class="callout callout--warn">
+    <p>
+      <strong>機材が不調のとき・材料が切れているときは、ご注意ください。</strong>
+      自動送信はその事情を知らないため、そのメニューを載せてしまいます。
+      しばらく使えないものがある場合は、お知らせください。
+      掲載メニューから一時的に外す（<code>src/courses.js</code> の1か所）ことができます。
+      手で出すときは、その場でチェックを外せます。
+    </p>
+  </div>
+
+  <p>
+    枠の長さを短くすると、入らなくなったメニューは自動で外れます。
+    60分の枠を30分に変えれば、60分のメニューは候補から消えます。
+  </p>
+
+  <div class="callout callout--ok">
+    <p>
+      メニューを複数チェックすると、文面は
+      「<strong>いずれかをお選びいただけます</strong>」という書き方になります。
+      お客様がその場で決められなくても大丈夫なように、
+      「メニューはご来店時に決めていただいても大丈夫です」と添えてあります。
+    </p>
+  </div>
+
+  <h3 id="qa">よくある質問</h3>
+
+  <div class="qa">
+    <h4>カレンダーへの入力が漏れていたら</h4>
+    <p>埋まっている枠を「空き」としてお知らせしてしまいます。
+       これが完全自動でいちばん気をつけていただきたい点です。
+       ご予約が入ったら、これまでどおり<strong>その日のうちにカレンダーへ</strong>お願いします。</p>
+  </div>
+
+  <div class="qa">
+    <h4>変な枠が出てしまったら</h4>
+    <p>送信済みのLINEは取り消せません。LINEチャットで訂正をお送りください。
+       Instagram と Google は30分後に出るので、
+       <strong>その前に気づけば止められます</strong>（ご連絡ください）。</p>
+  </div>
+
+  <div class="qa">
+    <h4>しばらく自動送信を止めたいのですが</h4>
+    <p>できます。止めている間も、スタッフ用ページから手で出すことはできます。
+       お知らせください。</p>
+  </div>
+
+  <div class="qa">
+    <h4>予約が入ったら、システムに入力するのですか</h4>
+    <p>いいえ。これまでどおり予約システムとカレンダーに入れてください。
+       このしくみは<strong>お知らせを出すだけ</strong>で、予約は管理しません。</p>
+  </div>
+
+  <div class="qa">
+    <h4>LINEのトークで返信が来たら</h4>
+    <p>これまでどおり、LINEチャットからお答えください。送受信は何通でも無料です。
+       予約・営業時間・アクセスなど、よくあるご質問には自動で返信が出ます。
+       答えられない内容には<strong>あえて返信しません</strong>。
+       間違った案内を出すより、直接お答えするほうが確実だからです。</p>
+  </div>
+
+  <div class="qa">
+    <h4>間違った枠を送ってしまいました</h4>
+    <p>送信済みのメッセージは取り消せません。LINEチャットで訂正をお送りください。
+       送信前の確認画面で、必ず文面をお読みいただくようお願いします。</p>
+  </div>
+
+  <div class="qa">
+    <h4>お知らせを希望される方がまだいません</h4>
+    <p>稼働の初日は0名です。リッチメニューの「空き枠のお知らせ」ボタンと、
+       友だち追加時のあいさつメッセージから増えていきます。
+       どうしても最初に呼び水が必要な場合は「希望していない方にも送る」
+       というチェック欄がありますが、<strong>ブロックされやすくなります</strong>。
+       稼働の直後だけにしてください。</p>
+  </div>
+</section>
+
+<!-- ================= 第3部 ================= -->
+
+<section class="part" id="setup">
+  <span class="part-label">第3部　設定される方へ</span>
+  <h2>LINE公式アカウント側の設定</h2>
+  <p class="sub">システム側だけでは完結しません。管理画面での設定が3つあります</p>
+
+  <h3>1. リッチメニュー</h3>
+
+  <p>
+    LINE公式アカウント管理画面の <strong>ホーム ▸ リッチメニュー</strong> で作成します。
+    画像は 2500×1686 のものをご用意しています。
+  </p>
+
+  <div class="callout callout--warn">
+    <p>
+      管理画面でボタンに設定できる種類は、<strong>リンク／クーポン／テキスト／ショップカード／
+      設定しない</strong> の5つだけです。開発者向けの postback は選べません。
+    </p>
+    <p>
+      そのため空き枠のボタンは <strong>「テキスト」</strong> にしてください。
+      お客様が押すと決まった言葉が送信され、システムがそれを拾って
+      「受け取りますか」のボタンをお返しします。ここは自動応答なので通数は0通です。
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>ボタン</th><th>種類</th><th>設定する内容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>空き枠のお知らせ</td><td>テキスト</td><td><code>空き枠のお知らせ</code></td></tr>
+        <tr><td>ご予約・ご相談</td><td>テキスト</td><td><code>予約したい</code></td></tr>
+        <tr><td>メニュー・料金</td><td>テキスト</td><td><code>メニューを知りたい</code></td></tr>
+        <tr><td>コース診断</td><td>リンク</td><td>診断ツールのURL（発行後）</td></tr>
+        <tr><td>アクセス</td><td>テキスト</td><td><code>場所はどこ</code></td></tr>
+        <tr><td>営業時間</td><td>テキスト</td><td><code>営業時間</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    文言やボタンの数は、デモの編集ページで変えられます。
+    変えた内容がそのまま設定手順に反映されるので、画面を見ながら管理画面に写してください。
+  </p>
+
+  <h3>2. あいさつメッセージ</h3>
+
+  <p>
+    <strong>ホーム ▸ あいさつメッセージ</strong> をオンにしてください。通数は無料です。
+    ここに「空き枠のお知らせを受け取れます」の一文を入れておくと、
+    友だち追加のたびに希望者が増えていきます。文面はオーナー様・スタッフの皆さまで
+    自由に編集していただけます。
+  </p>
+
+  <h3>3. 応答メッセージ</h3>
+
+  <p>
+    <strong>ホーム ▸ 応答設定</strong> で、応答メッセージを<strong>オフ</strong>、
+    Webhookを<strong>オン</strong>にしてください。
+    両方オンにすると、同じ質問に二重で返信してしまいます。
+  </p>
+
+  <div class="callout">
+    <p>
+      LINEチャット（手動での返信）は、これまでどおりお使いいただけます。
+      Webhookをオンにしても、スタッフの返信が妨げられることはありません。
+    </p>
+  </div>
+</section>
+
+<!-- ================= 第4部 ================= -->
+
+<section class="part" id="config">
+  <span class="part-label">第4部　設定される方へ</span>
+  <h2>つなぎこみの手順</h2>
+  <p class="sub">予約システム・Googleカレンダー・自動投稿・LIFF の4つです</p>
+
+  <h3 id="booking-url">1. 予約システムのURLを入れる</h3>
+
+  <p>
+    ご予約の入口は <code>src/salon.js</code> の <code>bookingUrl</code> <strong>1か所だけ</strong>です。
+    ここを書き換えると、自動応答・リッチメニュー・空き枠のご案内のすべてが同じ入口を指します。
+    書き写す場所はほかにありません。
+  </p>
+
+  <div class="card">
+    <h4>書き方</h4>
+    <p><code>bookingUrl: 'https://＜予約システムのURL＞',</code></p>
+    <p>
+      クーポンのページが別にある場合は <code>couponUrl</code> にも入れてください。
+      <strong><code>null</code> にすると、URLを出さずに「お電話・LINEで承ります」に変わります。</strong>
+      間違ったURLをご案内するより、そのほうが安全です。
+    </p>
+  </div>
+
+  <div class="callout">
+    <p>
+      <strong>ご予約フォームはこちらでは作りません。</strong>
+      独自のフォームを作ると、予約が予約システムに入らず、
+      同じ枠が二重に売れてしまいます。すでにお使いのシステムへお通しするのが確実です。
+    </p>
+  </div>
+
+  <h3 id="gcal">2. Googleカレンダーをつなぐ</h3>
+
+  <div class="callout callout--ok">
+    <p>
+      <strong>Googleの審査はありません。</strong>
+      お客様にGoogleへログインしていただく作りであれば審査が必要になりますが、
+      このしくみは<strong>サービスアカウント</strong>という、システム専用の利用者を1つ作って
+      カレンダーを共有していただく方式です。同意画面が出ないため、審査の対象になりません。
+      <strong>費用も0円</strong>です。
+    </p>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <b>Google Cloud でプロジェクトを作る</b>
+      <p><a href="https://console.cloud.google.com/">console.cloud.google.com</a> で
+         新しいプロジェクトを作り、「Google Calendar API」を有効にします。無料です。</p>
+    </li>
+    <li>
+      <b>サービスアカウントを作り、鍵を作る</b>
+      <p>「IAMと管理 ▸ サービスアカウント」で1つ作成し、「鍵」タブから
+         <strong>JSON形式の鍵</strong>を作ります。ダウンロードされたファイルの中に
+         <code>client_email</code> と <code>private_key</code> が入っています。</p>
+    </li>
+    <li>
+      <b>各セラピストのカレンダーを共有する</b>
+      <p>Googleカレンダーの「設定と共有 ▸ 特定のユーザーとの共有」で、
+         <code>client_email</code> のアドレスを追加し、権限を
+         <strong>「予定の表示（時間のみ、詳細は非表示）」</strong>にします。
+         これで予定の中身は渡らず、空いているかどうかだけが読めるようになります。</p>
+    </li>
+    <li>
+      <b>Workers に登録する</b>
+      <p>次の5つを登録します。鍵はコードには書きません。</p>
+    </li>
+  </ol>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>名前</th><th>入れるもの</th></tr></thead>
+      <tbody>
+        <tr><td><code>GOOGLE_SA_EMAIL</code></td><td>鍵ファイルの <code>client_email</code></td></tr>
+        <tr><td><code>GOOGLE_SA_KEY</code></td><td>鍵ファイルの <code>private_key</code>（BEGIN から END まで丸ごと）</td></tr>
+        <tr><td><code>GOOGLE_CALENDARS</code></td><td>どのカレンダーがどの部屋か。<br>
+          <code>[{"id":"a@…","room":"room","label":"Aさん"},{"id":"self@…","room":"self","label":"セルフ"}]</code></td></tr>
+        <tr><td><code>ROOM_CAPACITY</code></td><td>同時に施術できる数。<code>{"room":1,"self":1}</code><br>
+          セラピストが2人いても施術ルームが1室なら <code>room</code> は <code>1</code> です</td></tr>
+        <tr><td><code>SLOT_BUFFER_MIN</code></td><td>予定の前後にあける時間（片付けなど）。既定は 0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout--warn">
+    <p>
+      <strong>出したくない時間は、カレンダーに予定として入れておいてください。</strong>
+      移動・休憩・あえて残している枠は、何も入っていなければ「空き」として拾われます。
+      ブロックしておけば、候補にも出ません。
+    </p>
+  </div>
+
+  <p>
+    設定が済むまでは、スタッフ用ページは<strong>手入力のまま動きます</strong>。
+    つなぎこみを待たずに運用を始めていただけます。
+  </p>
+
+  <h3 id="social">3. Instagram と Google への自動投稿</h3>
+
+  <div class="callout callout--warn">
+    <p>
+      ここは<strong>オーナー様の作業</strong>です。お店のアカウントの持ち主でないと、
+      許可を出せないためです。取れた値をお知らせいただければ、あとはこちらで登録します。
+    </p>
+  </div>
+
+  <h4>Instagram</h4>
+
+  <p>
+    <strong>Facebookページは不要です。</strong>
+    「Instagram API with Instagram Login」という、Instagramだけで完結する方式を使います。
+  </p>
+
+  <ol class="steps">
+    <li>
+      <b>プロアカウント（ビジネス）にする</b>
+      <p>ストーリーズのAPI投稿は<strong>ビジネスアカウント限定</strong>です。
+         「クリエイター」では投稿できません。</p>
+    </li>
+    <li>
+      <b>Meta で アプリを作り、Instagram を連携する</b>
+      <p>必要な権限は <code>instagram_business_basic</code> と
+         <code>instagram_business_content_publish</code> の2つです。</p>
+    </li>
+    <li>
+      <b>アクセストークンとユーザーIDを控える</b>
+      <p><code>IG_ACCESS_TOKEN</code> と <code>IG_USER_ID</code> になります。
+         トークンには期限があるので、切れたら入れ替えが必要です。</p>
+    </li>
+  </ol>
+
+  <h4>ストーリーズ画像の置き場（Vercel）</h4>
+
+  <div class="callout">
+    <p>
+      Instagram は<strong>「公開URLにあるJPEG」しか受け取りません</strong>。
+      Cloudflare には絵を描く仕組みがないため、画像を作る部分だけ外に置いています。
+    </p>
+  </div>
+
+  <p>
+    GitHub のリポジトリに <code>renderer/</code> というフォルダが入っています。
+    Vercel から同じリポジトリを選び、<strong>ルートディレクトリに <code>renderer</code></strong>
+    を指定してデプロイしてください。発行されたURL
+    （<code>https://＜アプリ名＞.vercel.app/api/story</code>）が
+    <code>STORY_IMAGE_URL</code> になります。無料の範囲で収まります。
+  </p>
+
+  <p>
+    <strong>設定しなくても止まりません。</strong>
+    その場合は Instagram だけ見送り、Google には文面で投稿します。
+  </p>
+
+  <h4>Google ビジネスプロフィール</h4>
+
+  <p>
+    投稿APIの利用申請は<strong>承認済み</strong>とのことなので、あとは許可を出すだけです。
+    カレンダーと違い、<strong>サービスアカウントは使えません。</strong>
+    店舗を管理しているGoogleアカウントで、一度だけ許可を出していただく必要があります。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>名前</th><th>取るところ</th></tr></thead>
+      <tbody>
+        <tr><td><code>GOOGLE_OAUTH_CLIENT_ID</code><br><code>GOOGLE_OAUTH_CLIENT_SECRET</code></td>
+            <td>Google Cloud の「OAuth クライアント ID」</td></tr>
+        <tr><td><code>GBP_REFRESH_TOKEN</code></td>
+            <td>店舗を管理しているアカウントで一度だけ許可を出すと取れます。
+                権限は <code>business.manage</code></td></tr>
+        <tr><td><code>GBP_ACCOUNT_ID</code><br><code>GBP_LOCATION_ID</code></td>
+            <td>ビジネスプロフィールのアカウントと店舗のID</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    投稿は「最新情報」として出ます。<strong>「予約」ボタン</strong>が付き、
+    文面には店名と場所も入ります。Googleマップの検索から来られた方に向けた形です。
+  </p>
+
+  <h3 id="liff">4. LIFF と LINEミニアプリ・審査について</h3>
+
+  <p>
+    コース診断やメニュー表を「LINEの中で開くページ」にする仕組みが <strong>LIFF</strong> です。
+    これには現在、<strong>審査はありません</strong>。チャネルを作ってLIFF IDを発行すれば使えます。
+  </p>
+
+  <h4>LIFF の設定</h4>
+
+  <ol class="steps">
+    <li>
+      <b>LINE Developers で LIFF アプリを追加する</b>
+      <p>Messaging API のチャネルに「LIFF」タブがあります。
+         エンドポイントURLは <code>https://miele-line.＜サブドメイン＞.workers.dev/app/</code>（末尾のスラッシュまで）、
+         サイズは <strong>Full</strong>、<strong>「ボットリンク機能」はオン</strong>にします。</p>
+    </li>
+    <li>
+      <b>スコープを選ぶ</b>
+      <p><code>profile</code> と <code>openid</code> にチェックを入れます。
+         これで、どなたが診断をお受けになったかが分かり、タグを付けられるようになります。</p>
+    </li>
+    <li>
+      <b>Workers に登録する</b>
+      <p><code>LIFF_ID</code> に発行された LIFF ID、
+         <code>LIFF_CHANNEL_ID</code> にそのチャネルのチャネルIDを登録します。
+         この2つが揃うまで、ページは「どなたか分からない」状態で開き、
+         診断の結果は出ますがタグは残りません。</p>
+    </li>
+    <li>
+      <b>リッチメニューに割りつける</b>
+      <p>各ボタンを「リンク」にして
+         <code>https://liff.line.me/＜LIFF ID＞/diagnosis</code> の形で入れます。
+         後ろを <code>menu</code> <code>intake</code> <code>slot</code> <code>access</code> に変えると、
+         それぞれのページに飛びます。</p>
+    </li>
+  </ol>
+
+  <div class="card">
+    <h4>LINEミニアプリへの統合について</h4>
+    <p>
+      LINEヤフー株式会社は、<strong>LIFF と LINEミニアプリのブランド統合</strong>を予定しており、
+      <strong>LIFF は LINEミニアプリに統合される</strong>と公式に案内しています
+      （2025年2月12日のお知らせ）。公式ドキュメントにも
+      <strong>「新規にLIFFアプリを作成する場合は、LINEミニアプリとして作成することを推奨」</strong>
+      と書かれています。
+    </p>
+    <p>
+      ただし<strong>「この日でLIFFが使えなくなる」という期日は、現時点では公表されていません。</strong>
+      いま作ったものがすぐ使えなくなることはありませんが、
+      新しく作るなら最初からミニアプリとして作っておくほうが、あとの手間が減ります。
+    </p>
+  </div>
+
+  <h4>審査があるもの・ないもの</h4>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th></th><th>審査</th><th>見え方・できること</th></tr></thead>
+      <tbody>
+        <tr><td>LIFF</td><td><strong>なし</strong></td><td>いますぐ使えます</td></tr>
+        <tr><td>未認証ミニアプリ</td><td><strong>なし</strong></td>
+            <td>どなたでも作れます。ヘッダーにタイトルとURLのドメイン名が出ます。一部機能に制限</td></tr>
+        <tr><td>認証済ミニアプリ</td><td><strong>あり</strong></td>
+            <td>認証バッジが付き、<strong>LINEアプリ内の検索に載ります</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <p>
+      <strong>ミエーレの場合、まずは審査の要らない範囲で十分です。</strong>
+      診断・メニュー表・アクセスは、未認証のままで問題なく動きます。
+      「LINEの検索から新しいお客様に見つけてほしい」となった段階で、認証を取りにいくのが順番として自然です。
+    </p>
+  </div>
+
+  <h4>認証済ミニアプリの審査を受けるときの手順</h4>
+
+  <ol class="steps">
+    <li>
+      <b>準備する</b>
+      <p>チャネルの基本情報、権限設定、アプリの説明文、
+         <strong>利用規約とプライバシーポリシーのURL</strong> をそろえます。
+         ガイドライン（アイコン・読み込み中の表示・動作速度など）への適合も確認します。</p>
+    </li>
+    <li>
+      <b>ご予約を含む場合はテスト手順を用意する</b>
+      <p>「予約・決済・注文」を扱うサービスは、<strong>審査担当者が実際に試すための
+         テストシナリオの提出が求められます。</strong>ミエーレでご予約への導線を入れる場合は、ここが該当します。</p>
+    </li>
+    <li>
+      <b>LINE Developers コンソールから申請する</b>
+      <p>「審査申請」タブに必要事項を入力して申請します。</p>
+    </li>
+    <li>
+      <b>結果を待つ</b>
+      <p><strong>通常1〜2週間</strong>です。差し戻しがあると、修正して再申請するぶんの日数が加わります。
+         結果はメールとコンソールの通知で届きます。</p>
+    </li>
+    <li>
+      <b>通ったら公開する</b>
+      <p>初回は「検索可能にする」ボタンを押すと、LINEアプリ内の検索に載ります。
+         更新の場合は「変更を公開」を押します。
+         <strong>押さないままでも、31日目の朝9時に自動で公開されます。</strong></p>
+    </li>
+  </ol>
+
+  <div class="callout callout--warn">
+    <p>
+      審査を受ける前に、<strong>利用規約とプライバシーポリシーをご用意ください。</strong>
+      問診表を入れる場合は、そこに「何を、何のために、どのくらいの期間お預かりするか」を
+      書いておく必要があります。
+    </p>
+  </div>
+</section>
+
+<footer>
+  トータル・ビューティー・サロン ミエーレ ／ LINE 運用ガイド<br>
+  〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分<br>
+  ご不明な点は店内でお尋ねください。内容は運用に合わせて更新します。
+</footer>
+
+</div>
+</script>
+
+<footer>
+  トータル・ビューティー・サロン ミエーレ ／ 空き枠の自動お知らせ デモ ＋ 運用ガイド<br>
+  〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分
+</footer>
+
+</div>
+
+<script>
+/* ---------- src/salon.js ---------- */
+/**
+ * 店舗情報。応答メッセージの文面はすべてここを参照する。
+ *
+ * 値が null の項目は、その話題への自動応答が無効になる。
+ * 間違った案内を自動で返すより、スタッフがお答えするほうが確実なため。
+ */
+
+const SALON = {
+  name: 'トータル・ビューティー・サロン ミエーレ',
+  shortName: 'ミエーレ',
+
+  postal: '〒306-0023',
+  address: '茨城県古河市本町3丁目19-1 Anesisビル',
+  access: 'JR古河駅から徒歩8分',
+  parking: '専用駐車場あり（店舗前にスタッフが駐車場までご案内します）',
+
+  hours: '9:00〜19:00',
+  /* 空きを計算するための、機械が読める形の営業時間。
+     hours は文面に出す用なので、両方を合わせて直してください */
+  open: { from: '09:00', to: '19:00' },
+  closed: '年中無休',
+  tel: '090-3286-4994',
+
+  reservation: '完全予約制',
+  reservationNote: 'お一人さま・ペアでのご来店も承ります',
+  payment: '現金 / Visa / Mastercard / JCB / American Express',
+
+  /* ご予約の入口。
+     ★ TODO: お使いの予約システムのURLに置き換えてください。
+     ここを書き換えると、自動応答・リッチメニュー・空き枠のご案内の
+     すべてが同じ入口を指すようになります（直す場所はここ1か所だけです）。
+     null にすると、予約のご案内ではURLを出さず「お電話・LINEで承ります」に変わります。 */
+  bookingUrl: 'https://beauty.hotpepper.jp/kr/slnH000649391/',
+  couponUrl: 'https://beauty.hotpepper.jp/kr/slnH000649391/coupon/',
+
+  // ★ TODO: LIFF ID を発行したら、コース診断ツールのURLに置き換える
+  //   https://liff.line.me/＜LIFF_ID＞
+  diagnosisUrl: null
+};
+
+/** 未設定の項目を使った案内は出さない */
+const has = (value) => typeof value === 'string' && value.length > 0;
+
+/* ---------- src/courses.js ---------- */
+/**
+ * メニューの一覧。ここが唯一の置き場所です。
+ *
+ * コース診断・メニュー料金ページ・空き枠のお知らせは、すべてここを読みます。
+ * メニューが変わったときに直すのはこのファイルだけで、
+ * 3か所に書き写す必要はありません。
+ *
+ *   price    新規（初回）価格。掲載価格はすべて新規価格でそろえています
+ *   reg      2回目以降の通常価格（ある場合のみ）
+ *   min      所要時間（分）。null は掲載がないもの
+ *   room     'self' セルフブース / 'room' 施術ルーム
+ *   slot     空き枠のお知らせに出せるか。所要時間が分かっているものだけ true
+ *   short    空き枠のお知らせで使う短い名前（長い正式名の代わり）
+ *   sex      'f' 女性限定 / 'm' 男性向け。無ければどなたでも
+ *   concerns お悩み。診断で突き合わせる
+ *   paces    通い方
+ */
+
+const GENDERS = [
+  { id: 'f', label: '女性', em: '👩' },
+  { id: 'm', label: '男性', em: '👨' }
+];
+
+/* 女性限定の項目（sex:'f'）は末尾に置く。男性のとき2つ消えても
+   「セルフ脱毛／セラピスト脱毛」が同じ行に並ぶよう並び順を固定している */
+const CONCERNS = [
+  { id: 'pore',   label: '毛穴・シミ・くすみ',   em: '✨' },
+  { id: 'acne',   label: 'ニキビ・肌荒れ',       em: '🌿' },
+  { id: 'lift',   label: 'たるみ・小顔',         em: '🪞' },
+  { id: 'belly',  label: 'お腹・太ももの脂肪',   em: '🎯' },
+  { id: 'arm',    label: '二の腕・脚のライン',   em: '💧' },
+  { id: 'relax',  label: '疲れ・肩こり・むくみ', em: '🌙' },
+  { id: 'self',   label: 'セルフ脱毛',           em: '🪶', sub: 'ご自身で照射／低価格' },
+  { id: 'thera',  label: 'セラピスト脱毛',       em: '🧔', sub: 'スタッフにおまかせ' },
+  { id: 'post',   label: '産後の体型戻し',       em: '🍼', sex: 'f' },
+  { id: 'bridal', label: '結婚式・イベント前',   em: '💍', sex: 'f' }
+];
+
+/** cap = ご予算の上限額。この金額を超えるコースは候補に出さない */
+const BUDGETS = [
+  { id: 'b1',  tier: 1, cap: 5000,     label: '〜5,000円',        sub: 'まずは気軽に試したい' },
+  { id: 'b2',  tier: 2, cap: 10000,    label: '5,000〜10,000円',  sub: '続けやすい価格帯' },
+  { id: 'b3',  tier: 3, cap: 15000,    label: '10,000〜15,000円', sub: 'しっかりケアしたい' },
+  { id: 'b4',  tier: 4, cap: Infinity, label: '15,000円以上',     sub: '結果を最優先したい' },
+  { id: 'any', tier: 0, cap: Infinity, label: 'こだわらない',      sub: '内容で選びたい' }
+];
+
+const PACES = [
+  { id: 'trial',     label: 'まずは1回体験したい',     sub: '初回体験・お試しメニュー' },
+  { id: 'intensive', label: '短期集中で結果を出したい', sub: '回数を重ねてしっかり' },
+  { id: 'monthly',   label: '月1〜2回でコツコツ',       sub: '無理なく続けたい' },
+  { id: 'quick',     label: '30分以内でサッと',         sub: '仕事帰り・すきま時間に' }
+];
+
+/** 男性がセラピスト脱毛を選んだときに出す注意書き */
+const MENS_VIO_NOTE =
+  '※ メンズのVIO脱毛は、セラピストによる施術は行っておりません。' +
+  'セルフ脱毛でのご対応となります（ブースをご用意しています）。';
+
+const COURSES = [
+  /* --- 肌管理・フェイシャル --- */
+  { id: 'duct-try', name: 'ダクトピール お試しお手軽コース', price: 5800, min: 60,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore', 'acne'], paces: ['trial'],
+    desc: '日本初上陸の第5世代韓国ピーリング。毛穴ケア・シミケアをまず1回試したい方へ。' },
+  { id: 'duct', name: '韓国肌管理 ダクトピール（毛穴/美白/水光肌）', price: 7800, min: 60,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore', 'acne'], paces: ['monthly', 'intensive'],
+    desc: 'ピーリング→美容導入→特殊ゲルマスクの3ステップ。透明感のある水光肌へ。' },
+  { id: 'duct-90', name: 'ダクトピール 90分 specialコース', price: 12800, min: 90,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore', 'acne', 'bridal'], paces: ['intensive'],
+    desc: 'ピールクレンザーから美容導入・ゲルマスクまで、90分かけて行うフルコースです。' },
+  { id: 'duct-plasma', name: 'ダクトピール × プラズマ トリプルアプローチ', price: 10800, min: null,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: false,
+    concerns: ['pore', 'acne'], paces: ['intensive'],
+    desc: 'DactorPeel のあとにプラズマ＋ヒト幹細胞導入。肌トラブルを多角的にケアします。' },
+  { id: 'plasma', name: 'プラズマシャワー', price: 5500, min: 60,
+    cat: 'フェイシャル', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['acne', 'pore'], paces: ['trial', 'quick', 'monthly'],
+    desc: 'オゾンプラズマ→フラッシュプラズマ→幹細胞導入。肌荒れが気になる季節におすすめ。' },
+  { id: 'plasma-photo', name: 'プラズマ × 光フェイシャル', price: 8800, min: 60,
+    cat: 'フェイシャル', badge: '期間限定', room: 'room', slot: true,
+    concerns: ['pore', 'acne'], paces: ['monthly', 'intensive'],
+    desc: 'プラズマシャワー後にミルキー光フェイシャル。毛穴とシミをまとめてケアします。' },
+  { id: 'milky', name: 'ミルキーフェイシャル 30分', price: 3300, reg: 5390, min: 30,
+    cat: 'フェイシャル', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore'], paces: ['quick', 'trial', 'monthly'],
+    desc: '光フェイシャル＋保湿パックを30分で。すきま時間に肌のトーンを整えたい方へ。' },
+  { id: 'lala', name: '韓国肌管理 ララピール', price: 8800, reg: 11000, min: 60,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore', 'bridal'], paces: ['monthly', 'intensive'],
+    desc: '第4世代ピーリング。ごわつきをリセットし、なめらかな肌質へ導きます。' },
+  { id: 'potenza', name: 'エステ版ポテンツァ リジュラン導入', price: 16800, min: null,
+    cat: '韓国肌管理', badge: '', room: 'room', slot: false,
+    concerns: ['pore', 'lift', 'bridal'], paces: ['intensive'],
+    desc: 'DactorPeel後にマイクロチップニードルマシンで導入。ハリ不足が気になる方に。' },
+
+  /* --- 小顔・リフト --- */
+  { id: 'red-face', name: '小顔輪郭形成 REDショット（目の下・頬・ほうれい線）',
+    short: '小顔輪郭形成 REDショット', price: 9800, min: 60,
+    cat: '小顔', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['lift'], paces: ['intensive'],
+    desc: 'REDショット×プラズマ×EMSで、目の下・頬・ほうれい線に集中アプローチ。' },
+  { id: 'red-jaw', name: '小顔輪郭形成 REDショット（二重アゴ・フェイスライン）', price: 9800, min: null,
+    cat: '小顔', badge: '新規限定', room: 'room', slot: false,
+    concerns: ['lift'], paces: ['intensive'],
+    desc: 'REDショット×プラズマ×EMSで、フェイスラインと二重アゴを集中ケアします。' },
+  { id: 'therma-low', name: 'サーマエッジ 下顔ショット 時間内打ち放題', price: 11000, min: null,
+    cat: '小顔', badge: '', room: 'room', slot: false,
+    concerns: ['lift'], paces: ['intensive', 'monthly'],
+    desc: '下顔まわりを時間内打ち放題で引き締め。フェイスラインの変化を狙う方に。' },
+  { id: 'therma-full', name: 'サーマエッジ 全顔ショット 時間内打ち放題', price: 16000, min: null,
+    cat: '小顔', badge: '', room: 'room', slot: false,
+    concerns: ['lift', 'bridal'], paces: ['intensive'],
+    desc: '顔全体を時間内打ち放題。しっかり結果を出したい方向けのハイグレードコースです。' },
+  { id: 'bridal-face', name: '結婚式向け 花嫁フェイシャル集中コース', price: 14300, min: 90,
+    cat: 'ブライダル', badge: '新規限定', sex: 'f', room: 'room', slot: true,
+    concerns: ['bridal', 'pore', 'lift'], paces: ['intensive'],
+    desc: 'ララピール→光フェイシャル→高浸透パックの90分。式当日のベストコンディションへ。' },
+
+  /* --- 痩身・ボディ --- */
+  { id: 'cryo-arm', name: '脂肪冷却 2カップ 二の腕', price: 7800, min: 30,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['arm'], paces: ['trial', 'intensive'],
+    desc: 'マイナス12度の脂肪冷却で二の腕を集中ケア。30分で気軽に始められます。' },
+  { id: 'cryo-belly', name: '脂肪冷却 2カップ お腹 or 太もも or お尻', price: 9800, min: 45,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['belly'], paces: ['trial', 'intensive'],
+    desc: '話題の脂肪冷却をマイナス12度で。気になる1箇所をピンポイントで狙います。' },
+  { id: 'redbody-arm', name: 'レッドショットBODY 二の腕コース', price: 7700, min: null,
+    cat: '痩身', badge: '', room: 'room', slot: false,
+    concerns: ['arm'], paces: ['intensive'],
+    desc: '韓国発の痩身マシン。REDショット×超音波で二の腕をすっきり見せます。' },
+  { id: 'redbody-belly', name: 'レッドショットBODY お腹 or 脚コース', price: 14800, min: null,
+    cat: '痩身', badge: '', room: 'room', slot: false,
+    concerns: ['belly'], paces: ['intensive'],
+    desc: 'RED×超音波×EMSの組み合わせで、お腹または脚を本格的にケアします。' },
+  { id: 'rf-pulse', name: 'お腹・太ももを集中ケア（ラジオ波×電磁パルス）',
+    short: 'お腹・太ももを集中ケア', price: 6300, min: 50,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['belly', 'post'], paces: ['monthly', 'trial'],
+    desc: 'ラジオ波20分＋電磁パルス30分。まずは続けやすい価格で始めたい方に。' },
+  { id: 'rf-cryo-arm', name: 'ラジオ波 & 脂肪冷却 二の腕 or ふくらはぎ', price: 11100, min: 60,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['arm'], paces: ['intensive', 'monthly'],
+    desc: 'ラジオ波20分＋冷却30分＋マッサージ。温めてから冷やす二段階アプローチ。' },
+  { id: 'rf-cryo-belly', name: 'ラジオ波 & 脂肪冷却 お腹 or 太もも', price: 13100, min: 75,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['belly'], paces: ['intensive', 'monthly'],
+    desc: 'ラジオ波20分＋脂肪冷却45分の75分コース。お腹・太ももをじっくりケアします。' },
+  { id: 'cryo-rf-60', name: '最新 脂肪冷却 × 全身ラジオ波 60分', price: 17500, min: 60,
+    cat: '痩身', badge: '期間限定', room: 'room', slot: true,
+    concerns: ['belly', 'relax', 'post'], paces: ['intensive'],
+    desc: '痩身と疲労回復を同時に。全身のめぐりを整えながら脂肪にアプローチします。' },
+  { id: 'cryo-4', name: '脂肪冷却 4カップ 痩身コース', price: 20900, min: null,
+    cat: '痩身', badge: '期間限定', room: 'room', slot: false,
+    concerns: ['belly', 'arm', 'post'], paces: ['intensive'],
+    desc: '脂肪冷却4カップ＋ラジオ波で2箇所同時施術。短期で変化を出したい方へ。' },
+  { id: 'post-diet', name: '産後ダイエット向け マシン3種コース', price: 16100, min: null,
+    cat: '痩身', badge: '新規限定', sex: 'f', room: 'room', slot: false,
+    concerns: ['post', 'belly'], paces: ['intensive'],
+    desc: '脂肪冷却・電磁パルス・ラジオ波の3種で、産後の気になる脂肪をケアします。' },
+
+  /* --- リラクゼーション --- */
+  { id: 'head-20', name: 'ヘッド & デコルテマッサージ 20分', price: 2200, min: 20,
+    cat: 'リラク', badge: '', room: 'room', slot: true,
+    concerns: ['relax'], paces: ['quick', 'trial'],
+    desc: 'デコルテオイル10分＋ヘッドマッサージ10分。仕事帰りのリセットに。' },
+  { id: 'aroma-40', name: 'アロマトリートメント 40分', price: 5500, min: 40,
+    cat: 'リラク', badge: '', room: 'room', slot: true,
+    concerns: ['relax'], paces: ['quick', 'monthly', 'trial'],
+    desc: 'エッセンシャルオイルを使った全身トリートメント。心身をゆるめたい日に。' },
+  { id: 'aroma-60', name: 'アロマトリートメント 60分', price: 7700, min: 60,
+    cat: 'リラク', badge: '', room: 'room', slot: true,
+    concerns: ['relax'], paces: ['monthly'],
+    desc: 'アロマトリートメント＋もも・ふくらはぎのリンパマッサージでむくみもケア。' },
+
+  /* --- 脱毛 --- */
+  { id: 'led-try', name: '痛みが少ないLED脱毛 初回体験', price: 2200, min: 20,
+    cat: '脱毛', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['trial', 'quick'],
+    desc: '1部位20分。痛みが少ないLED脱毛を、まずは初回体験価格でお試しいただけます。' },
+  { id: 'vio-30', name: '【女性限定】VIO脱毛 30分', price: 4950, min: 30,
+    cat: '脱毛', badge: '新規限定', sex: 'f', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['trial', 'quick', 'intensive'],
+    desc: 'セラピストによるVIO脱毛30分。デリケートゾーンもお任せください。' },
+  { id: 'thera-30', name: 'セラピスト脱毛 30分', price: 4950, reg: 6600, min: 30,
+    cat: '脱毛', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['monthly', 'quick', 'intensive'],
+    desc: 'LED脱毛30分の打ち放題。気になる部位を時間内で自由にお手入れできます。' },
+  { id: 'self-30', name: 'セルフ脱毛 30分', price: 3300, reg: 4950, min: 30,
+    cat: '脱毛', badge: '新規限定', room: 'self', slot: true,
+    concerns: ['self'], paces: ['quick', 'trial', 'monthly'],
+    desc: '時間内でご自身でお手入れ。費用を抑えながら、気になる部位をこまめにケアできます。' },
+  { id: 'thera-60', name: 'セラピスト脱毛 60分（全身可）', price: 9900, reg: 13200, min: 60,
+    cat: '脱毛', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['intensive', 'monthly'],
+    desc: '60分の打ち放題。全身をまとめてでも、気になる部位を重点的にでもOK。顔・VIOをご希望の方は90分コースへ。' },
+  { id: 'self-60', name: 'セルフ脱毛 60分（全身OK）', price: 6600, reg: 9900, min: 60,
+    cat: '脱毛', badge: '新規限定', room: 'self', slot: true,
+    concerns: ['self'], paces: ['monthly', 'intensive'],
+    desc: '60分のセルフ脱毛。全身をまるごと、ご自身のペースでお手入れいただけます。' },
+  /* 90分の全身は顔・VIOの扱いが男女で異なるため2本立て（メンズVIOはセルフのため対象外） */
+  { id: 'thera-90-f', name: 'セラピスト全身脱毛（顔・VIOあり）90分',
+    short: 'セラピスト全身脱毛 90分', price: 14850, reg: 19800, min: 90,
+    cat: '脱毛', badge: '新規限定', sex: 'f', room: 'room', slot: true,
+    concerns: ['thera', 'bridal'], paces: ['intensive'],
+    desc: '顔・VIOまで含めた90分の全身脱毛。まるごとお手入れしたい方の決定版プランです。' },
+  { id: 'thera-90-m', name: 'セラピスト全身脱毛（顔あり・VIO無し）90分',
+    short: 'セラピスト全身脱毛 90分（VIO無し）', price: 14850, reg: 19800, min: 90,
+    cat: '脱毛', badge: '新規限定', sex: 'm', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['intensive'],
+    desc: '顔を含めた90分の全身脱毛。VIOはセルフ脱毛のご用意がありますのでご相談ください。' },
+  { id: 'mens-beard', name: 'メンズ髭脱毛 LED脱毛 初回体験', price: 2200, min: 20,
+    cat: 'メンズ', badge: '新規限定', sex: 'm', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['trial', 'quick'],
+    desc: '痛みが少ないLED脱毛でヒゲを。毎日の髭剃り負担を減らしたい方へ。' },
+  { id: 'mens-body', name: '体毛が濃いメンズへ LED脱毛 初回体験', price: 2200, min: 20,
+    cat: 'メンズ', badge: '新規限定', sex: 'm', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['trial', 'quick'],
+    desc: '1部位20分以内。体毛の濃さが気になる男性の初回体験メニューです。' }
+];
+
+/* ------------------------------------------------------------------ *
+ * 取り出し
+ * ------------------------------------------------------------------ */
+
+/** 空き枠のお知らせに出す名前。長い正式名には短い名前を用意している */
+const slotName = (course) => course.short ?? course.name;
+
+/** 空き枠に出せるメニュー（所要時間が分かっているもの）を部屋ごとに */
+const slotMenusOf = (room) =>
+  COURSES.filter((c) => c.slot && c.room === room && c.min)
+    .map((c) => ({ name: slotName(c), minutes: c.min }))
+    .sort((a, b) => a.minutes - b.minutes);
+
+/** 名前からコースを引く。空き枠の短い名前でも引けるようにしておく */
+const courseByName = (name) =>
+  COURSES.find((c) => c.name === name || c.short === name) ?? null;
+
+const courseById = (id) => COURSES.find((c) => c.id === id) ?? null;
+
+/** 性別で対象外のもの（女性限定／男性限定）は外す。質問項目にも使う */
+const forGender = (item, gender) => !item.sex || item.sex === gender;
+
+const labelOf = (list, id) => list.find((o) => o.id === id)?.label ?? '';
+
+/* ------------------------------------------------------------------ *
+ * 診断
+ * ------------------------------------------------------------------ *
+ * お悩み一致 +2 / 予算ぴったり +3・隣の価格帯 +1 / 通い方一致 +3
+ * ご予算は「上限」として扱い、超える金額のコースは出しません。
+ */
+
+const MAX_RESULTS = 4;
+
+const tierOf = (price) => (price <= 5000 ? 1 : price <= 10000 ? 2 : price <= 15000 ? 3 : 4);
+
+const budgetCap = (budgetId) =>
+  BUDGETS.find((b) => b.id === budgetId)?.cap ?? Infinity;
+
+function needsMensVioNote(answers) {
+  return answers?.gender === 'm' && (answers?.concerns ?? []).includes('thera');
+}
+
+function scoreCourse(course, answers) {
+  const hits = [];
+  let score = 0;
+
+  const matched = course.concerns.filter((c) => (answers.concerns ?? []).includes(c));
+  score += matched.length * 2;
+  for (const m of matched) hits.push(labelOf(CONCERNS, m) + ' に対応');
+
+  const budget = BUDGETS.find((b) => b.id === answers.budget) ?? BUDGETS[4];
+  const t = tierOf(course.price);
+  if (budget.tier === 0) {
+    score += 2;
+    hits.push('価格帯おまかせ');
+  } else if (budget.tier === t) {
+    score += 3;
+    hits.push('ご予算にぴったり');
+  } else if (Math.abs(budget.tier - t) === 1) {
+    score += 1;
+    hits.push('ご予算に近い');
+  }
+
+  if (course.paces.includes(answers.pace)) {
+    score += 3;
+    hits.push(labelOf(PACES, answers.pace).replace(/したい$/, '').replace(/で$/, '') + ' に最適');
+  }
+
+  const max = (answers.concerns ?? []).length * 2 + 3 + 3;
+  return { course, score, hits, rate: Math.round((score / max) * 100), matched: matched.length };
+}
+
+/* ご予算「こだわらない」のときは、同じ価格帯だけで枠が埋まらないよう
+   価格帯が重ならないように上位から採り、余った枠をスコア順で埋める。
+   お手頃コースだけが並んで、しっかりコースが埋もれるのを防ぐ */
+function pickSpread(list, n) {
+  const picked = [];
+  const seen = new Set();
+  for (const r of list) {
+    if (picked.length >= n) break;
+    const t = tierOf(r.course.price);
+    if (seen.has(t)) continue;
+    seen.add(t);
+    picked.push(r);
+  }
+  for (const r of list) {
+    if (picked.length >= n) break;
+    if (!picked.includes(r)) picked.push(r);
+  }
+  return picked.sort((a, b) => list.indexOf(a) - list.indexOf(b));
+}
+
+/**
+ * 診断の結果。
+ * @returns {{results:object[], overBudget:boolean}}
+ */
+function diagnose(answers) {
+  const cap = budgetCap(answers.budget);
+
+  const ranked = COURSES.filter((c) => forGender(c, answers.gender))
+    .map((c) => scoreCourse(c, answers))
+    .sort((a, b) => b.score - a.score || a.course.price - b.course.price);
+
+  // お悩みが1つも一致しないコースは出さない
+  const hit = ranked.filter((r) => r.matched > 0);
+  const within = hit.filter((r) => r.course.price <= cap);
+
+  if (within.length) {
+    return {
+      results: answers.budget === 'any' ? pickSpread(within, MAX_RESULTS) : within.slice(0, MAX_RESULTS),
+      overBudget: false
+    };
+  }
+
+  // ご予算内に該当が無い場合だけ、条件に合う中で安いものを2件ご案内する
+  if (hit.length) {
+    return {
+      results: [...hit].sort((a, b) => a.course.price - b.course.price).slice(0, 2),
+      overBudget: true
+    };
+  }
+  return { results: [], overBudget: false };
+}
+
+/* ------------------------------------------------------------------ *
+ * タグ
+ * ------------------------------------------------------------------ *
+ * 診断の答えをタグに変えます。
+ * このタグが、空き枠のお知らせを「関心のある方だけ」に絞る材料になります。
+ */
+
+function tagsFromDiagnosis(answers, results = []) {
+  const out = [];
+  const push = (kind, name) => name && !name.endsWith(':') && out.push({ kind, name });
+
+  push('gender', '性別:' + (answers.gender === 'm' ? '男性' : '女性'));
+  for (const c of answers.concerns ?? []) push('concern', '関心:' + labelOf(CONCERNS, c));
+  push('budget', '予算:' + labelOf(BUDGETS, answers.budget));
+  push('pace', '通い方:' + labelOf(PACES, answers.pace));
+
+  return out;
+}
+
+/** 空き枠のメニューから、関心タグの名前を作る（絞り込みの突き合わせ用） */
+function concernTagsOfMenus(menuNames = []) {
+  const ids = new Set();
+  for (const name of menuNames) {
+    for (const c of courseByName(name)?.concerns ?? []) ids.add(c);
+  }
+  return [...ids].map((id) => '関心:' + labelOf(CONCERNS, id));
+}
+
+/* ---------- src/menu.js ---------- */
+/**
+ * リッチメニューのボタン
+ *
+ * ここが1か所の定義です。編集すると、
+ *   - メニュー画像（design / 作成ページ）
+ *   - お客様がタップしたときのキーワード
+ *   - デモの表示
+ * のすべてに反映されます。
+ *
+ * 管理画面で設定するアクションは「テキスト」で、送る内容が keyword です。
+ * ポストバックは管理画面から選べないため、テキストで受けています。
+ */
+
+/** アイコン。SVG の path（100×100 の座標系、線で描く） */
+const ICONS = {
+  calendar:
+    'M18 26 h64 a6 6 0 0 1 6 6 v50 a6 6 0 0 1 -6 6 h-64 a6 6 0 0 1 -6 -6 v-50 a6 6 0 0 1 6 -6 z ' +
+    'M12 44 h76 M32 18 v16 M68 18 v16 M38 62 l8 9 18 -20',
+  chat:
+    'M18 24 h64 a6 6 0 0 1 6 6 v34 a6 6 0 0 1 -6 6 h-40 l-16 14 v-14 h-8 ' +
+    'a6 6 0 0 1 -6 -6 v-34 a6 6 0 0 1 6 -6 z M32 40 h36 M32 54 h24',
+  doc:
+    'M24 12 h52 a6 6 0 0 1 6 6 v64 a6 6 0 0 1 -6 6 h-52 a6 6 0 0 1 -6 -6 v-64 a6 6 0 0 1 6 -6 z ' +
+    'M36 34 h28 M36 50 h28 M36 66 h18',
+  search:
+    'M72 45 a27 27 0 1 1 -54 0 a27 27 0 1 1 54 0 M64 64 L86 86 M45 33 v9 M45 52 v1',
+  pin:
+    'M50 88 C50 88 76 62 76 42 A26 26 0 0 0 24 42 C24 62 50 88 50 88 z ' +
+    'M60 42 a10 10 0 1 1 -20 0 a10 10 0 1 1 20 0',
+  clock:
+    'M84 50 a34 34 0 1 1 -68 0 a34 34 0 1 1 68 0 M50 28 v24 l17 9',
+  gift:
+    'M14 44 h72 v14 h-72 z M20 58 h60 v30 h-60 z M50 44 v44 ' +
+    'M50 44 c-14 0 -22 -6 -22 -14 a10 10 0 0 1 22 -2 a10 10 0 0 1 22 2 c0 8 -8 14 -22 14 z',
+  star:
+    'M50 16 l10 22 24 3 -18 17 5 24 -21 -12 -21 12 5 -24 -18 -17 24 -3 z',
+  clip:
+    'M32 16 h36 a6 6 0 0 1 6 6 v62 a6 6 0 0 1 -6 6 h-36 a6 6 0 0 1 -6 -6 v-62 a6 6 0 0 1 6 -6 z ' +
+    'M40 10 h20 a4 4 0 0 1 4 4 v6 h-28 v-6 a4 4 0 0 1 4 -4 z M38 44 h24 M38 58 h24 M38 72 h14'
+};
+
+/** 画像の大きさと区切り方。管理画面のテンプレートに対応する */
+const LAYOUTS = [
+  { id: 'large-6', label: '大・3列×2段（6ボタン）', w: 2500, h: 1686, cols: 3, rows: 2 },
+  { id: 'large-4', label: '大・2列×2段（4ボタン）', w: 2500, h: 1686, cols: 2, rows: 2 },
+  { id: 'small-4', label: '小・4列×1段（4ボタン）', w: 2500, h: 843,  cols: 4, rows: 1 },
+  { id: 'small-2', label: '小・2列×1段（2ボタン）', w: 2500, h: 843,  cols: 2, rows: 1 }
+];
+
+/**
+ * 既定のボタン。
+ *   label   画像に出る文字
+ *   sub     その下の小さい文字
+ *   icon    ICONS の名前
+ *   keyword 管理画面の「テキスト」に入れる内容。空なら応答なし
+ *   lead    地色を変えて目立たせるボタン（1つだけ）
+ *   link    リンクにする場合の説明（keyword の代わり）
+ */
+const MENU = [
+  { id:'diagnosis', label:'コース診断',       sub:'1分でおすすめを提案',  icon:'search',   link:'/app/diagnosis', lead:true },
+  { id:'menu',      label:'メニュー・料金',   sub:'新規価格でご案内',     icon:'doc',      link:'/app/menu' },
+  { id:'booking',   label:'ご予約',           sub:'予約システムへ',       icon:'chat',     link:'booking' },
+  { id:'intake',    label:'問診表',           sub:'ご来店前にご記入',     icon:'clip',     link:'/app/intake' },
+  { id:'open_slot', label:'空き枠のお知らせ', sub:'受け取り設定はこちら', icon:'calendar', link:'/app/slot', badge:'NEW' },
+  { id:'access',    label:'アクセス・営業時間', sub:'古河駅 徒歩8分',     icon:'pin',      link:'/app/access' }
+];
+
+/**
+ * ボタンの行き先。
+ *
+ * LIFFのURLは https://liff.line.me/＜LIFF ID＞/＜続き＞ の形です。
+ * 「続き」がエンドポイントURLの後ろに足されるので、
+ * エンドポイントを .../app/ にしておけば
+ *   https://liff.line.me/＜LIFF ID＞/menu → .../app/menu
+ * のように、1つのLIFF IDで全ページをまかなえます。
+ *
+ *   '/app/...'  LIFFのページ
+ *   'booking'   予約システム（src/salon.js の bookingUrl）
+ *   keyword     テキスト送信 →自動応答（LIFFを使わない場合の代わり）
+ */
+const LIFF_ENDPOINT_PATH = '/app/';
+
+const linkTarget = (item, salon, liffId = '') => {
+  if (item.link === 'booking') return salon?.bookingUrl ?? '';
+  if (item.link?.startsWith('/app/')) {
+    const rest = item.link.slice('/app/'.length);
+    return liffId ? `https://liff.line.me/${liffId}/${rest}` : item.link;
+  }
+  return item.link ?? '';
+};
+
+/** レイアウトに合わせて必要な数だけ切り出す */
+function cellsFor(menu, layout) {
+  const need = layout.cols * layout.rows;
+  return menu.slice(0, need);
+}
+
+const layoutById = (id) => LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0];
+
+/* ---------- src/line.js ---------- */
+/**
+ * LINE Messaging API クライアント
+ *
+ * 通数について：
+ *   reply()   応答メッセージ。通数を消費しない。フェーズ1で使うのはこちらだけ。
+ *   push()    プッシュ配信。通数を消費する。フェーズ3の通数ガードを通してから使う。
+ */
+
+const API = 'https://api.line.me/v2/bot';
+
+/* ------------------------------------------------------------------ *
+ * 署名検証
+ * ------------------------------------------------------------------ */
+
+/**
+ * LINE から送られてきたリクエストであることを検証する。
+ * ボディは JSON.parse する前の生の文字列で渡すこと。
+ */
+async function verifySignature(channelSecret, rawBody, signature) {
+  if (!channelSecret || !signature) return false;
+
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(channelSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
+  return safeEqual(toBase64(new Uint8Array(mac)), signature);
+}
+
+function toBase64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+/** 比較にかかる時間の差から署名を推測されないよう、長さに関わらず全桁を比較する */
+function safeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * メッセージ送信
+ * ------------------------------------------------------------------ */
+
+/** 応答メッセージ。通数を消費しない */
+function reply(env, replyToken, messages) {
+  return call(env, '/message/reply', {
+    replyToken,
+    messages: messages.slice(0, 5) // 1回に送れるのは5件まで
+  });
+}
+
+/**
+ * プッシュ配信。通数を消費する。
+ * フェーズ3で通数ガードを実装するまで、この関数はどこからも呼ばない。
+ */
+function push(env, to, messages) {
+  return call(env, '/message/push', { to, messages: messages.slice(0, 5) });
+}
+
+/** 友だちのプロフィール。ブロック済みなどで取得できないことがあるので null を許容する */
+async function getProfile(env, userId) {
+  try {
+    const res = await fetch(`${API}/profile/${userId}`, {
+      headers: { Authorization: `Bearer ${env.CHANNEL_ACCESS_TOKEN}` }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('getProfile failed', err);
+    return null;
+  }
+}
+
+/** 今月の通数の上限と消費量。フェーズ3の通数ガードで使う */
+async function getQuota(env) {
+  const headers = { Authorization: `Bearer ${env.CHANNEL_ACCESS_TOKEN}` };
+  const [limit, used] = await Promise.all([
+    fetch(`${API}/message/quota`, { headers }).then((r) => r.json()),
+    fetch(`${API}/message/quota/consumption`, { headers }).then((r) => r.json())
+  ]);
+  return {
+    limit: limit.type === 'limited' ? limit.value : Infinity,
+    used: used.totalUsage ?? 0
+  };
+}
+
+async function call(env, path, body) {
+  const res = await fetch(API + path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.CHANNEL_ACCESS_TOKEN}`
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    console.error('LINE API error', path, res.status, await res.text());
+  }
+  return res.ok;
+}
+
+/* ------------------------------------------------------------------ *
+ * メッセージオブジェクト
+ * ------------------------------------------------------------------ */
+
+const text = (t) => ({ type: 'text', text: t });
+
+/** メッセージの下に出るボタン。タップしても通数は消費しない */
+const withButtons = (message, items) => ({ ...message, quickReply: { items } });
+
+const button = (label, data, displayText) => ({
+  type: 'action',
+  action: { type: 'postback', label, data, displayText: displayText ?? label }
+});
+
+/* ---------- src/replies.js ---------- */
+/**
+ * キーワード応答
+ *
+ * すべて Reply API で返すため、何件返しても通数は消費しません。
+ *
+ * 方針：
+ *   - どのルールにも当てはまらない場合は「返信しない」。
+ *     「わかりません」と返すより、スタッフがLINEチャットで答えたほうが良いため。
+ *   - 店舗情報が salon.js で未設定（TODO）の項目は、案内を出さずに黙る。
+ *     誤った営業時間を自動で答えてしまうほうが害が大きいため。
+ *   - 未対応の質問は inbound_messages に matched=NULL で残るので、
+ *     `npm run db:unmatched` で「よく聞かれるのに答えられていない質問」が分かります。
+ */
+
+
+/* ボタンを押したあとの返信。設定手順の資料からも参照するので、
+   文面はここに置いて1か所で管理する */
+const OPTIN_DONE = [
+  '空き枠のお知らせを受け取る設定にしました。',
+  '',
+  'ご希望に近いお席だけをお送りしたいので、よろしければ教えてください。',
+  '下のボタンからお選びいただけます。'
+].join('\n');
+
+/** 受け取り希望のあとに伺う内容。ここで選んでいただくと、送る枠を絞れます */
+const PREF_QUESTION = [
+  { label: 'セルフ脱毛', value: 'self' },
+  { label: 'セラピスト施術', value: 'room' },
+  { label: 'どちらも', value: 'both' }
+];
+
+const PREF_DONE = (labels) => [
+  `${labels}のお席が空いたときにお送りします。`,
+  '',
+  'ご予約のキャンセルなどでお席が空いたとき、こちらにご連絡します。',
+  '止めたいときは「空き枠」とお送りください。'
+].join('\n');
+
+const OPTOUT_DONE = [
+  '空き枠のお知らせは送らない設定にしました。',
+  '',
+  'またご希望のときは「空き枠」とお送りください。'
+].join('\n');
+
+const RULES = [
+  /* 空き枠の受け取り希望。
+     稼働の初日は希望者が0名なので、こことリッチメニューから集めます。
+     一斉送信で募る必要はありません。 */
+  {
+    name: 'open_slot_optin',
+    keys: ['空き枠', 'キャンセル待ち', '空きが出たら', 'お知らせ希望'],
+    build: () => [
+      withButtons(
+        text([
+          '空き枠のお知らせについてです。',
+          '',
+          'ご予約のキャンセルなどで空きが出たとき、LINEにご登録の方へ先にお知らせしています。',
+          '',
+          '受け取りをご希望の場合は、下のボタンを押してください。いつでも止められます。'
+        ].join('\n')),
+        [button('受け取る', 'action=optin', '受け取ります'),
+         button('今はやめておく', 'action=optout', '今はやめておきます')]
+      )
+    ]
+  },
+
+  {
+    name: 'booking',
+    keys: ['予約', 'よやく', '空き', 'あき', '空いて', 'キャンセル'],
+    /* LINEで完結させます。ホットペッパーへは誘導しません。
+       LINEで予約が取れること自体が、LINEに登録する価値になるためです。 */
+    build: () => {
+      const lines = [
+        'ご予約のご相談ありがとうございます。',
+        has(SALON.reservation) ? `${SALON.name}は${SALON.reservation}です。` : null,
+        '',
+        'ご希望のお日にちと時間帯を、このままメッセージでお知らせください。',
+        'スタッフが空き状況を確認して、折り返しご連絡いたします。',
+        '',
+        '「今週の土曜の午後」のようなおおまかなご希望でも大丈夫です。',
+        has(SALON.reservationNote) ? SALON.reservationNote + '。' : null
+      ].filter((l) => l !== null);
+      if (has(SALON.diagnosisUrl)) {
+        lines.push('', 'メニューで迷われている場合は、こちらの診断もご利用ください。', SALON.diagnosisUrl);
+      }
+      return [text(lines.join('\n'))];
+    }
+  },
+
+  {
+    name: 'hours',
+    keys: ['営業時間', '何時', '開いて', '定休', '休み', 'やってま'],
+    requires: () => has(SALON.hours),
+    build: () => {
+      const lines = ['営業時間のご案内です。', '', `営業時間　${SALON.hours}`];
+      if (has(SALON.closed)) lines.push(`定休日　　${SALON.closed}`);
+      lines.push('', '最新の空き状況はネット予約からご確認いただけます。', SALON.bookingUrl);
+      return [text(lines.join('\n'))];
+    }
+  },
+
+  {
+    name: 'access',
+    keys: ['場所', 'アクセス', '住所', 'どこ', '行き方', '地図', '駅'],
+    build: () => {
+      const lines = [
+        `${SALON.name}へのアクセスです。`,
+        '',
+        has(SALON.postal) ? SALON.postal : null,
+        SALON.address,
+        SALON.access
+      ].filter((l) => l !== null);
+      if (has(SALON.parking)) lines.push('', SALON.parking);
+      lines.push('', 'Googleマップ',
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SALON.address)}`);
+      return [text(lines.join('\n'))];
+    }
+  },
+
+  {
+    name: 'parking',
+    keys: ['駐車', 'ちゅうしゃ', '車で'],
+    requires: () => has(SALON.parking),
+    build: () => [text(['駐車場のご案内です。', '', SALON.parking].join('\n'))]
+  },
+
+  {
+    name: 'menu',
+    keys: ['メニュー', '料金', '値段', 'いくら', '価格', 'コース'],
+    build: () => {
+      /* 料金表として掲載ページを案内するが、ご予約はLINEで受ける */
+      const lines = [
+        'メニューと料金はこちらからご覧いただけます。',
+        '',
+        SALON.couponUrl,
+        '',
+        '掲載価格はすべて税込・新規（初回）価格です。',
+        '',
+        'ご予約は、このままメッセージでご希望のお日にちをお知らせいただければ承ります。'
+      ];
+      if (has(SALON.diagnosisUrl)) {
+        lines.push(
+          '',
+          'どのコースが合うか迷われている方へ、3つの質問でおすすめをご提案する診断もご用意しています。',
+          SALON.diagnosisUrl
+        );
+      }
+      return [text(lines.join('\n'))];
+    }
+  },
+
+  {
+    name: 'diagnosis',
+    keys: ['診断', 'おすすめ', 'どれがいい', '迷って'],
+    requires: () => has(SALON.diagnosisUrl),
+    build: () =>
+      [text([
+        'お悩みとご予算から、おすすめのコースをご提案します。',
+        '',
+        SALON.diagnosisUrl,
+        '',
+        '所要1分ほどです。結果はそのままご相談にお使いいただけます。'
+      ].join('\n'))]
+  },
+
+  {
+    name: 'tel',
+    keys: ['電話', 'でんわ', 'tel'],
+    requires: () => has(SALON.tel),
+    build: () => [text(['お電話でのお問い合わせはこちらです。', '', SALON.tel].join('\n'))]
+  },
+
+  {
+    name: 'payment',
+    keys: ['支払', 'カード', 'クレジット', '現金', 'paypay', '決済'],
+    requires: () => has(SALON.payment),
+    build: () =>
+      [text([
+        'お支払い方法のご案内です。',
+        '',
+        SALON.payment,
+        '',
+        'ご不明な点は、このままメッセージでお尋ねください。'
+      ].join('\n'))]
+  }
+];
+
+/**
+ * @returns {{ name: string, messages: object[] } | null}
+ *   当てはまるルールが無ければ null（＝返信しない）
+ */
+function matchReply(input) {
+  const q = normalize(input);
+  if (!q) return null;
+
+  for (const rule of RULES) {
+    if (rule.requires && !rule.requires()) continue;
+    if (rule.keys.some((k) => q.includes(normalize(k)))) {
+      return { name: rule.name, messages: rule.build() };
+    }
+  }
+  return null;
+}
+
+/** 全角スペース・大文字小文字の揺れを吸収する */
+function normalize(s) {
+  return String(s ?? '')
+    .toLowerCase()
+    .replace(/[\s　]+/g, '');
+}
+
+/* ---------- src/handlers.js ---------- */
+/**
+ * Webhook イベントの処理
+ *
+ * 受け取るのはお客様から届いたイベントだけです。
+ * スタッフが管理画面やLINEチャットから送った返信は、ここには届きません。
+ * （来店の記録をスタッフ用ページで行っているのはこのためです）
+ */
+
+
+async function handleEvent(env, event) {
+  // LINE はイベントを再送することがある。二度処理しないよう先に記録する
+  if (event.webhookEventId) {
+    const res = await env.DB.prepare(
+      'INSERT OR IGNORE INTO processed_events (webhook_event_id, created_at) VALUES (?, ?)'
+    )
+      .bind(event.webhookEventId, nowIso())
+      .run();
+    if (res.meta.changes === 0) return; // 処理済み
+  }
+
+  switch (event.type) {
+    case 'follow':
+      return onFollow(env, event);
+    case 'unfollow':
+      return onUnfollow(env, event);
+    case 'message':
+      return onMessage(env, event);
+    case 'postback':
+      return onPostback(env, event);
+    default:
+      return;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * ボタンが押されたとき
+ * ------------------------------------------------------------------ */
+
+/**
+ * リッチメニューや応答メッセージのボタンから届きます。
+ * 空き枠のお知らせを受け取るかどうかは、ここで切り替えます。
+ *
+ * 返信は応答メッセージなので通数は消費しません。
+ * 一斉送信で受け取り希望を募る必要がないのは、この経路があるためです。
+ */
+async function onPostback(env, event) {
+  const userId = event.source?.userId;
+  if (!userId) return;
+
+  const action = new URLSearchParams(event.postback?.data ?? '').get('action');
+
+  if (action === 'optin') {
+    await grantTags(env, userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
+    /* 続けて、どの部屋のお席を希望されるか伺う。
+       ここで選んでいただくと、関係のない枠を送らずに済む */
+    return reply(env, event.replyToken, [
+      withButtons(
+        text(OPTIN_DONE),
+        PREF_QUESTION.map((p) => button(p.label, 'action=pref&v=' + p.value, p.label))
+      )
+    ]);
+  }
+
+  if (action === 'pref') {
+    const value = new URLSearchParams(event.postback?.data ?? '').get('v');
+    const chosen = value === 'both' ? ['self', 'room'] : [value];
+    const tags = chosen.map((r) => ROOM_TAG[r]).filter(Boolean);
+    if (!tags.length) return;
+
+    await grantTags(env, userId, tags.map((name) => ({ kind: 'preference', name })));
+    const labels = PREF_QUESTION.find((p) => p.value === value)?.label ?? '';
+    return reply(env, event.replyToken, [text(PREF_DONE(labels))]);
+  }
+
+  if (action === 'optout') {
+    await revokeTag(env, userId, OPEN_SLOT_TAG);
+    return reply(env, event.replyToken, [text(OPTOUT_DONE)]);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 友だち追加
+ * ------------------------------------------------------------------ */
+
+/**
+ * ここでは返信しません。
+ * 友だち追加直後の案内は、LINE公式アカウント管理画面の「あいさつメッセージ」で
+ * 設定してください。オーナー・スタッフが自分で文面を編集できるほうが運用しやすく、
+ * どちらも通数は消費しません。
+ */
+async function onFollow(env, event) {
+  const userId = event.source?.userId;
+  if (!userId) return;
+
+  const profile = await getProfile(env, userId);
+
+  await env.DB.prepare(
+    `INSERT INTO customers (line_user_id, display_name, followed_at, status)
+     VALUES (?, ?, ?, 'active')
+     ON CONFLICT(line_user_id) DO UPDATE SET
+       display_name  = COALESCE(excluded.display_name, customers.display_name),
+       unfollowed_at = NULL,
+       status        = 'active'`
+  )
+    .bind(userId, profile?.displayName ?? null, nowIso())
+    .run();
+}
+
+/* ------------------------------------------------------------------ *
+ * ブロック・友だち解除
+ * ------------------------------------------------------------------ */
+
+async function onUnfollow(env, event) {
+  const userId = event.source?.userId;
+  if (!userId) return;
+
+  await env.DB.prepare(
+    `UPDATE customers
+        SET unfollowed_at = ?, status = 'blocked'
+      WHERE line_user_id = ?`
+  )
+    .bind(nowIso(), userId)
+    .run();
+}
+
+/* ------------------------------------------------------------------ *
+ * メッセージ受信
+ * ------------------------------------------------------------------ */
+
+async function onMessage(env, event) {
+  const userId = event.source?.userId;
+  if (!userId || event.message?.type !== 'text') return;
+
+  const body = event.message.text ?? '';
+  const hit = matchReply(body);
+
+  // 応答できたかどうかも含めて記録する。
+  // matched が NULL のものが「よく聞かれるのに自動で答えられていない質問」
+  await env.DB.prepare(
+    'INSERT INTO inbound_messages (line_user_id, body, matched, created_at) VALUES (?, ?, ?, ?)'
+  )
+    .bind(userId, body.slice(0, 500), hit?.name ?? null, nowIso())
+    .run();
+
+  // 当てはまるルールが無ければ返信しない（スタッフがLINEチャットで対応する）
+  if (!hit) return;
+
+  await reply(env, event.replyToken, hit.messages);
+}
+
+/* ------------------------------------------------------------------ */
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+/** 日本時間の YYYY-MM-DD */
+function todayJst() {
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().slice(0, 10);
+}
+
+/* ---------- src/tags.js ---------- */
+/**
+ * タグ
+ *
+ * 空き枠のお知らせを受け取りたいか、どちらのお部屋を希望されるか。
+ * このタグが、お送りする方を絞る材料になります。
+ */
+
+
+/**
+ * 空き枠のお知らせを受け取りたい方に付けるタグ。
+ *
+ * 稼働の初日は、このタグを持つ方が0名です。
+ * 一斉送信で募らずに集めるため、リッチメニューの
+ * 「空き枠のお知らせを受け取る」から付けられるようにしています（通数0）。
+ */
+const OPEN_SLOT_TAG = '希望:空き枠のお知らせ';
+
+/** タグを作って（無ければ）お客様に付ける */
+async function grantTags(env, lineUserId, tags) {
+  for (const tag of tags) {
+    await env.DB.prepare('INSERT OR IGNORE INTO tags (name, kind) VALUES (?, ?)')
+      .bind(tag.name, tag.kind ?? null)
+      .run();
+
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO customer_tags (line_user_id, tag_id, granted_at)
+       SELECT ?, id, ? FROM tags WHERE name = ?`
+    )
+      .bind(lineUserId, nowIso(), tag.name)
+      .run();
+  }
+}
+
+/** タグを外す（「もう受け取らない」を選ばれたとき） */
+async function revokeTag(env, lineUserId, name) {
+  await env.DB.prepare(
+    `DELETE FROM customer_tags
+      WHERE line_user_id = ?
+        AND tag_id = (SELECT id FROM tags WHERE name = ?)`
+  )
+    .bind(lineUserId, name)
+    .run();
+}
+
+/** そのタグを持っているか */
+async function hasTag(env, lineUserId, name) {
+  const row = await env.DB.prepare(
+    `SELECT 1 AS yes FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
+      WHERE ct.line_user_id = ? AND t.name = ?`
+  )
+    .bind(lineUserId, name)
+    .first();
+  return !!row;
+}
+
+/** 1人のお客様に付いているタグ */
+async function tagsOf(env, lineUserId) {
+  const res = await env.DB.prepare(
+    `SELECT t.name, t.kind
+       FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
+      WHERE ct.line_user_id = ?
+      ORDER BY t.kind, t.name`
+  )
+    .bind(lineUserId)
+    .all();
+  return res.results ?? [];
+}
+
+/** タグ別の人数。何が貯まっているかの全体像 */
+async function tagCounts(env) {
+  const res = await env.DB.prepare(
+    `SELECT t.name, t.kind, COUNT(*) AS n
+       FROM customer_tags ct
+       JOIN tags t      ON t.id = ct.tag_id
+       JOIN customers c ON c.line_user_id = ct.line_user_id
+      WHERE c.status = 'active'
+      GROUP BY t.id
+      ORDER BY n DESC, t.name`
+  ).all();
+  return res.results ?? [];
+}
+
+/* ---------- src/quota.js ---------- */
+/**
+ * 通数ガード
+ *
+ * ライトプランは 5,000通/月 で、追加購入ができません。
+ * 上限に当たると月末まで一切送れなくなるため、配信の前に必ずここを通します。
+ *
+ * 予備枠を常に残すのが要点です。月初の一斉配信で使い切ってしまうと、
+ * 月末の予約リマインドが送れなくなります。
+ */
+
+
+/** 何があっても残しておく通数（予約リマインドなど、送らないと困る配信のため） */
+const RESERVE = 500;
+
+/**
+ * @param {number} planned これから送ろうとしている通数
+ * @param {{limit:number, used:number}} [override] テスト・デモ用に実測値を差し替える
+ */
+async function checkQuota(env, planned, override = null) {
+  const q = override ?? (await getQuota(env));
+  const limit = q.limit ?? Infinity;
+  const used = q.used ?? 0;
+
+  const remaining = limit - used;
+  const usable = Math.max(0, remaining - RESERVE); // 予備枠を除いた、いま使ってよい通数
+
+  return {
+    limit,
+    used,
+    remaining,
+    reserve: RESERVE,
+    usable,
+    planned,
+    allowed: planned <= usable,
+    reason: planned <= usable ? null : `残り${usable}通（予備枠${RESERVE}通を除く）に対して${planned}通の送信予定`
+  };
+}
+
+/* ---------- src/segments.js ---------- */
+/**
+ * お送りする方の絞り込み
+ *
+ * 空き枠のお知らせは、受け取りを希望された方だけにお送りします。
+ * さらに、セルフブースと施術ルームのどちらを希望されたかで分けます。
+ * 通数が減るだけでなく、関係のない案内でブロックされるのを防げます。
+ *
+ * ここは「誰に送るか」を決めるだけで、送信そのものは行いません。
+ */
+
+
+/**
+ * @typedef {object} SegmentSpec
+ * @property {string[]} [tags]              このタグを「すべて」持つ人
+ * @property {string[]} [anyTags]           このうち「どれか1つでも」持つ人
+ * @property {number}   [excludeRecentDays] 直近n日以内にお知らせを受け取った人を外す
+ */
+
+/** 「最近送ったばかり」の目安。これより短い間隔で届くと配信疲れになりやすい */
+const RECENT_DAYS = 7;
+
+function buildQuery(spec, today) {
+  const where = ["c.status = 'active'"];
+  const binds = [];
+
+  for (const tag of spec.tags ?? []) {
+    where.push(`EXISTS (
+      SELECT 1 FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
+       WHERE ct.line_user_id = c.line_user_id AND t.name = ?)`);
+    binds.push(tag);
+  }
+
+  /* 診断で選ばれたお悩みのタグ。枠のメニューに関わるものを1つでも
+     持っている方に絞る。すべて一致では狭くなりすぎるため「どれか1つ」 */
+  const any = (spec.anyTags ?? []).filter(Boolean);
+  if (any.length) {
+    where.push(`EXISTS (
+      SELECT 1 FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
+       WHERE ct.line_user_id = c.line_user_id
+         AND t.name IN (${any.map(() => '?').join(',')}))`);
+    binds.push(...any);
+  }
+
+  if (spec.excludeRecentDays != null) {
+    where.push(`NOT EXISTS (
+      SELECT 1 FROM deliveries d
+       WHERE d.line_user_id = c.line_user_id AND d.status = 'sent' AND d.sent_at >= ?)`);
+    binds.push(cutoffIso(today, spec.excludeRecentDays));
+  }
+
+  return { sql: where.join(' AND '), binds };
+}
+
+function cutoffIso(today, days) {
+  return new Date(Date.parse(today + 'T00:00:00Z') - days * 86400000).toISOString();
+}
+
+/**
+ * 対象者の一覧。
+ * last_sent_at も一緒に返すので、「最近お送りしたばかりの方が何人いるか」を
+ * 送信前に画面へ出せる。
+ */
+async function listSegment(env, spec, today = todayJst()) {
+  const { sql, binds } = buildQuery(spec, today);
+  const res = await env.DB.prepare(
+    `SELECT c.line_user_id, c.display_name,
+            (SELECT MAX(d.sent_at) FROM deliveries d
+              WHERE d.line_user_id = c.line_user_id AND d.status = 'sent') AS last_sent_at
+       FROM customers c
+      WHERE ${sql}
+      ORDER BY c.followed_at DESC
+      LIMIT 500`
+  )
+    .bind(...binds)
+    .all();
+  return res.results ?? [];
+}
+
+/* ---------- src/openslot.js ---------- */
+/**
+ * 空き枠のお知らせ
+ *
+ * 「LINEだけが先に知る」を、続けられる形にするための道具です。
+ * 空きが出るたびに文面を考えていては続かないので、
+ * 日時とメニューを選べば、LINEとInstagramの文面が両方出るようにしています。
+ *
+ * 役割を分けています：
+ *   LINE       枠そのものを、受け取りを希望した方だけに出す
+ *   Instagram  「LINEの方には先にお知らせ済み」と伝えるだけ（枠は出さない）
+ *
+ * Instagramに枠を出してしまうと、LINEに登録する理由が消えます。
+ *
+ * 予約はすべて LINE への返信で受けます。ホットペッパーへは誘導しません。
+ * LINEで完結させることが、そのままLINEに登録する価値になるためです。
+ */
+
+
+/**
+ * 部屋。セルフブースと施術ルームは独立していて、同時に稼働できます。
+ * セラピストが埋まっていてもセルフ枠は出せるので、出せる機会が増えます。
+ *
+ * メニューは src/courses.js から取ります。
+ * メニューが変わったときに直す場所を1か所にするためです。
+ * 所要時間の掲載があるものだけが、空き枠として出せます。
+ */
+const ROOMS = [
+  {
+    id: 'self',
+    label: 'セルフブース',
+    note: '1室。セラピストの予定と関係なく空きます',
+    menus: slotMenusOf('self')
+  },
+  {
+    id: 'room',
+    label: '施術ルーム',
+    note: 'セラピストの予定で決まります',
+    menus: slotMenusOf('room')
+  }
+];
+
+/** 枠の長さに収まるメニューだけを返す */
+function menusWithin(roomId, minutes) {
+  const room = ROOMS.find((r) => r.id === roomId);
+  if (!room) return [];
+  return room.menus.filter((m) => !minutes || m.minutes <= minutes);
+}
+
+/** よく使う枠の長さ */
+const DURATIONS = [30, 45, 60, 90];
+
+/**
+ * その枠に載せるメニューの既定。
+ * 枠の長さぴったりのものを優先し、多くても3つまでにします。
+ * 並べすぎると、お客様がどれを選べばよいか分からなくなるためです。
+ *
+ * 自動送信でも、スタッフ用ページでも、同じ決め方を使います。
+ */
+function defaultMenusFor(roomId, minutes, limit = 3) {
+  const fit = menusWithin(roomId, minutes);
+  const exact = fit.filter((m) => m.minutes === minutes);
+  return (exact.length ? exact : fit).slice(0, limit).map((m) => m.name);
+}
+
+/**
+ * 部屋 → その部屋を希望している方のタグ。
+ *
+ * 受け取りを申し込んだ直後に「どちらをご希望ですか」と伺い、
+ * その回答をこのタグとして持ちます。通数は消費しません。
+ */
+const ROOM_TAG = {
+  self: '希望:セルフ脱毛',
+  room: '希望:セラピスト施術'
+};
+
+const roomOfMenu = (menu) =>
+  ROOMS.find((r) => r.menus.some((m) => m.name === menu))?.id ?? 'room';
+
+/**
+ * 1つの枠で受けられるメニュー。
+ * 60分の枠なら複数のメニューが入るので、配列で持ちます。
+ * 1つだけ指定された古い形（menu）もそのまま読めるようにしています。
+ */
+const slotMenus = (s) =>
+  Array.isArray(s?.menus) ? s.menus.filter(Boolean) : (s?.menu ? [s.menu] : []);
+
+const roomOfSlot = (s) => roomOfMenu(slotMenus(s)[0]);
+
+/**
+ * 送る相手を絞るためのタグ。
+ * 枠がすべて同じ部屋のときだけ返します。
+ * 部屋が混ざっている場合は絞らず、空き枠を希望した方全員に送ります。
+ */
+function tagForSlots(slots) {
+  const rooms = [...new Set((slots ?? []).map(roomOfSlot))];
+  return rooms.length === 1 ? (ROOM_TAG[rooms[0]] ?? null) : null;
+}
+
+/**
+ * 1週間に出す上限。
+ * 定期のお知らせが週2回（月・木）、それに加えて突発の空きが1回まで、という想定。
+ * これ以上続けて流すと「いつも空いている店」という印象になり逆効果になる。
+ */
+const MAX_PER_WEEK = 3;
+
+/* ------------------------------------------------------------------ *
+ * 定期のお知らせ
+ *
+ * 決まった曜日に、2〜3日後の空きをまとめてご案内します。
+ * 突発のキャンセルとは別枠で、こちらは計画的に出せます。
+ * ------------------------------------------------------------------ */
+
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+/** 既定は月曜と木曜に、2日後と3日後の空きを案内する */
+const DEFAULT_SCHEDULE = { days: [1, 4], leadDays: [2, 3] };
+
+const shiftDate = (ymd, n) =>
+  new Date(Date.parse(ymd + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+
+const weekdayOf = (ymd) => new Date(Date.parse(ymd + 'T00:00:00Z')).getUTCDay();
+
+/** その日が送信日か */
+function isSendDay(today, days) {
+  return (days ?? []).includes(weekdayOf(today));
+}
+
+/** 次の送信日（当日を含む） */
+function nextSendDay(today, days) {
+  if (!days?.length) return null;
+  for (let i = 0; i <= 7; i++) {
+    const d = shiftDate(today, i);
+    if (isSendDay(d, days)) return d;
+  }
+  return null;
+}
+
+/** その日に案内する対象の日付。既定では2日後と3日後 */
+function scheduleDates(today, leadDays = DEFAULT_SCHEDULE.leadDays) {
+  return [...leadDays].sort((a, b) => a - b).map((n) => shiftDate(today, n));
+}
+
+/**
+ * 送信日の朝、スタッフに送るお知らせの文面。
+ *
+ * サロンボードから空きを自動で取る手段は公開されておらず、
+ * また「空いている」枠がすべて「出していい」枠とは限りません
+ * （移動や休憩、あえて残している枠が混ざります）。
+ * そのため機械は送り忘れだけを防ぎ、どの枠を出すかは人が決めます。
+ */
+function buildStaffReminder(today, opts = {}) {
+  const leadDays = opts.leadDays ?? DEFAULT_SCHEDULE.leadDays;
+  const dates = scheduleDates(today, leadDays);
+  return [
+    '【空き枠のお知らせの日です】',
+    '',
+    `本日は${WEEKDAYS[weekdayOf(today)]}曜日です。`,
+    `${dates.map(formatDate).join('・')} の空きをご確認ください。`,
+    '',
+    'サロンボードで空きを見てから、管理ページで枠を選んで送信してください。',
+    opts.adminUrl ?? null,
+    '',
+    '出したくない枠（移動・休憩・あえて残している枠）は入れないでください。'
+  ].filter((l) => l !== null).join('\n');
+}
+
+/**
+ * 送信日の朝にスタッフへ通知する。
+ * スタッフ宛の1通なので、通数はごくわずかです（週2回で月8通程度）。
+ */
+async function remindStaff(env, opts = {}) {
+  const today = opts.today ?? todayJst();
+  const days = opts.days ?? DEFAULT_SCHEDULE.days;
+  if (!isSendDay(today, days)) return { today, sent: 0, skipped: '送信日ではありません' };
+
+  const ids = String(opts.staffIds ?? env.STAFF_USER_IDS ?? '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  if (!ids.length) return { today, sent: 0, skipped: 'スタッフのIDが未設定です' };
+
+  const body = buildStaffReminder(today, {
+    leadDays: opts.leadDays,
+    adminUrl: opts.adminUrl ?? env.ADMIN_URL ?? null
+  });
+
+  let sent = 0;
+  for (const id of ids) {
+    if (await push(env, id, [text(body)])) sent++;
+  }
+  return { today, sent, body };
+}
+
+/** Instagram に告知するまでに空ける時間（LINEが先である事実をつくる） */
+const INSTAGRAM_DELAY_MIN = 30;
+
+/* ------------------------------------------------------------------ *
+ * 文面
+ * ------------------------------------------------------------------ */
+
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+
+function formatDate(ymd) {
+  const d = new Date(Date.parse(ymd + 'T00:00:00Z'));
+  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${WD[d.getUTCDay()]}）`;
+}
+
+const isToday = (ymd) => ymd === todayJst();
+const hourOf = (time) => String(time ?? '').split(':')[0];
+
+/**
+ * LINE に送る文面。
+ * 1枠だけなら急ぎの案内、複数枠ならまとめての案内に切り替わります。
+ */
+function buildLineMessage(slots) {
+  const list = [...(slots ?? [])].sort(sortSlot);
+  if (!list.length) return '';
+
+  if (list.length === 1) {
+    const s = list[0];
+    const when = isToday(s.date) ? '本日' : formatDate(s.date);
+    const menus = slotMenus(s);
+    return [
+      `【${when}${s.time}〜、1枠空きました】`,
+      '',
+      'ミエーレです。',
+      `${when}${s.time}〜のお席に空きが出ました。`,
+      '',
+      `▼ ${formatDate(s.date)} ${s.time}〜${s.minutes ? '（' + s.minutes + '分）' : ''}`,
+      ...menus.map((m) => `　・${m}`),
+      menus.length > 1 ? '　いずれかをお選びいただけます' : null,
+      '',
+      'ご希望の方は、このメッセージに',
+      `「${hourOf(s.time)}時希望」とご返信ください。`,
+      menus.length > 1 ? 'メニューはご来店時に決めていただいても大丈夫です。' : null,
+      '',
+      'ご返信の早い方からご案内します。',
+      '先にお席が埋まった場合は',
+      'その旨お伝えします。'
+    ].filter((l) => l !== null).join('\n');
+  }
+
+  const byDate = groupByDate(list);
+  return [
+    '【空き状況のご案内】',
+    '',
+    'ミエーレです。',
+    '直近のお席をご案内します。',
+    '',
+    ...byDate.flatMap(([date, ss]) => [
+      formatDate(date),
+      ...ss.map((s) => `　${s.time}〜　${slotMenus(s).join('／')}`),
+      ''
+    ]),
+    'ご希望の日時を、このメッセージに',
+    'ご返信ください。',
+    '',
+    'ご返信の早い方からご案内します。'
+  ].join('\n');
+}
+
+/**
+ * Instagram ストーリーズ用。
+ * 枠は出しますが「LINEには先に案内済み」を必ず添えます。
+ * DMでのご予約は受ける方針です（埋まらない枠を埋めるのが本来の目的のため）。
+ */
+function buildInstagramText(slots) {
+  const list = [...(slots ?? [])].sort(sortSlot);
+  if (!list.length) return '';
+
+  const head =
+    list.length === 1 && isToday(list[0].date)
+      ? [`本日${list[0].time}に空きが出ました`]
+      : groupByDate(list).map(([date, ss]) => `${formatDate(date)}　${ss.map((s) => s.time).join(' / ')}`);
+
+  /* 「キャンセルが出ました」とは書きません。
+     キャンセルされたご本人がこれを見たとき、自分のことだと分かってしまうためです。
+     LINEの表示名はニックネームが多く、ご本人を配信対象から外せるとは限りません。 */
+  return [
+    list.length === 1 ? 'OPEN SLOT' : 'OPEN SLOTS',
+    '',
+    ...head,
+    '',
+    'LINEの方には',
+    `${INSTAGRAM_DELAY_MIN}分前にお知らせ済みです`,
+    '',
+    'まだ空いていればご案内できます',
+    'DMまたはプロフィールのリンクから'
+  ].join('\n');
+}
+
+function sortSlot(a, b) {
+  return String(a.date + a.time).localeCompare(String(b.date + b.time));
+}
+
+function groupByDate(list) {
+  const m = new Map();
+  list.forEach((s) => m.set(s.date, [...(m.get(s.date) ?? []), s]));
+  return [...m.entries()];
+}
+
+/* ------------------------------------------------------------------ *
+ * 配信
+ * ------------------------------------------------------------------ */
+
+/**
+ * 直近7日間に空き枠のお知らせを何回出したか。
+ * 部屋ごとに数えます。セルフ枠を2回出しても、施術ルームの枠は減りません。
+ * 送り先が別なので、受け取る側から見た頻度は変わらないためです。
+ */
+async function recentSendCount(env, today = todayJst(), room = null) {
+  const since = new Date(Date.parse(today + 'T00:00:00Z') - 7 * 86400000).toISOString();
+  const row = room
+    ? await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ? AND kind = ?'
+      ).bind(since, room).first()
+    : await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM open_slots WHERE created_at >= ?'
+      ).bind(since).first();
+  return row?.n ?? 0;
+}
+
+/**
+ * 送る前の確認。
+ * 対象者・通数・文面・注意点をまとめて返します。
+ *
+ * その枠に入っていた方を個別に外す機能は持ちません。
+ * LINEの表示名はニックネームのことが多く、サロンボードの予約者と
+ * 突き合わせられないためです。代わりに文面から「キャンセル」の語を外し、
+ * ご本人に届いてもご自身のことだと分からないようにしています。
+ *
+ * @param {object[]} slots 空き枠
+ * @param {object}   opts
+ * @param {boolean}  opts.narrow        メニューに関心のある方だけに絞るか（既定は絞る）
+ * @param {boolean}  opts.excludeRecent 直近7日に配信を受け取った方を外すか
+ * @param {boolean}  opts.everyone      受け取りを希望していない方にも送るか（既定は送らない）
+ */
+async function previewOpenSlot(env, slots, opts = {}) {
+  const today = opts.today ?? todayJst();
+  const room = opts.room ?? roomOfSlot(slots?.[0]);
+
+  // 既定では、そのメニューに関心のある方だけに絞る
+  const narrowTag = opts.narrow === false ? null : tagForSlots(slots);
+
+  /* 通常は「受け取りを希望した方」だけ。
+     everyone を立てると、希望していない方にも送る。
+     稼働直後で希望者がいないときの呼び水に使えるが、
+     頼んでいない案内が届くのでブロックされやすい。 */
+  const everyone = !!opts.everyone;
+  const baseTag = everyone ? [] : [OPEN_SLOT_TAG];
+
+  /* コース診断をお受けになった方は、お悩みのタグをお持ちです。
+     枠のメニューに関わるお悩みを1つでも選んでいた方に絞れます。
+     診断をまだの方は当てはまらないので、送り先はぐっと狭くなります。 */
+  const interestTags = opts.byInterest
+    ? concernTagsOfMenus(slots.flatMap((s) => slotMenus(s)))
+    : [];
+
+  const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
+  const pick = (tags, anyTags = []) => listSegment(env, { ...base, tags, anyTags }, today);
+
+  const targets = await pick(narrowTag ? [...baseTag, narrowTag] : baseTag, interestTags);
+  // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
+  const wide = narrowTag || interestTags.length ? await pick(baseTag) : targets;
+
+  const quota = await checkQuota(env, targets.length, opts.quota ?? null);
+  const weekCount = await recentSendCount(env, today, room);
+
+  const notes = [];
+  if (everyone) {
+    notes.push({
+      kind: 'everyone',
+      text: '受け取りを希望していない方にも送ります。頼んでいない案内が届くため、' +
+            'ブロックされやすくなります。稼働の直後など、必要なときだけにしてください。'
+    });
+  }
+  if ((narrowTag || interestTags.length) && !targets.length && wide.length) {
+    notes.push({
+      kind: 'narrow-empty',
+      text: `絞り込みに当てはまる方はいませんでした。` +
+            `絞り込みを外すと、空き枠を希望された${wide.length}名にお送りできます。`
+    });
+  }
+  if (interestTags.length && targets.length) {
+    notes.push({
+      kind: 'by-interest',
+      text: `コース診断で「${interestTags.map((t) => t.replace('関心:', '')).join('・')}」を` +
+            `選ばれた方に絞っています。診断がまだの方には届きません。`
+    });
+  }
+  if (weekCount >= MAX_PER_WEEK) {
+    notes.push({
+      kind: 'too-often',
+      text: `直近7日間ですでに${weekCount}回お送りしています。` +
+            `続けすぎると「いつも空いている店」という印象になり、逆効果になります。`
+    });
+  }
+  if (!targets.length) {
+    notes.push({
+      kind: 'empty',
+      text: `お知らせを希望された方がいません。あいさつメッセージで` +
+            `「空き枠のお知らせを受け取りますか」をご案内すると増えていきます。`
+    });
+  }
+
+  return {
+    today,
+    slots,
+    room,
+    everyone,
+    roomLabel: ROOMS.find((r) => r.id === room)?.label ?? '',
+    narrowTag,
+    interestTags,
+    wideCount: wide.length,
+    targets,
+    planned: targets.length,
+    quota,
+    weekCount,
+    maxPerWeek: MAX_PER_WEEK,
+    tooOften: weekCount >= MAX_PER_WEEK,
+    notes,
+    lineText: buildLineMessage(slots),
+    instagramText: buildInstagramText(slots)
+  };
+}
+
+/** 実際に送る */
+async function sendOpenSlot(env, slots, opts = {}) {
+  const preview = await previewOpenSlot(env, slots, opts);
+  if (!preview.quota.allowed) return { ...preview, sent: 0, stopped: preview.quota.reason };
+  if (opts.dryRun) return { ...preview, sent: 0, dryRun: true };
+
+  const at = nowIso();
+  const key = 'slot:' + at.slice(0, 19);
+  let sent = 0;
+
+  for (const c of preview.targets) {
+    const claimed = await env.DB.prepare(
+      `INSERT OR IGNORE INTO deliveries
+         (line_user_id, step_id, dedupe_key, status, messages, sent_at)
+       VALUES (?, 'open_slot', ?, 'sending', 1, ?)`
+    )
+      .bind(c.line_user_id, key, at)
+      .run();
+    if (claimed.meta.changes === 0) continue;
+
+    const ok = await push(env, c.line_user_id, [text(preview.lineText)]);
+    await env.DB.prepare(
+      "UPDATE deliveries SET status = ?, sent_at = ? WHERE line_user_id = ? AND dedupe_key = ?"
+    )
+      .bind(ok ? 'sent' : 'failed', nowIso(), c.line_user_id, key)
+      .run();
+    if (ok) sent++;
+  }
+
+  await env.DB.prepare(
+    'INSERT INTO open_slots (kind, slots, sent_count, created_at) VALUES (?, ?, ?, ?)'
+  )
+    .bind(preview.room, JSON.stringify(slots), sent, at)
+    .run();
+
+  return { ...preview, sent, campaignId: key };
+}
+
+/* ---------- src/story.js ---------- */
+/**
+ * Instagram ストーリーズ用の画像
+ *
+ * 文面をコピーして文字入れする手間をなくすため、画像そのものを作ります。
+ * 枠そのものは載せますが、「LINEの方には先にお知らせ済み」を必ず入れます。
+ * ここが抜けると、LINEに登録する理由が伝わりません。
+ *
+ * 描く処理は「文字列」で持っています。
+ * スタッフ用ページ（Worker が組み立てるHTML）にそのまま埋め込む必要があり、
+ * 同じコードを2か所に置きたくないためです。
+ *   ブラウザ  … makeStory() で関数にして呼ぶ／ページに直接埋め込む
+ *   Worker側  … 文字列のまま <script> に流し込むだけ（実行はしない）
+ */
+
+
+/* Instagram は上下におよそ 250px ぶんの操作領域が重なるため、
+   大事な要素はこの範囲に収める */
+const STORY_SRC = `
+const STORY_W = 1080;
+const STORY_H = 1920;
+const SAFE_TOP = 300;
+const SAFE_BOTTOM = 1660;
+const SALON_NAME = ${JSON.stringify(SALON.name)};
+const STORY_WD = ${JSON.stringify(['日', '月', '火', '水', '木', '金', '土'])};
+
+const C = {
+  ground: '#FAF7F5',
+  ink: '#2B2724',
+  muted: '#8B7F79',
+  accent: '#98543F',
+  rule: '#E0D2CA'
+};
+
+const DISPLAY = '"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",sans-serif';
+const BODY = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",sans-serif';
+
+/** 2026-09-03 → 9月3日（木） */
+function stDate(ymd) {
+  const d = new Date(Date.parse(ymd + 'T00:00:00Z'));
+  return (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日（' + STORY_WD[d.getUTCDay()] + '）';
+}
+
+/** 枠に入っているメニュー。1つだけの古い形も読む */
+function stMenus(s) {
+  if (Array.isArray(s && s.menus)) return s.menus.filter(Boolean);
+  return (s && s.menu) ? [s.menu] : [];
+}
+
+function stCenter(ctx, textValue, cx, y, font, color, spacing) {
+  spacing = spacing || 0;
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  const chars = Array.from(String(textValue));
+  let width = -spacing;
+  for (const ch of chars) width += ctx.measureText(ch).width + spacing;
+  let x = cx - width / 2;
+  for (const ch of chars) {
+    ctx.fillText(ch, x, y);
+    x += ctx.measureText(ch).width + spacing;
+  }
+}
+
+function stRule(ctx, cx, y, half) {
+  ctx.strokeStyle = C.rule;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - half, y);
+  ctx.lineTo(cx + half, y);
+  ctx.stroke();
+}
+
+function stGroup(list) {
+  const m = new Map();
+  for (const s of list) m.set(s.date, (m.get(s.date) || []).concat([s]));
+  return Array.from(m.entries());
+}
+
+/**
+ * @param {CanvasRenderingContext2D} ctx  1080×1920 のコンテキスト
+ * @param {object[]} slots  空き枠
+ * @param {object} [opts]   today / delayMinutes
+ */
+function drawStory(ctx, slots, opts) {
+  opts = opts || {};
+  const list = (slots || []).slice().sort(function (a, b) {
+    return String(a.date + a.time).localeCompare(String(b.date + b.time));
+  });
+  const today = opts.today || null;
+  const delay = opts.delayMinutes == null ? 30 : opts.delayMinutes;
+
+  ctx.clearRect(0, 0, STORY_W, STORY_H);
+  ctx.fillStyle = C.ground;
+  ctx.fillRect(0, 0, STORY_W, STORY_H);
+
+  /* 上下の帯。写真を敷かなくても締まって見える */
+  ctx.fillStyle = C.accent;
+  ctx.fillRect(0, 0, STORY_W, 14);
+  ctx.fillRect(0, STORY_H - 14, STORY_W, 14);
+
+  const cx = STORY_W / 2;
+  let y = SAFE_TOP;
+
+  stCenter(ctx, 'MIELE', cx, y, '700 40px ' + DISPLAY, C.accent, 16);
+  y += 70;
+  stRule(ctx, cx, y, 120);
+  y += 90;
+
+  stCenter(ctx, list.length === 1 ? 'OPEN SLOT' : 'OPEN SLOTS', cx, y,
+           '700 34px ' + DISPLAY, C.accent, 10);
+  y += 110;
+
+  if (list.length === 1) {
+    const s = list[0];
+    const when = (today && s.date === today) ? '本日' : stDate(s.date);
+    stCenter(ctx, when, cx, y, '500 56px ' + BODY, C.ink, 2);
+    y += 130;
+    stCenter(ctx, s.time, cx, y, '700 168px ' + DISPLAY, C.ink, 2);
+    y += 190;
+    /* メニューが複数なら、画像は先頭だけにして「ほか◯件」と添える。
+       ストーリーズは一瞬しか見られないので、詰め込まない */
+    const menus = stMenus(s);
+    if (menus.length) {
+      stCenter(ctx, menus[0], cx, y, '400 40px ' + BODY, C.muted, 1);
+      y += 58;
+      if (menus.length > 1) {
+        stCenter(ctx, 'ほか ' + (menus.length - 1) + ' メニューも可', cx, y,
+                 '400 34px ' + BODY, C.muted, 1);
+        y += 46;
+      }
+    }
+    y += 32;
+  } else {
+    /* 同じ日は1行にまとめる。「9月3日（木） 11:00 / 14:30」のように出す */
+    const groups = stGroup(list);
+    const big = groups.length >= 3 ? 76 : 96;
+    for (const g of groups) {
+      stCenter(ctx, stDate(g[0]), cx, y, '400 38px ' + BODY, C.muted, 1);
+      y += 60;
+      stCenter(ctx, g[1].map(function (s) { return s.time; }).join('  /  '), cx, y,
+               '700 ' + big + 'px ' + DISPLAY, C.ink, 2);
+      y += big + 26;
+    }
+    y += 20;
+  }
+
+  y = Math.max(y, 1120);
+  stRule(ctx, cx, y, 220);
+  y += 96;
+
+  stCenter(ctx, 'LINEの方には', cx, y, '500 48px ' + BODY, C.ink, 2);
+  y += 74;
+  stCenter(ctx, delay + '分前にお知らせ済みです', cx, y, '500 48px ' + BODY, C.ink, 2);
+  y += 130;
+
+  stCenter(ctx, 'まだ空いていればご案内できます', cx, y, '400 40px ' + BODY, C.muted, 1);
+  y += 66;
+  stCenter(ctx, 'DM または プロフィールのリンクから', cx, y, '400 40px ' + BODY, C.muted, 1);
+
+  /* 下端の署名。安全領域の内側に置く */
+  stCenter(ctx, SALON_NAME, cx, SAFE_BOTTOM - 20, '400 34px ' + BODY, C.muted, 4);
+}
+`;
+
+/**
+ * ブラウザで使うときに、上の文字列から関数を取り出す。
+ * Worker では呼びません（Workers は new Function を許していません）。
+ */
+const makeStory = () =>
+  new Function(STORY_SRC + '\nreturn { STORY_W, STORY_H, drawStory };')();
+
+/* ---------- src/richmenu.js ---------- */
+/**
+ * リッチメニューの画像
+ *
+ * Canvas に描くので、ブラウザ上で文字を変えてその場で作り直せます。
+ * 画像とキーワードの定義は menu.js の1か所にまとまっています。
+ */
+
+
+const RM = {
+  ground: '#FAF7F5',
+  ink: '#2B2724',
+  muted: '#8B7F79',
+  accent: '#98543F',
+  rule: '#E7DBD4',
+  onLead: '#FFFFFF',
+  onLeadSub: '#EBD6CD'
+};
+
+const RM_DISPLAY = '"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",sans-serif';
+const RM_BODY = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",sans-serif';
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object[]} cells   ボタン（label / sub / icon / lead / badge）
+ * @param {object} layout    { w, h, cols, rows }
+ */
+function drawRichMenu(ctx, cells, layout) {
+  const { w, h, cols, rows } = layout;
+  const cw = w / cols;
+  const ch = h / rows;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = RM.ground;
+  ctx.fillRect(0, 0, w, h);
+
+  /* 1マスの高さで、文字とアイコンの大きさを決める。
+     小さいレイアウトでも詰まって見えないようにする */
+  const s = Math.min(cw / 833, ch / 843);
+  const iconSize = 150 * s;
+  const labelSize = Math.max(38, 74 * s);
+  const subSize = Math.max(24, 40 * s);
+  const gap = 44 * s;
+
+  cells.forEach((cell, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = col * cw;
+    const y = row * ch;
+    const lead = !!cell.lead;
+
+    if (lead) {
+      ctx.fillStyle = RM.accent;
+      ctx.fillRect(x, y, cw, ch);
+    }
+
+    /* 区切り線。外周には引かない */
+    ctx.strokeStyle = lead ? RM.accent : RM.rule;
+    ctx.lineWidth = 3;
+    if (col < cols - 1) rmLine(ctx, x + cw, y, x + cw, y + ch);
+    if (row < rows - 1) rmLine(ctx, x, y + ch, x + cw, y + ch);
+
+    const hasSub = !!cell.sub;
+    const blockH = iconSize + gap + labelSize + (hasSub ? gap * 0.5 + subSize : 0);
+    let cy = y + (ch - blockH) / 2;
+
+    if (cell.icon && ICONS[cell.icon]) {
+      drawIcon(ctx, ICONS[cell.icon], x + cw / 2, cy, iconSize, lead ? RM.onLead : RM.accent);
+      cy += iconSize + gap;
+    }
+
+    rmCenter(ctx, cell.label ?? '', x + cw / 2, cy + labelSize * 0.78,
+           `700 ${labelSize}px ${RM_DISPLAY}`, lead ? RM.onLead : RM.ink, labelSize * 0.02);
+
+    if (hasSub) {
+      cy += labelSize + gap * 0.5;
+      rmCenter(ctx, cell.sub, x + cw / 2, cy + subSize * 0.78,
+             `500 ${subSize}px ${RM_BODY}`, lead ? RM.onLeadSub : RM.muted, subSize * 0.04);
+    }
+
+    if (cell.badge) {
+      badge(ctx, cell.badge, x + cw - 56 * s, y + 52 * s, s, lead);
+    }
+  });
+}
+
+function rmLine(ctx, x1, y1, x2, y2) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+
+function drawIcon(ctx, pathData, cx, top, size, color) {
+  const p = new Path2D(pathData);
+  ctx.save();
+  ctx.translate(cx - size / 2, top);
+  ctx.scale(size / 100, size / 100);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke(p);
+  ctx.restore();
+}
+
+/** 字間を空けて中央に置く。日本語は1文字ずつ測る */
+function rmCenter(ctx, textValue, cx, baseline, font, color, spacing = 0) {
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  const chars = [...String(textValue)];
+  if (!chars.length) return;
+  const width = chars.reduce((n, ch) => n + ctx.measureText(ch).width + spacing, 0) - spacing;
+  let x = cx - width / 2;
+  for (const ch of chars) {
+    ctx.fillText(ch, x, baseline);
+    x += ctx.measureText(ch).width + spacing;
+  }
+}
+
+function badge(ctx, label, right, top, s, lead) {
+  const font = `700 ${32 * s}px ${RM_DISPLAY}`;
+  ctx.font = font;
+  const padX = 26 * s;
+  const w = ctx.measureText(label).width + padX * 2;
+  const h = 52 * s;
+  const x = right - w;
+
+  ctx.fillStyle = lead ? '#FFFFFF' : RM.accent;
+  roundRect(ctx, x, top, w, h, h / 2);
+  ctx.fill();
+
+  ctx.fillStyle = lead ? RM.accent : '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + w / 2, top + h / 2 + 1);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ---------- src/gcal.js ---------- */
+/**
+ * Googleカレンダーから空きを読む
+ *
+ * サロンボードと違い、Googleカレンダーには公式のAPIがあります。
+ * ただしここで読むのは freeBusy —— 「その時間に予定が入っているかどうか」だけです。
+ * 予定のタイトルも、お客様のお名前も、こちらには届きません。
+ * 空き枠を出すのに必要なのは「埋まっているか否か」だけなので、それ以上は取りません。
+ *
+ * カレンダーはセラピストごとに分かれています。
+ * 施術ルームは部屋数までしか同時に施術できないため、
+ * 「予定が入っているカレンダーの数」を数えて空きを判定します。
+ *
+ * 読み取り権限の渡し方（オーナー様の作業）:
+ *   1. Google Cloud でサービスアカウントを作り、鍵（JSON）を作る
+ *   2. 各セラピストのカレンダーの共有設定に、そのサービスアカウントの
+ *      メールアドレスを「予定の表示（時間のみ）」で追加する
+ *   3. 鍵の client_email と private_key を Workers のシークレットに登録する
+ *
+ * 手順2で「時間のみ」を選べば、予定の中身はそもそも共有されません。
+ */
+
+
+const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const FREEBUSY_URL = 'https://www.googleapis.com/calendar/v3/freeBusy';
+const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+
+/** 何分刻みで空きを探すか */
+const STEP_MIN = 15;
+
+/**
+ * どのカレンダーがどの部屋か。
+ * env.GOOGLE_CALENDARS に JSON で入れる。
+ *   [{"id":"therapist-a@group.calendar.google.com","room":"room","label":"Aさん"}, ...]
+ */
+function calendarsOf(env, room = null) {
+  let list;
+  try {
+    list = JSON.parse(env.GOOGLE_CALENDARS ?? '[]');
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(list)) return [];
+  const all = list
+    .map((c) => ({ id: String(c?.id ?? ''), room: c?.room === 'self' ? 'self' : 'room',
+                   label: String(c?.label ?? '') }))
+    .filter((c) => c.id);
+  return room ? all.filter((c) => c.room === room) : all;
+}
+
+/**
+ * 同時に施術できる数。
+ * セラピストが2人いても施術ルームが1室なら、同時に受けられるのは1件です。
+ * env.ROOM_CAPACITY = {"room":1,"self":1}
+ */
+function capacityOf(env, room) {
+  let conf;
+  try {
+    conf = JSON.parse(env.ROOM_CAPACITY ?? '{}');
+  } catch {
+    conf = {};
+  }
+  const n = Number(conf?.[room]);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
+
+const calendarReady = (env) => calendarsOf(env).length > 0;
+
+/* ------------------------------------------------------------------ *
+ * 認証
+ * ------------------------------------------------------------------ */
+
+/* 取ったトークンは1時間有効。毎回取り直す必要はない */
+let cached = null;
+
+async function accessToken(env, now = Date.now()) {
+  if (cached && cached.expires > now + 60_000) return cached.token;
+
+  const email = env.GOOGLE_SA_EMAIL;
+  const pem = env.GOOGLE_SA_KEY;
+  if (!email || !pem) throw new Error('Googleカレンダーの鍵が登録されていません');
+
+  const assertion = await signJwt(email, pem, now);
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion
+    })
+  });
+  const body = await res.json();
+  if (!res.ok || !body.access_token) {
+    throw new Error('Googleの認証に失敗しました: ' + (body.error_description ?? res.status));
+  }
+
+  cached = { token: body.access_token, expires: now + (body.expires_in ?? 3600) * 1000 };
+  return cached.token;
+}
+
+/** テストや、鍵を入れ替えたときのために */
+function resetToken() {
+  cached = null;
+}
+
+async function signJwt(email, pem, now) {
+  const iat = Math.floor(now / 1000);
+  const head = { alg: 'RS256', typ: 'JWT' };
+  const claim = { iss: email, scope: SCOPE, aud: TOKEN_URL, exp: iat + 3600, iat };
+
+  const enc = new TextEncoder();
+  const part = (o) => b64url(enc.encode(JSON.stringify(o)));
+  const data = part(head) + '.' + part(claim);
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    pemToBytes(pem),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, enc.encode(data));
+  return data + '.' + b64url(new Uint8Array(sig));
+}
+
+function pemToBytes(pem) {
+  const body = String(pem)
+    .replace(/-----[^-]+-----/g, '')
+    .replace(/\s+/g, '');
+  const bin = atob(body);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+
+function b64url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/* ------------------------------------------------------------------ *
+ * 予定の取得
+ * ------------------------------------------------------------------ */
+
+/**
+ * 指定した日の、カレンダーごとの「埋まっている時間」。
+ * 返るのは開始と終了だけです。
+ *
+ * @returns {Promise<Record<string, {start:string,end:string}[]>>}
+ */
+async function fetchBusy(env, dates, room, fetchImpl = fetch) {
+  const cals = calendarsOf(env, room);
+  if (!cals.length || !dates.length) return {};
+
+  const sorted = [...dates].sort();
+  const res = await fetchImpl(FREEBUSY_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + (await accessToken(env)),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      timeMin: sorted[0] + 'T00:00:00+09:00',
+      timeMax: sorted[sorted.length - 1] + 'T23:59:59+09:00',
+      timeZone: 'Asia/Tokyo',
+      items: cals.map((c) => ({ id: c.id }))
+    })
+  });
+
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error('カレンダーを読めませんでした: ' + (body?.error?.message ?? res.status));
+  }
+
+  const out = {};
+  for (const c of cals) out[c.id] = body?.calendars?.[c.id]?.busy ?? [];
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * 空きの計算（ここは通信しないので、そのまま試せます）
+ * ------------------------------------------------------------------ */
+
+/** '09:00' → 540 */
+const toMin = (hhmm) => {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+/** 540 → '09:00' */
+const toHm = (min) =>
+  String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+
+/** その日の0時（日本時間）からの経過分に直す */
+function minutesInDay(iso, date) {
+  const base = Date.parse(date + 'T00:00:00+09:00');
+  return Math.round((Date.parse(iso) - base) / 60000);
+}
+
+/**
+ * 予定が「部屋の数」に達していない時間帯を返す。
+ *
+ * セラピストが2人いて施術ルームが1室なら capacity は 1 です。
+ * 1人でも予定が入っていれば、その時間は部屋が埋まっています。
+ *
+ * @param {{start:string,end:string}[][]} busyLists カレンダーごとの予定
+ * @param {object} opts
+ * @param {string} opts.date     YYYY-MM-DD
+ * @param {number} opts.capacity 同時に受けられる数
+ * @param {string} [opts.from]   営業開始
+ * @param {string} [opts.to]     営業終了
+ * @param {number} [opts.buffer] 予定の前後にあける時間（片付けなど）
+ * @returns {{from:number,to:number}[]} 空いている時間帯（分）
+ */
+function freeRanges(busyLists, opts) {
+  const { date, capacity = 1 } = opts;
+  const dayFrom = toMin(opts.from ?? SALON.open.from);
+  const dayTo = toMin(opts.to ?? SALON.open.to);
+  const buffer = opts.buffer ?? 0;
+
+  /* 予定の開始で+1、終了で-1。重なりの数を数えていく */
+  const marks = [];
+  for (const list of busyLists) {
+    for (const b of list ?? []) {
+      const s = minutesInDay(b.start, date) - buffer;
+      const e = minutesInDay(b.end, date) + buffer;
+      if (e <= dayFrom || s >= dayTo) continue; // その日の営業時間の外
+      marks.push([Math.max(s, dayFrom), 1], [Math.min(e, dayTo), -1]);
+    }
+  }
+  marks.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+  const out = [];
+  let count = 0;
+  let openedAt = dayFrom;
+
+  for (const [at, delta] of marks) {
+    const wasFree = count < capacity;
+    count += delta;
+    const nowFree = count < capacity;
+
+    if (wasFree && !nowFree && at > openedAt) out.push({ from: openedAt, to: at });
+    if (!wasFree && nowFree) openedAt = at;
+  }
+  if (count < capacity && dayTo > openedAt) out.push({ from: openedAt, to: dayTo });
+
+  return out.filter((r) => r.to > r.from);
+}
+
+/**
+ * 空いている時間帯を、決まった長さの枠に切り出す。
+ * 15分刻みで探し、同じ時間帯からは先頭の1つだけを候補にします
+ * （2時間空いていても「11:00」「11:15」「11:30」…と並べても選びにくいため）。
+ */
+function slotsFrom(ranges, minutes, opts = {}) {
+  const step = opts.step ?? STEP_MIN;
+  const perRange = opts.perRange ?? 2;
+  const out = [];
+
+  for (const r of ranges) {
+    let found = 0;
+    for (let t = ceilTo(r.from, step); t + minutes <= r.to && found < perRange; t += step) {
+      out.push(toHm(t));
+      found++;
+      /* 次の候補は、いま出した枠の終わりから探す */
+      t = t + minutes - step;
+    }
+  }
+  return out;
+}
+
+const ceilTo = (n, step) => Math.ceil(n / step) * step;
+
+/**
+ * 日付をまたいで空き枠の候補を作る。画面はこれを呼びます。
+ *
+ * @returns {Promise<{date:string,time:string,minutes:number}[]>}
+ */
+async function findOpenSlots(env, opts) {
+  const dates = opts.dates ?? [];
+  const room = opts.room ?? 'room';
+  const minutes = opts.minutes ?? 60;
+  const capacity = opts.capacity ?? capacityOf(env, room);
+
+  const busy = await fetchBusy(env, dates, room, opts.fetchImpl ?? fetch);
+  const lists = Object.values(busy);
+
+  const out = [];
+  for (const date of dates) {
+    const ranges = freeRanges(lists, {
+      date,
+      capacity,
+      from: opts.from,
+      to: opts.to,
+      buffer: opts.buffer
+    });
+    for (const time of slotsFrom(ranges, minutes, opts)) {
+      out.push({ date, time, minutes });
+    }
+  }
+  return out;
+}
+
+/* ---------- src/liff.js ---------- */
+/**
+ * LIFF（LINEの中で開くページ）から届いた「どなたか」を確かめる
+ *
+ * ページ側の JavaScript は誰でも書き換えられるので、
+ * 「私は○○です」と言われた内容をそのまま信じることはできません。
+ * LIFF が発行する IDトークンを LINE に問い合わせて、本物か確かめます。
+ *
+ * LINEヤフーは LIFF を LINEミニアプリに統合する方針を示していますが、
+ * 確かめ方はどちらも同じ（IDトークンの検証）なので、
+ * ミニアプリへ移した後もこのファイルはそのまま使えます。
+ */
+
+const VERIFY_URL = 'https://api.line.me/oauth2/v2.1/verify';
+
+/**
+ * IDトークンからユーザーIDを取り出す。
+ * 偽物・期限切れ・別のチャネル宛のものは null を返します。
+ *
+ * @returns {Promise<{userId:string, name:string|null}|null>}
+ */
+async function verifyIdToken(env, idToken) {
+  if (!idToken || !env.LIFF_CHANNEL_ID) return null;
+
+  const res = await fetch(VERIFY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ id_token: idToken, client_id: env.LIFF_CHANNEL_ID })
+  });
+  if (!res.ok) return null;
+
+  const claim = await res.json();
+  /* aud（宛先）が自分のチャネルであることまで見る。
+     LINEが検証してくれる範囲だが、設定を取り違えたときに気づけるようにしておく */
+  if (!claim?.sub || (claim.aud && claim.aud !== env.LIFF_CHANNEL_ID)) return null;
+
+  return { userId: claim.sub, name: claim.name ?? null };
+}
+
+/** 各ページに渡す設定。LIFF ID はページに出てよい値です */
+const liffConfig = (env) => ({
+  liffId: env.LIFF_ID ?? '',
+  ready: !!env.LIFF_ID && !!env.LIFF_CHANNEL_ID
+});
+
+/* ---------- src/api.js ---------- */
+/**
+ * LIFFのページから届く問い合わせ
+ *
+ * どれも IDトークンの検証を通してから処理します。
+ * ページ側から送られてきた「私は○○です」は信じません。
+ *
+ * ここで扱うのは3つだけです。
+ *   /api/me         いまのご登録状況（診断済みか、空き枠を受け取るか）
+ *   /api/diagnosis  診断の結果をタグとして残す
+ *   /api/prefs      空き枠のお知らせの受け取り設定
+ *   /api/intake     問診表。保存はスタッフが読むまでの短い間だけ
+ */
+
+
+/** 問診表をお預かりする日数。過ぎたものは毎朝の掃除で消えます */
+const INTAKE_KEEP_DAYS = 14;
+
+async function apiRequest(request, env, url) {
+  if (request.method !== 'POST' && url.pathname !== '/api/me') {
+    return apiJson({ error: 'method not allowed' }, 405);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return apiJson({ error: '内容を読み取れませんでした' }, 400);
+  }
+
+  const who = await verifyIdToken(env, body?.idToken);
+  if (who) await ensureCustomer(env, who);
+
+  /* 診断だけは、LINEの外から開かれても結果をお返しします。
+     お店の外（デモや、ブラウザで直接開いた場合）でも使えるようにするためで、
+     タグとして残すのは、どなたか分かったときだけです。 */
+  if (url.pathname === '/api/diagnosis') return diagnosisRoute(env, who, body);
+
+  if (!who) return apiJson({ error: 'LINEでの確認ができませんでした' }, 401);
+
+  switch (url.pathname) {
+    case '/api/me':     return meRoute(env, who);
+    case '/api/prefs':  return prefsRoute(env, who, body);
+    case '/api/intake': return intakeRoute(env, who, body);
+    default:            return apiJson({ error: 'not found' }, 404);
+  }
+}
+
+/* 友だち追加より先にページを開かれることがあるので、無ければ作る */
+async function ensureCustomer(env, who) {
+  await env.DB.prepare(
+    `INSERT INTO customers (line_user_id, display_name, followed_at, status)
+     VALUES (?, ?, ?, 'active')
+     ON CONFLICT(line_user_id) DO UPDATE SET
+       display_name = COALESCE(excluded.display_name, customers.display_name)`
+  )
+    .bind(who.userId, who.name, nowIso())
+    .run();
+}
+
+/* ------------------------------------------------------------------ *
+ * いまのご登録状況
+ * ------------------------------------------------------------------ */
+
+async function meRoute(env, who) {
+  const tags = (await tagsOf(env, who.userId)).map((t) => t.name ?? t);
+  return apiJson({
+    openSlot: tags.includes(OPEN_SLOT_TAG),
+    rooms: Object.entries(ROOM_TAG)
+      .filter(([, name]) => tags.includes(name))
+      .map(([id]) => id),
+    concerns: CONCERNS.filter((c) => tags.includes('関心:' + c.label)).map((c) => c.id),
+    diagnosed: tags.some((t) => t.startsWith('関心:'))
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * コース診断
+ * ------------------------------------------------------------------ */
+
+/**
+ * 診断の答えをタグとして残します。
+ * このタグがあると、空き枠のお知らせを「そのお悩みの方だけ」に絞れます。
+ *
+ * 答えの中身（どのコースをご提案したか）も残しますが、
+ * 保存するのは選択肢のIDだけで、自由入力は受け取りません。
+ */
+async function diagnosisRoute(env, who, body) {
+  const answers = cleanAnswers(body?.answers);
+  if (!answers) return apiJson({ error: '回答が足りません' }, 400);
+
+  const payload = diagnosisPayload(answers);
+  if (!who) return apiJson(payload);
+
+  /* 前回の診断のタグを消してから付け直す。
+     お悩みが変わった方に、古い関心のお知らせが届き続けないようにする */
+  for (const c of CONCERNS) await revokeTag(env, who.userId, '関心:' + c.label);
+
+  const tags = tagsFromDiagnosis(answers);
+  await grantTags(env, who.userId, tags);
+
+  await env.DB.prepare(
+    `INSERT INTO diagnoses (line_user_id, gender, concerns, budget, pace, results, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(
+      who.userId,
+      answers.gender,
+      JSON.stringify(answers.concerns),
+      answers.budget,
+      answers.pace,
+      JSON.stringify(payload.results.map((r) => r.id)),
+      nowIso()
+    )
+    .run();
+
+  return apiJson({ ...payload, saved: true, tags: tags.map((t) => t.name) });
+}
+
+/**
+ * おすすめの組み立ては、必ずこちら側で行います。
+ * ページ側にも同じ処理を置くと、片方だけ古くなるためです。
+ */
+function diagnosisPayload(answers) {
+  const { results, overBudget } = diagnose(answers);
+  return {
+    ok: true,
+    overBudget,
+    mensVioNote: needsMensVioNote(answers) ? MENS_VIO_NOTE : null,
+    results: results.map((r) => ({
+      id: r.course.id,
+      name: r.course.name,
+      price: r.course.price,
+      reg: r.course.reg ?? null,
+      min: r.course.min,
+      cat: r.course.cat,
+      badge: r.course.badge,
+      desc: r.course.desc,
+      hits: r.hits,
+      rate: r.rate
+    })),
+    saved: false
+  };
+}
+
+/** 選択肢にあるものだけを通す。自由入力は受け取らない */
+function cleanAnswers(a) {
+  const gender = a?.gender === 'm' ? 'm' : a?.gender === 'f' ? 'f' : null;
+  const concerns = (Array.isArray(a?.concerns) ? a.concerns : [])
+    .filter((c) => CONCERNS.some((x) => x.id === c));
+  if (!gender || !concerns.length || !a?.budget || !a?.pace) return null;
+  return { gender, concerns, budget: String(a.budget), pace: String(a.pace) };
+}
+
+/* ------------------------------------------------------------------ *
+ * 空き枠のお知らせの受け取り設定
+ * ------------------------------------------------------------------ */
+
+async function prefsRoute(env, who, body) {
+  const wants = !!body?.openSlot;
+  const rooms = (Array.isArray(body?.rooms) ? body.rooms : []).filter((r) => ROOM_TAG[r]);
+
+  if (wants) {
+    await grantTags(env, who.userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
+  } else {
+    await revokeTag(env, who.userId, OPEN_SLOT_TAG);
+  }
+
+  for (const [id, name] of Object.entries(ROOM_TAG)) {
+    if (wants && rooms.includes(id)) {
+      await grantTags(env, who.userId, [{ kind: 'preference', name }]);
+    } else {
+      await revokeTag(env, who.userId, name);
+    }
+  }
+
+  return apiJson({ ok: true, openSlot: wants, rooms: wants ? rooms : [] });
+}
+
+/* ------------------------------------------------------------------ *
+ * 問診表
+ * ------------------------------------------------------------------ */
+
+/* お伺いする項目。ここにない内容は受け取りません */
+const INTAKE_FIELDS = [
+  { id: 'name',      label: 'お名前',            type: 'text',  required: true,
+    note: 'ご予約のお名前と同じものをご記入ください' },
+  { id: 'kana',      label: 'ふりがな',          type: 'text' },
+  { id: 'allergy',   label: 'アレルギー',        type: 'yesno', detail: '差し支えなければ内容を' },
+  { id: 'illness',   label: '治療中のご病気・お薬', type: 'yesno', detail: '差し支えなければ内容を' },
+  { id: 'pregnant',  label: '妊娠中・授乳中',    type: 'yesno', sex: 'f' },
+  { id: 'metal',     label: '体内に金属・ペースメーカー', type: 'yesno',
+    note: 'ラジオ波・EMSを使うメニューで確認が必要です' },
+  { id: 'skin',      label: '肌のお悩み',        type: 'text' },
+  { id: 'note',      label: 'その他ご要望',      type: 'text' }
+];
+
+/**
+ * 問診表はスタッフにお送りするだけで、長くは持ちません。
+ * 期限を入れておき、毎朝の掃除で消します。
+ *
+ * 健康に関わる内容をお預かりするため、
+ *   - ご同意のチェックが無ければ受け取らない
+ *   - 保存は14日だけ
+ *   - スタッフには「届きました」とだけ通知し、中身はスタッフ用ページで見る
+ * という形にしています。
+ */
+async function intakeRoute(env, who, body) {
+  if (!body?.consent) return apiJson({ error: 'ご同意が必要です' }, 400);
+
+  const form = {};
+  for (const f of INTAKE_FIELDS) {
+    const v = body?.form?.[f.id];
+    if (v == null || v === '') continue;
+    form[f.id] = String(v).slice(0, 300);
+  }
+  if (!form.name) return apiJson({ error: 'お名前をご記入ください' }, 400);
+
+  const expires = new Date(Date.parse(todayJst() + 'T00:00:00Z') + INTAKE_KEEP_DAYS * 86400000)
+    .toISOString()
+    .slice(0, 10);
+
+  await env.DB.prepare(
+    `INSERT INTO intake_forms (line_user_id, display_name, body, expires_on, created_at)
+     VALUES (?, ?, ?, ?, ?)`
+  )
+    .bind(who.userId, who.name, JSON.stringify(form), expires, nowIso())
+    .run();
+
+  /* スタッフへの合図。中身は入れない（LINEのトークに健康情報を残さないため） */
+  const ids = String(env.STAFF_USER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  for (const id of ids) {
+    await push(env, id, [
+      text(`【問診表が届きました】\n${form.name} 様\n\nスタッフ用ページでご確認ください。`)
+    ]);
+  }
+
+  return apiJson({ ok: true });
+}
+
+/** 期限の切れた問診表を消す。毎朝の cron から呼びます */
+async function sweepIntake(env, today = todayJst()) {
+  const res = await env.DB.prepare('DELETE FROM intake_forms WHERE expires_on < ?')
+    .bind(today)
+    .run();
+  return { deleted: res.meta?.changes ?? 0 };
+}
+
+/* ------------------------------------------------------------------ */
+
+const apiJson = (body, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' }
+  });
+
+/* ---------- src/app.js ---------- */
+/**
+ * LINEの中で開くページ（LIFF）
+ *
+ *   /app/diagnosis  コース診断
+ *   /app/menu       メニュー・料金
+ *   /app/intake     問診表
+ *   /app/access     アクセス・営業時間
+ *   /app/slot       空き枠のお知らせの受け取り設定
+ *
+ * つながり方：
+ *   診断 → お悩みがタグになる → 空き枠のお知らせが「その方に関わるもの」だけになる
+ *   診断 → 料金ページの並び順が、その方のお悩みの順になる
+ *   料金 → ご予約（お使いの予約システムへ）
+ *   空き枠のお知らせ → ご予約
+ *
+ * ご予約フォームはここでは作りません。すでにお使いの予約システムがあり、
+ * 別に受けてしまうと同じ枠が二重に売れるためです。
+ */
+
+
+const APP_PAGES = [
+  { path: '/app/diagnosis', title: 'コース診断' },
+  { path: '/app/menu',      title: 'メニュー・料金' },
+  { path: '/app/intake',    title: '問診表' },
+  { path: '/app/access',    title: 'アクセス・営業時間' },
+  { path: '/app/slot',      title: '空き枠のお知らせ' }
+];
+
+function appRequest(request, env, url) {
+  switch (url.pathname) {
+    /* LIFF のエンドポイントはここにします。
+       https://liff.line.me/＜LIFF ID＞/menu のように後ろを足すと、
+       1つの LIFF ID で全ページをまかなえます */
+    case '/app':
+    case '/app/':          return appPage(env, 'ミエーレ', hubBody(), '');
+    case '/app/diagnosis': return appPage(env, 'コース診断', diagnosisBody(), diagnosisJs);
+    case '/app/menu':      return appPage(env, 'メニュー・料金', menuBody(), menuJs);
+    case '/app/intake':    return appPage(env, '問診表', intakeBody(), intakeJs);
+    case '/app/access':    return appPage(env, 'アクセス・営業時間', accessBody(), '');
+    case '/app/slot':      return appPage(env, '空き枠のお知らせ', slotBody(), slotJs);
+    default:               return new Response('not found', { status: 404 });
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 入口（LIFF のエンドポイント）
+ * ------------------------------------------------------------------ */
+
+function hubBody() {
+  const link = (p, title, note) =>
+    `<a class="hubitem" href="${appEsc(p)}"><b>${appEsc(title)}</b><small>${appEsc(note)}</small></a>`;
+
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>${appEsc(SALON.name)}</h1>
+      <p class="lead">${appEsc(SALON.hours)}／${appEsc(SALON.closed)}／${appEsc(SALON.reservation)}</p>
+    </header>
+    <div class="hub">
+      ${link('/app/diagnosis', 'コース診断', '4つの質問でおすすめをご提案します')}
+      ${link('/app/menu', 'メニュー・料金', '新規価格でご案内しています')}
+      ${has(SALON.bookingUrl) ? `<a class="hubitem" href="${appEsc(SALON.bookingUrl)}" target="_blank" rel="noopener"><b>ご予約</b><small>ご予約ページが開きます</small></a>` : ''}
+      ${link('/app/intake', '問診表', 'ご来店前にご記入いただけます')}
+      ${link('/app/slot', '空き枠のお知らせ', '急なお席が空いたときにお知らせします')}
+      ${link('/app/access', 'アクセス・営業時間', 'JR古河駅から徒歩8分')}
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * コース診断
+ * ------------------------------------------------------------------ */
+
+function diagnosisBody() {
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>コース診断</h1>
+      <p class="lead">4つの質問にお答えいただくと、おすすめのコースをご提案します。
+      表示はすべて<b>新規（初回）価格</b>です。</p>
+    </header>
+    <div class="bar"><span id="bar"></span></div>
+    <div id="q"></div>`;
+}
+
+const diagnosisJs = `
+  const state = { step: 0, gender: null, concerns: [], budget: null, pace: null };
+  const q = document.getElementById('q');
+
+  const forSex = (o) => !o.sex || o.sex === state.gender;
+  const opt = (o, on) =>
+    '<button type="button" class="opt' + (on ? ' on' : '') + '" data-id="' + o.id + '">' +
+    (o.em ? '<span class="em">' + o.em + '</span>' : '') +
+    '<span class="t">' + o.label + (o.sub ? '<small>' + o.sub + '</small>' : '') + '</span></button>';
+
+  const STEPS = [
+    { key: 'gender',   title: 'お客様について',       list: () => DATA.genders,  multi: false },
+    { key: 'concerns', title: '気になるところは？',   list: () => DATA.concerns.filter(forSex), multi: true,
+      note: 'いくつでもお選びいただけます' },
+    { key: 'budget',   title: '1回あたりのご予算は？', list: () => DATA.budgets,  multi: false,
+      note: 'この金額を超えるコースはご提案しません' },
+    { key: 'pace',     title: 'どのように通いたいですか？', list: () => DATA.paces, multi: false }
+  ];
+
+  function render() {
+    document.getElementById('bar').style.width =
+      Math.round((state.step / STEPS.length) * 100) + '%';
+
+    if (state.step >= STEPS.length) return finish();
+
+    const s = STEPS[state.step];
+    q.innerHTML =
+      '<section class="step"><h2>' + s.title + '</h2>' +
+      (s.note ? '<p class="note">' + s.note + '</p>' : '') +
+      '<div class="opts">' +
+      s.list().map((o) => opt(o, s.multi ? state[s.key].includes(o.id) : state[s.key] === o.id)).join('') +
+      '</div>' +
+      (needsVio() ? '<p class="warn">' + DATA.mensVio + '</p>' : '') +
+      '<div class="nav">' +
+      (state.step > 0 ? '<button type="button" class="back" id="back">戻る</button>' : '') +
+      (s.multi ? '<button type="button" class="go" id="next">次へ</button>' : '') +
+      '</div></section>';
+  }
+
+  const needsVio = () =>
+    state.gender === 'm' && state.concerns.includes('thera') &&
+    STEPS[state.step] && STEPS[state.step].key === 'concerns';
+
+  q.addEventListener('click', (e) => {
+    const b = e.target.closest('.opt');
+    if (b) {
+      const s = STEPS[state.step];
+      if (s.multi) {
+        const i = state[s.key].indexOf(b.dataset.id);
+        if (i < 0) state[s.key].push(b.dataset.id); else state[s.key].splice(i, 1);
+        render();
+      } else {
+        state[s.key] = b.dataset.id;
+        /* 男性のときは、女性限定のお悩みが消えるので選び直していただく */
+        if (s.key === 'gender') state.concerns = state.concerns.filter(
+          (id) => forSex(DATA.concerns.find((c) => c.id === id) || {}));
+        state.step++;
+        render();
+      }
+      return;
+    }
+    if (e.target.id === 'next') {
+      if (!state.concerns.length) { alert('1つ以上お選びください。'); return; }
+      state.step++; render(); return;
+    }
+    if (e.target.id === 'back') { state.step--; render(); return; }
+    if (e.target.id === 'again') { location.reload(); }
+  });
+
+  async function finish() {
+    q.innerHTML = '<p class="loading">おすすめを組み立てています…</p>';
+    const r = await post('/api/diagnosis', {
+      answers: { gender: state.gender, concerns: state.concerns,
+                 budget: state.budget, pace: state.pace }
+    });
+    if (!r || !r.ok) {
+      q.innerHTML = '<p class="warn">うまくいきませんでした。もう一度お試しください。</p>';
+      return;
+    }
+
+    const cards = r.results.map((c) =>
+      '<article class="card">' +
+      '<div class="row1">' +
+      (c.badge ? '<span class="badge">' + c.badge + '</span>' : '') +
+      '<span class="cat">' + c.cat + '</span>' +
+      '<span class="rate">おすすめ度 ' + c.rate + '%</span></div>' +
+      '<h3>' + c.name + '</h3>' +
+      '<p class="price"><b>' + yen(c.price) + '</b>' +
+      (c.reg ? '<s>' + yen(c.reg) + '</s>' : '') +
+      (c.min ? '<span class="min">' + c.min + '分</span>' : '') + '</p>' +
+      '<p class="desc">' + c.desc + '</p>' +
+      (c.hits.length ? '<ul class="hits">' + c.hits.map((h) => '<li>' + h + '</li>').join('') + '</ul>' : '') +
+      '</article>').join('');
+
+    q.innerHTML =
+      '<section class="result"><h2>お客様におすすめのコース</h2>' +
+      (r.overBudget
+        ? '<p class="warn">ご予算内にぴったりのコースがありませんでした。' +
+          '条件の近いものを、お安い順にご案内します。</p>' : '') +
+      (r.mensVioNote ? '<p class="warn">' + r.mensVioNote + '</p>' : '') +
+      (cards || '<p class="note">条件に合うコースが見つかりませんでした。</p>') +
+      (r.saved
+        ? '<p class="saved">診断の結果をお預かりしました。' +
+          '空き枠のお知らせを、お客様のお悩みに合わせてお送りできます。</p>' : '') +
+      '<div class="cta">' +
+      (DATA.bookingUrl
+        ? '<a class="go" href="' + DATA.bookingUrl + '" target="_blank" rel="noopener">ご予約に進む</a>' : '') +
+      '<a class="sub" href="/app/slot">空き枠のお知らせを受け取る</a>' +
+      '<button type="button" class="sub" id="again">もう一度診断する</button>' +
+      '</div></section>';
+  }
+
+  render();
+`;
+
+/* ------------------------------------------------------------------ *
+ * メニュー・料金
+ * ------------------------------------------------------------------ */
+
+function menuBody() {
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>メニュー・料金</h1>
+      <p class="lead">表示はすべて<b>新規（初回）価格</b>です。
+      取り消し線は2回目以降の通常価格です。</p>
+    </header>
+    <div id="mine"></div>
+    <div class="chips" id="chips"></div>
+    <div id="list"></div>`;
+}
+
+const menuJs = `
+  let filter = null;
+  const cats = [...new Set(DATA.courses.map((c) => c.cat))];
+
+  function card(c) {
+    return '<article class="card">' +
+      '<div class="row1">' +
+      (c.badge ? '<span class="badge">' + c.badge + '</span>' : '') +
+      '<span class="cat">' + c.cat + '</span></div>' +
+      '<h3>' + c.name + '</h3>' +
+      '<p class="price"><b>' + yen(c.price) + '</b>' +
+      (c.reg ? '<s>' + yen(c.reg) + '</s>' : '') +
+      (c.min ? '<span class="min">' + c.min + '分</span>' : '') + '</p>' +
+      '<p class="desc">' + c.desc + '</p></article>';
+  }
+
+  function render() {
+    document.getElementById('chips').innerHTML =
+      '<button type="button" class="chip' + (filter ? '' : ' on') + '" data-cat="">すべて</button>' +
+      cats.map((c) => '<button type="button" class="chip' + (filter === c ? ' on' : '') +
+        '" data-cat="' + c + '">' + c + '</button>').join('');
+
+    const list = DATA.courses.filter((c) => !filter || c.cat === filter);
+    document.getElementById('list').innerHTML =
+      '<section>' + list.map(card).join('') + '</section>' +
+      (DATA.bookingUrl
+        ? '<div class="cta"><a class="go" href="' + DATA.bookingUrl +
+          '" target="_blank" rel="noopener">ご予約に進む</a></div>' : '');
+  }
+
+  document.getElementById('chips').addEventListener('click', (e) => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    filter = b.dataset.cat || null;
+    render();
+  });
+
+  /* 診断をお受けになっていれば、そのお悩みに関わるものを先にお見せする */
+  async function mine() {
+    const me = await post('/api/me', {});
+    if (!me || !me.concerns || !me.concerns.length) return;
+    const hit = DATA.courses.filter((c) => c.concerns.some((x) => me.concerns.includes(x)));
+    if (!hit.length) return;
+    const names = me.concerns
+      .map((id) => (DATA.concerns.find((c) => c.id === id) || {}).label).filter(Boolean);
+    document.getElementById('mine').innerHTML =
+      '<section class="mine"><h2>お客様のお悩みに合うメニュー</h2>' +
+      '<p class="note">コース診断で「' + names.join('・') + '」をお選びいただきました。</p>' +
+      hit.slice(0, 4).map(card).join('') + '</section>';
+  }
+
+  render();
+  mine();
+`;
+
+/* ------------------------------------------------------------------ *
+ * 問診表
+ * ------------------------------------------------------------------ */
+
+function intakeBody() {
+  const fields = INTAKE_FIELDS.map((f) => {
+    const note = f.note ? `<small>${appEsc(f.note)}</small>` : '';
+    if (f.type === 'yesno') {
+      return `<div class="field">
+        <label>${appEsc(f.label)}${f.id === 'pregnant' ? '<em>該当する方のみ</em>' : ''}${note}</label>
+        <div class="yesno">
+          <button type="button" class="opt" data-f="${appEsc(f.id)}" data-v="なし">なし</button>
+          <button type="button" class="opt" data-f="${appEsc(f.id)}" data-v="あり">あり</button>
+        </div>
+        ${f.detail ? `<input type="text" data-f="${appEsc(f.id)}_detail" placeholder="${appEsc(f.detail)}">` : ''}
+      </div>`;
+    }
+    return `<div class="field">
+      <label>${appEsc(f.label)}${f.required ? '<em>必須</em>' : ''}${note}</label>
+      <input type="text" data-f="${appEsc(f.id)}">
+    </div>`;
+  }).join('');
+
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>問診表</h1>
+      <p class="lead">ご来店前にご記入いただくと、当日のお時間が短くなります。</p>
+    </header>
+
+    <div class="privacy">
+      <b>お預かりする内容について</b>
+      <ul>
+        <li>安全に施術を行うためだけに使います</li>
+        <li>スタッフが確認してカルテに転記したあと、<b>${INTAKE_KEEP_DAYS}日で自動的に消去</b>します</li>
+        <li>LINEのトークには内容を残しません</li>
+      </ul>
+    </div>
+
+    <form id="f">${fields}
+      <label class="consent">
+        <input type="checkbox" id="consent">
+        <span>上記に同意して送信します</span>
+      </label>
+      <button type="submit" class="go">送信する</button>
+    </form>
+    <p class="msg" id="msg"></p>`;
+}
+
+const intakeJs = `
+  const form = {};
+
+  document.getElementById('f').addEventListener('click', (e) => {
+    const b = e.target.closest('.opt');
+    if (!b) return;
+    form[b.dataset.f] = b.dataset.v;
+    b.parentElement.querySelectorAll('.opt').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+  });
+
+  document.getElementById('f').addEventListener('input', (e) => {
+    if (e.target.dataset.f) form[e.target.dataset.f] = e.target.value;
+  });
+
+  document.getElementById('f').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('msg');
+    if (!document.getElementById('consent').checked) {
+      msg.textContent = 'ご同意のチェックをお願いします。'; return;
+    }
+    if (!form.name) { msg.textContent = 'お名前をご記入ください。'; return; }
+
+    /* 「あり」で内容を書いていただいた場合は、ひとつにまとめて送る */
+    const out = {};
+    for (const k of Object.keys(form)) {
+      if (k.endsWith('_detail')) continue;
+      const d = form[k + '_detail'];
+      out[k] = d ? form[k] + '（' + d + '）' : form[k];
+    }
+
+    msg.textContent = '送信しています…';
+    const r = await post('/api/intake', { consent: true, form: out });
+    if (r && r.ok) {
+      document.getElementById('f').style.display = 'none';
+      msg.innerHTML = '<b>ありがとうございました。</b><br>' +
+        'ご来店をお待ちしております。内容はスタッフが確認いたします。';
+    } else {
+      msg.textContent = (r && r.error) || '送信できませんでした。もう一度お試しください。';
+    }
+  });
+`;
+
+/* ------------------------------------------------------------------ *
+ * アクセス・営業時間
+ * ------------------------------------------------------------------ */
+
+function accessBody() {
+  const map = 'https://www.google.com/maps/search/?api=1&query=' +
+    encodeURIComponent(SALON.address);
+
+  const row = (label, value) =>
+    has(value) ? `<div class="row"><dt>${appEsc(label)}</dt><dd>${appEsc(value)}</dd></div>` : '';
+
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>アクセス・営業時間</h1>
+    </header>
+
+    <dl class="info">
+      ${row('店舗名', SALON.name)}
+      ${row('住所', SALON.postal + ' ' + SALON.address)}
+      ${row('アクセス', SALON.access)}
+      ${row('駐車場', SALON.parking)}
+      ${row('営業時間', SALON.hours)}
+      ${row('定休日', SALON.closed)}
+      ${row('ご予約', SALON.reservation + (has(SALON.reservationNote) ? '（' + SALON.reservationNote + '）' : ''))}
+      ${row('お支払い', SALON.payment)}
+    </dl>
+
+    <div class="cta">
+      <a class="go" href="${appEsc(map)}" target="_blank" rel="noopener">地図で見る</a>
+      ${has(SALON.tel) ? `<a class="sub" href="tel:${appEsc(SALON.tel.replace(/-/g, ''))}">電話をかける（${appEsc(SALON.tel)}）</a>` : ''}
+      ${has(SALON.bookingUrl) ? `<a class="sub" href="${appEsc(SALON.bookingUrl)}" target="_blank" rel="noopener">ご予約に進む</a>` : ''}
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * 空き枠のお知らせの受け取り設定
+ * ------------------------------------------------------------------ */
+
+function slotBody() {
+  const rooms = ROOMS.map(
+    (r) => `<label class="check">
+      <input type="checkbox" data-room="${appEsc(r.id)}">
+      <span>${appEsc(r.label)}<small>${appEsc(r.note)}</small></span>
+    </label>`
+  ).join('');
+
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>空き枠のお知らせ</h1>
+      <p class="lead">急なお席が空いたときに、LINEでお知らせします。
+      Instagram に出すより<b>30分早く</b>お届けしています。</p>
+    </header>
+
+    <div class="toggle">
+      <button type="button" class="opt" id="on">受け取る</button>
+      <button type="button" class="opt" id="off">受け取らない</button>
+    </div>
+
+    <section id="detail" hidden>
+      <h2>どちらのお席をご希望ですか</h2>
+      <p class="note">選んでいただくと、関係のないお知らせは届かなくなります。</p>
+      ${rooms}
+      <p class="note" id="hint"></p>
+    </section>
+
+    <button type="button" class="go" id="save">この内容で登録する</button>
+    <p class="msg" id="msg"></p>
+
+    <p class="foot">お知らせは多くても週に2〜3回までです。
+    いつでもこの画面から止められます。</p>`;
+}
+
+const slotJs = `
+  let wants = false;
+  const rooms = new Set();
+
+  function paint() {
+    document.getElementById('on').classList.toggle('on', wants);
+    document.getElementById('off').classList.toggle('on', !wants);
+    document.getElementById('detail').hidden = !wants;
+    document.querySelectorAll('[data-room]').forEach((b) => { b.checked = rooms.has(b.dataset.room); });
+    document.getElementById('hint').textContent =
+      rooms.size ? '' : '選ばれていないときは、どちらのお席もお知らせします。';
+  }
+
+  document.getElementById('on').addEventListener('click', () => { wants = true; paint(); });
+  document.getElementById('off').addEventListener('click', () => { wants = false; paint(); });
+  document.addEventListener('change', (e) => {
+    if (!e.target.dataset.room) return;
+    e.target.checked ? rooms.add(e.target.dataset.room) : rooms.delete(e.target.dataset.room);
+    paint();
+  });
+
+  document.getElementById('save').addEventListener('click', async () => {
+    const msg = document.getElementById('msg');
+    msg.textContent = '登録しています…';
+    const r = await post('/api/prefs', { openSlot: wants, rooms: [...rooms] });
+    msg.textContent = r && r.ok
+      ? (wants ? '登録しました。空きが出ましたらお知らせします。' : 'お知らせを止めました。')
+      : ((r && r.error) || '登録できませんでした。');
+  });
+
+  (async () => {
+    const me = await post('/api/me', {});
+    if (me && !me.error) {
+      wants = !!me.openSlot;
+      (me.rooms || []).forEach((r) => rooms.add(r));
+    }
+    paint();
+  })();
+`;
+
+/* ------------------------------------------------------------------ *
+ * 共通の枠組み
+ * ------------------------------------------------------------------ */
+
+/* ページに渡すデータ。お客様に見えて困るものは入れない */
+const appData = () => ({
+  genders: GENDERS,
+  concerns: CONCERNS,
+  budgets: BUDGETS.map((b) => ({ ...b, cap: b.cap === Infinity ? null : b.cap })),
+  paces: PACES,
+  courses: COURSES.map((c) => ({
+    id: c.id, name: c.name, price: c.price, reg: c.reg ?? null, min: c.min,
+    cat: c.cat, badge: c.badge, desc: c.desc, concerns: c.concerns
+  })),
+  rooms: ROOMS.map((r) => ({ id: r.id, label: r.label })),
+  bookingUrl: has(SALON.bookingUrl) ? SALON.bookingUrl : null,
+  mensVio:
+    '※ メンズのVIO脱毛は、セラピストによる施術は行っておりません。' +
+    'セルフ脱毛でのご対応となります（ブースをご用意しています）。'
+});
+
+/* LIFF の準備。IDトークンが取れなければ、そのまま「どなたか分からない」で進みます。
+   （LINEの外でブラウザから開かれたときや、デモのとき） */
+const APP_BOOT = `
+  const DATA = window.__APP_DATA__;
+  const CONF = window.__APP_CONF__;
+  let idToken = null;
+
+  const yen = (n) => '¥' + Number(n).toLocaleString('ja-JP');
+
+  async function boot() {
+    if (!CONF.ready || typeof liff === 'undefined') return;
+    try {
+      await liff.init({ liffId: CONF.liffId });
+      if (liff.isLoggedIn()) idToken = liff.getIDToken();
+    } catch (e) {
+      /* 開けなくても、ページそのものは読めるようにしておく */
+    }
+  }
+
+  async function post(path, body) {
+    try {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, idToken })
+      });
+      return await res.json();
+    } catch (e) {
+      return { error: '通信できませんでした' };
+    }
+  }
+`;
+
+function appPage(env, title, body, pageJs) {
+  const conf = liffConfig(env);
+  return new Response(
+    `<!doctype html><html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>${appEsc(title)}｜${appEsc(SALON.shortName)}</title>
+<style>${APP_CSS}</style>
+</head><body>
+<div class="app">${body}</div>
+${conf.ready ? '<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"><\/script>' : ''}
+<script>
+window.__APP_DATA__ = ${JSON.stringify(appData())};
+window.__APP_CONF__ = ${JSON.stringify(conf)};
+${APP_BOOT}
+boot().then(() => { ${pageJs} });
+<\/script>
+</body></html>`,
+    { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+
+const APP_CSS = `
+  :root{--bg:#FAF7F5;--card:#fff;--ink:#2B2724;--sub:#8B7F79;--line:#E7DBD4;
+        --accent:#98543F;--wash:#F7EBE5;--warn:#8E6415;--warn-bg:#F7EFDF}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#1B1817;--card:#242020;--ink:#EFE8E4;--sub:#9C8F89;--line:#3A3331;
+          --accent:#D9967C;--wash:#33241F;--warn:#DEAC57;--warn-bg:#2E2619}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.75;
+       font-family:"Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif}
+  .app{max-width:560px;margin:0 auto;padding:22px 16px 64px}
+  .head{margin-bottom:18px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.18em;color:var(--accent);margin:0 0 8px}
+  h1{font-size:22px;margin:0 0 8px;line-height:1.35}
+  h2{font-size:16px;margin:0 0 10px}
+  h3{font-size:15.5px;margin:0 0 6px;line-height:1.5}
+  .lead{font-size:13.5px;color:var(--sub);margin:0}
+  .note{font-size:12.5px;color:var(--sub);margin:0 0 12px}
+  .warn{font-size:12.5px;color:var(--warn);background:var(--warn-bg);
+        border-radius:9px;padding:10px 12px;margin:0 0 14px}
+  .bar{height:3px;background:var(--line);border-radius:99px;margin:0 0 22px;overflow:hidden}
+  .bar span{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+  .opts{display:grid;gap:8px;margin-bottom:16px}
+  .opt{display:flex;gap:11px;align-items:center;text-align:left;width:100%;
+       padding:14px 15px;border:1px solid var(--line);border-radius:12px;
+       background:var(--card);color:inherit;font:inherit}
+  .opt.on{border-color:var(--accent);border-width:2px;padding:13px 14px;background:var(--wash)}
+  .opt .em{font-size:20px;line-height:1}
+  .opt .t{font-size:14.5px}
+  .opt small{display:block;font-size:11.5px;color:var(--sub)}
+  .nav{display:flex;gap:8px}
+  .back{padding:12px 18px;border:1px solid var(--line);border-radius:10px;
+        background:none;color:var(--sub);font:inherit}
+  .go{flex:1;display:block;text-align:center;padding:14px;border:0;border-radius:11px;
+      background:var(--accent);color:#fff;font:inherit;font-weight:700;text-decoration:none}
+  .sub{display:block;text-align:center;padding:13px;border:1px solid var(--line);
+       border-radius:11px;background:var(--card);color:var(--accent);font:inherit;
+       text-decoration:none;margin-top:8px;width:100%}
+  .cta{margin-top:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;
+        padding:15px 16px;margin-bottom:10px}
+  .row1{display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
+  .badge{font-size:10.5px;font-weight:700;color:#fff;background:var(--accent);
+         border-radius:99px;padding:2px 9px}
+  .cat{font-size:11px;color:var(--sub)}
+  .rate{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--accent)}
+  .price{margin:0 0 7px;display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
+  .price b{font-size:19px;font-variant-numeric:tabular-nums}
+  .price s{font-size:12.5px;color:var(--sub)}
+  .price .min{font-size:12px;color:var(--sub)}
+  .desc{font-size:13px;color:var(--sub);margin:0}
+  .hits{list-style:none;padding:0;margin:9px 0 0;display:flex;gap:6px;flex-wrap:wrap}
+  .hits li{font-size:11px;background:var(--wash);color:var(--accent);
+           border-radius:99px;padding:3px 10px}
+  .saved{font-size:12.5px;color:var(--accent);background:var(--wash);
+         border-radius:9px;padding:11px 13px;margin:14px 0 0}
+  .loading{color:var(--sub);font-size:14px;text-align:center;padding:40px 0}
+  .chips{display:flex;gap:7px;overflow-x:auto;padding:0 0 12px;margin-bottom:4px}
+  .chip{flex:0 0 auto;padding:7px 14px;border:1px solid var(--line);border-radius:99px;
+        background:var(--card);color:var(--sub);font:inherit;font-size:12.5px}
+  .chip.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+  .mine{background:var(--wash);border-radius:14px;padding:15px 14px 6px;margin-bottom:20px}
+  .mine h2{color:var(--accent)}
+  .info{margin:0 0 8px;padding:0;border:1px solid var(--line);border-radius:13px;
+        background:var(--card);overflow:hidden}
+  .info .row{display:flex;gap:0;border-bottom:1px solid var(--line)}
+  .info .row:last-child{border-bottom:0}
+  .info dt{flex:0 0 92px;padding:11px 13px;font-size:12px;color:var(--sub)}
+  .info dd{flex:1;margin:0;padding:11px 13px;font-size:13.5px}
+  .privacy{background:var(--card);border:1px solid var(--line);border-radius:13px;
+           padding:14px 16px;margin-bottom:20px;font-size:12.5px;color:var(--sub)}
+  .privacy b{color:var(--ink);display:block;margin-bottom:6px;font-size:13.5px}
+  .privacy ul{margin:0;padding-left:18px}
+  .privacy li{margin-bottom:4px}
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:13.5px;margin-bottom:6px}
+  .field label em{font-style:normal;font-size:10.5px;color:var(--accent);margin-left:7px}
+  .field label small{display:block;font-size:11.5px;color:var(--sub);margin-top:2px}
+  .field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;
+               font:inherit;background:var(--card);color:inherit}
+  .yesno{display:flex;gap:8px;margin-bottom:7px}
+  .yesno .opt{justify-content:center}
+  .consent{display:flex;gap:10px;align-items:center;margin:20px 0 14px;font-size:13.5px}
+  .toggle{display:flex;gap:8px;margin-bottom:20px}
+  .toggle .opt{justify-content:center;font-weight:700}
+  .check{display:flex;gap:10px;align-items:flex-start;background:var(--card);
+         border:1px solid var(--line);border-radius:11px;padding:13px 14px;margin-bottom:8px}
+  .check small{display:block;font-size:11.5px;color:var(--sub)}
+  .hub{display:grid;gap:9px}
+  .hubitem{display:block;padding:15px 17px;border:1px solid var(--line);border-radius:12px;
+           background:var(--card);text-decoration:none;color:inherit}
+  .hubitem b{display:block;font-size:15px;color:var(--accent)}
+  .hubitem small{display:block;font-size:12px;color:var(--sub);margin-top:2px}
+  .msg{font-size:13px;color:var(--accent);margin:12px 0 0}
+  .foot{font-size:11.5px;color:var(--sub);margin-top:22px}
+  a{color:var(--accent)}
+`;
+
+function appEsc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ---------- src/social.js ---------- */
+/**
+ * Instagram と Google ビジネスプロフィールへの自動投稿
+ *
+ * 順番が大事です。LINE → 30分あけて → Instagram・Google。
+ * 先に外へ出してしまうと、LINEに登録していただく理由が消えます。
+ * そのため、送信のときにすぐ投げず、予約として貯めて時間が来たら出します。
+ *
+ * どちらも未設定なら、何も起きません（これまでどおり手で投稿できます）。
+ *
+ * ■ Instagram
+ *   Facebookページを経由しない「Instagram API with Instagram Login」を使います。
+ *   ストーリーズは、画像が公開URLに置いてあることと、JPEG であることが要ります。
+ *   そのため、スタッフの画面で作った画像をこちらで預かり、
+ *   /media/＜ID＞.jpg として出したうえで、そのURLを渡します。
+ *
+ * ■ Google ビジネスプロフィール
+ *   画像は任意なので、文面と「予約」ボタンだけでも投稿できます。
+ *   サービスアカウントは使えないため、店舗を管理しているGoogleアカウントで
+ *   一度だけ許可を出していただき、そのリフレッシュトークンを使います。
+ */
+
+
+const IG_HOST = 'https://graph.instagram.com';
+const GBP_HOST = 'https://mybusiness.googleapis.com/v4';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+/** 預かった画像を消すまでの日数。投稿が済めば用済みです */
+const MEDIA_KEEP_DAYS = 3;
+
+const igReady = (env) => !!(env.IG_USER_ID && env.IG_ACCESS_TOKEN);
+const gbpReady = (env) =>
+  !!(env.GBP_ACCOUNT_ID && env.GBP_LOCATION_ID &&
+     env.GOOGLE_OAUTH_CLIENT_ID && env.GOOGLE_OAUTH_CLIENT_SECRET && env.GBP_REFRESH_TOKEN);
+
+/* ------------------------------------------------------------------ *
+ * 画像を預かる
+ * ------------------------------------------------------------------ */
+
+/** 画像が大きすぎるときは受け取らない（D1に入れるため） */
+const MEDIA_MAX_BYTES = 700 * 1024;
+
+/**
+ * スタッフの画面で作った JPEG を預かります。
+ * 返ってきたIDが、そのまま公開URLの一部になります。
+ */
+async function saveMedia(env, base64, mime = 'image/jpeg') {
+  if (!base64) return null;
+  if (base64.length > MEDIA_MAX_BYTES * 1.4) {
+    throw new Error('画像が大きすぎます');
+  }
+  const id = crypto.randomUUID().replace(/-/g, '');
+  const expires = addDays(todayJst(), MEDIA_KEEP_DAYS);
+
+  await env.DB.prepare(
+    'INSERT INTO media (id, mime, data, expires_on, created_at) VALUES (?, ?, ?, ?, ?)'
+  )
+    .bind(id, mime, base64, expires, nowIso())
+    .run();
+  return id;
+}
+
+/** 公開URL。推測できないIDなので、認証は付けません（外から読めないと投稿できないため） */
+const mediaUrl = (env, id) =>
+  (env.PUBLIC_URL ?? '').replace(/\/$/, '') + '/media/' + id + '.jpg';
+
+async function serveMedia(env, id) {
+  const row = await env.DB.prepare('SELECT mime, data FROM media WHERE id = ?')
+    .bind(String(id).replace(/\.jpg$/, ''))
+    .first();
+  if (!row) return new Response('not found', { status: 404 });
+
+  const bin = atob(row.data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+  return new Response(bytes, {
+    headers: {
+      'Content-Type': row.mime || 'image/jpeg',
+      'Cache-Control': 'public, max-age=86400'
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * 投稿の予約
+ * ------------------------------------------------------------------ */
+
+/**
+ * LINEに送ったあと、30分後に外へ出す予約を入れます。
+ * すぐ投げないのは、LINEが先である事実をつくるためです。
+ */
+async function schedulePost(env, opts) {
+  const channels = (opts.channels ?? []).filter((c) => c === 'instagram' || c === 'gbp');
+  if (!channels.length) return { scheduled: 0 };
+
+  const delay = opts.delayMinutes ?? INSTAGRAM_DELAY_MIN;
+  const dueAt = new Date(Date.now() + delay * 60000).toISOString();
+
+  for (const channel of channels) {
+    await env.DB.prepare(
+      `INSERT INTO scheduled_posts (channel, body, image_url, due_at, status, created_at)
+       VALUES (?, ?, ?, ?, 'waiting', ?)`
+    )
+      .bind(channel, opts.text ?? '', opts.imageUrl ?? null, dueAt, nowIso())
+      .run();
+  }
+  return { scheduled: channels.length, dueAt };
+}
+
+/**
+ * ストーリーズの画像を作る場所。
+ *
+ * Cloudflare Workers には絵を描く仕組みがないため、
+ * 画像は外の小さな置き場で作ります（env.STORY_IMAGE_URL）。
+ * そこに枠の内容を渡すと、JPEGが返る約束です。
+ *
+ * 決めていないときは null を返し、Instagram は見送ります。
+ * Google は文面だけで投稿できるので、そちらは動きます。
+ */
+function storyImageUrl(env, slots, today = null) {
+  const base = env.STORY_IMAGE_URL;
+  if (!base) return null;
+
+  const payload = {
+    slots: (slots ?? []).map((s) => ({
+      date: s.date, time: s.time, minutes: s.minutes, menus: s.menus ?? []
+    })),
+    today,
+    delay: INSTAGRAM_DELAY_MIN,
+    salon: SALON.name
+  };
+  const d = socialB64url(JSON.stringify(payload));
+  return base + (base.includes('?') ? '&' : '?') + 'd=' + d;
+}
+
+function socialB64url(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * 時間が来た予約を出します。10分おきの cron から呼びます。
+ * 1件が失敗しても、ほかの投稿は止めません。
+ */
+async function publishDue(env, now = new Date().toISOString()) {
+  const rows = await env.DB.prepare(
+    "SELECT * FROM scheduled_posts WHERE status = 'waiting' AND due_at <= ? ORDER BY due_at LIMIT 10"
+  )
+    .bind(now)
+    .all();
+
+  const done = [];
+  for (const row of rows.results ?? []) {
+    /* 先に「送信中」にして、cron が重なっても二度出さないようにする */
+    const claimed = await env.DB.prepare(
+      "UPDATE scheduled_posts SET status = 'sending' WHERE id = ? AND status = 'waiting'"
+    )
+      .bind(row.id)
+      .run();
+    if (claimed.meta.changes === 0) continue;
+
+    let result;
+    try {
+      const url = row.image_url || null;
+      result = row.channel === 'instagram'
+        ? await postInstagramStory(env, url)
+        : await postGbp(env, { summary: row.body, imageUrl: url });
+    } catch (err) {
+      result = { ok: false, error: String(err.message ?? err) };
+    }
+
+    await env.DB.prepare(
+      'UPDATE scheduled_posts SET status = ?, error = ?, posted_at = ? WHERE id = ?'
+    )
+      .bind(result.ok ? 'posted' : 'failed', result.ok ? null : result.error ?? '', nowIso(), row.id)
+      .run();
+
+    done.push({ id: row.id, channel: row.channel, ok: result.ok, error: result.error ?? null });
+  }
+  return { published: done.filter((d) => d.ok).length, results: done };
+}
+
+/** 使い終わった画像と、古い記録を片づける */
+async function sweepMedia(env, today = todayJst()) {
+  const m = await env.DB.prepare('DELETE FROM media WHERE expires_on < ?').bind(today).run();
+  const p = await env.DB.prepare(
+    "DELETE FROM scheduled_posts WHERE status IN ('posted','failed') AND due_at < ?"
+  )
+    .bind(addDays(today, -30) + 'T00:00:00.000Z')
+    .run();
+  return { media: m.meta?.changes ?? 0, posts: p.meta?.changes ?? 0 };
+}
+
+/* ------------------------------------------------------------------ *
+ * Instagram
+ * ------------------------------------------------------------------ */
+
+/**
+ * ストーリーズに1枚出します。
+ * 「入れ物を作る → 出す」の2段階です。
+ */
+async function postInstagramStory(env, imageUrl) {
+  if (!igReady(env)) return { ok: false, error: 'Instagramが未設定です' };
+  if (!imageUrl) return { ok: false, error: '画像がありません（ストーリーズには画像が要ります）' };
+
+  const base = `${IG_HOST}/${env.IG_USER_ID}`;
+  const token = env.IG_ACCESS_TOKEN;
+
+  const made = await igCall(`${base}/media`, {
+    media_type: 'STORIES',
+    image_url: imageUrl,
+    access_token: token
+  });
+  if (!made.ok) return made;
+
+  const out = await igCall(`${base}/media_publish`, {
+    creation_id: made.body.id,
+    access_token: token
+  });
+  return out.ok ? { ok: true, id: out.body.id } : out;
+}
+
+async function igCall(url, params) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params)
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.error) {
+    return { ok: false, error: body?.error?.message ?? `Instagram ${res.status}` };
+  }
+  return { ok: true, body };
+}
+
+/* ------------------------------------------------------------------ *
+ * Google ビジネスプロフィール
+ * ------------------------------------------------------------------ */
+
+let gbpCache = null;
+
+/** リフレッシュトークンから、1時間有効な鍵をもらう */
+async function gbpToken(env, now = Date.now()) {
+  if (gbpCache && gbpCache.expires > now + 60_000) return gbpCache.token;
+
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.GOOGLE_OAUTH_CLIENT_ID,
+      client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+      refresh_token: env.GBP_REFRESH_TOKEN,
+      grant_type: 'refresh_token'
+    })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.access_token) {
+    throw new Error('Googleの認証に失敗しました: ' + (body.error_description ?? res.status));
+  }
+  gbpCache = { token: body.access_token, expires: now + (body.expires_in ?? 3600) * 1000 };
+  return gbpCache.token;
+}
+
+function resetGbpToken() {
+  gbpCache = null;
+}
+
+/**
+ * 「最新情報」として投稿します。
+ * ご予約の入口があれば「予約」ボタンを、なければ電話ボタンを付けます。
+ */
+async function postGbp(env, { summary, imageUrl = null }) {
+  if (!gbpReady(env)) return { ok: false, error: 'Googleビジネスプロフィールが未設定です' };
+
+  const post = {
+    languageCode: 'ja',
+    summary: String(summary ?? '').slice(0, 1500),
+    topicType: 'STANDARD'
+  };
+
+  if (has(SALON.bookingUrl)) {
+    post.callToAction = { actionType: 'BOOK', url: SALON.bookingUrl };
+  } else if (has(SALON.tel)) {
+    post.callToAction = { actionType: 'CALL' };
+  }
+  if (imageUrl) post.media = [{ mediaFormat: 'PHOTO', sourceUrl: imageUrl }];
+
+  const url =
+    `${GBP_HOST}/accounts/${env.GBP_ACCOUNT_ID}/locations/${env.GBP_LOCATION_ID}/localPosts`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + (await gbpToken(env)),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(post)
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { ok: false, error: body?.error?.message ?? `Google ${res.status}` };
+  }
+  return { ok: true, id: body.name ?? null };
+}
+
+/* ------------------------------------------------------------------ *
+ * 文面
+ * ------------------------------------------------------------------ */
+
+/**
+ * Googleに出す文面。
+ * Instagram と違い、Googleは検索から来た方が読むので、
+ * どこの店の何の話かが分かるように、店名と場所を添えます。
+ */
+function buildGbpText(slots) {
+  const lines = [buildInstagramText(slots)];
+  lines.push('', SALON.name, SALON.access);
+  if (has(SALON.tel)) lines.push('TEL ' + SALON.tel);
+  return lines.join('\n');
+}
+
+/* ------------------------------------------------------------------ */
+
+function addDays(ymd, days) {
+  return new Date(Date.parse(ymd + 'T00:00:00Z') + days * 86400000).toISOString().slice(0, 10);
+}
+
+/* ---------- src/auto.js ---------- */
+/**
+ * 空き枠のお知らせを、人が触らずに出す
+ *
+ * スタッフがGoogleカレンダーを正しく入れている、という前提で動きます。
+ * そのため、次のことは「カレンダーで決まる」ことになります。
+ *
+ *   出さない時間は、カレンダーに予定として入れておく
+ *     （移動・休憩・あえて残している枠。何も入っていなければ空きとして出ます）
+ *
+ * 機械が勝手に増やさないよう、歯止めは残してあります。
+ *   ・送信日（月・木）以外は動かない
+ *   ・同じお部屋は直近7日で3回まで
+ *   ・1回に出す枠は3つまで
+ *   ・通数の予備枠（500通）を割り込むなら送らない
+ *   ・受け取りを希望された方だけ。希望者がいなければ何もしない
+ *
+ * 流れ：
+ *   10:00  カレンダーを見る → 枠を決める → LINEに送る
+ *   10:30  Instagram と Google に出す（LINEが先である事実をつくる）
+ */
+
+
+/** 1回のお知らせに載せる枠の数。多いと「いつも空いている店」に見える */
+const AUTO_MAX_SLOTS = 3;
+
+/** 自動で出すときの枠の長さ。60分あれば多くのメニューが入る */
+const AUTO_MINUTES = 60;
+
+/**
+ * @param {object} [opts]
+ * @param {string}  [opts.today]  日付を差し替える（テスト用）
+ * @param {boolean} [opts.force]  送信日でなくても動かす
+ * @param {boolean} [opts.dryRun] 送らずに、何が起きるかだけ返す
+ */
+async function runAuto(env, opts = {}) {
+  const today = opts.today ?? todayJst();
+  const days = opts.days ?? DEFAULT_SCHEDULE.days;
+
+  if (!opts.force && !isSendDay(today, days)) {
+    return { today, skipped: '送信日ではありません', rooms: [] };
+  }
+  if (!calendarReady(env)) {
+    return { today, skipped: 'Googleカレンダーが未設定です', rooms: [] };
+  }
+
+  const dates = scheduleDates(today, opts.leadDays);
+  const minutes = Number(env.AUTO_SLOT_MINUTES) || AUTO_MINUTES;
+  const maxSlots = Number(env.AUTO_MAX_SLOTS) || AUTO_MAX_SLOTS;
+
+  const rooms = [];
+  for (const room of ROOMS) {
+    rooms.push(await runRoom(env, {
+      today, dates, minutes, maxSlots, room: room.id, dryRun: opts.dryRun
+    }));
+  }
+
+  return { today, dates, rooms, sent: rooms.reduce((n, r) => n + (r.sent ?? 0), 0) };
+}
+
+async function runRoom(env, o) {
+  const label = ROOMS.find((r) => r.id === o.room)?.label ?? o.room;
+
+  if (!calendarsOf(env, o.room).length) {
+    return { room: o.room, label, skipped: 'このお部屋のカレンダーがありません' };
+  }
+
+  const week = await recentSendCount(env, o.today, o.room);
+  if (week >= MAX_PER_WEEK) {
+    return { room: o.room, label, skipped: `直近7日ですでに${week}回出しています` };
+  }
+
+  let found;
+  try {
+    found = await findOpenSlots(env, {
+      dates: o.dates,
+      room: o.room,
+      minutes: o.minutes,
+      buffer: Number(env.SLOT_BUFFER_MIN) || 0
+    });
+  } catch (err) {
+    return { room: o.room, label, skipped: 'カレンダーを読めませんでした: ' + err.message };
+  }
+
+  if (!found.length) {
+    return { room: o.room, label, skipped: 'この日に出せる空きはありませんでした' };
+  }
+
+  /* 枠にメニューを載せる。スタッフ用ページと同じ決め方 */
+  const slots = found.slice(0, o.maxSlots).map((s) => ({
+    ...s,
+    menus: defaultMenusFor(o.room, s.minutes)
+  }));
+
+  const result = await sendOpenSlot(env, slots, { narrow: true, dryRun: o.dryRun });
+
+  if (o.dryRun) {
+    return { room: o.room, label, slots, planned: result.planned, dryRun: true };
+  }
+  if (result.stopped) {
+    return { room: o.room, label, slots, skipped: result.stopped };
+  }
+  if (!result.sent) {
+    return { room: o.room, label, slots, sent: 0, skipped: 'お送りする方がいませんでした' };
+  }
+
+  /* LINEが届いたので、30分後に外へ出す予約を入れる */
+  const scheduled = await scheduleOutside(env, slots, o.today);
+
+  return { room: o.room, label, slots, sent: result.sent, scheduled };
+}
+
+/**
+ * Instagram と Google の予約を入れます。
+ * Instagram はストーリーズに画像が要るため、画像を作る場所が
+ * 決まっていないときは見送ります（Googleは文面だけで出せます）。
+ */
+async function scheduleOutside(env, slots, today) {
+  const channels = [];
+  const imageUrl = storyImageUrl(env, slots, today);
+
+  if (igReady(env) && imageUrl) channels.push('instagram');
+  if (gbpReady(env)) channels.push('gbp');
+  if (!channels.length) return { scheduled: 0 };
+
+  const out = { scheduled: 0 };
+  if (channels.includes('instagram')) {
+    const r = await schedulePost(env, {
+      channels: ['instagram'],
+      text: buildInstagramText(slots),
+      imageUrl,
+      delayMinutes: INSTAGRAM_DELAY_MIN
+    });
+    out.scheduled += r.scheduled;
+    out.dueAt = r.dueAt;
+  }
+  if (channels.includes('gbp')) {
+    const r = await schedulePost(env, {
+      channels: ['gbp'],
+      text: buildGbpText(slots),
+      imageUrl,
+      delayMinutes: INSTAGRAM_DELAY_MIN
+    });
+    out.scheduled += r.scheduled;
+    out.dueAt = r.dueAt;
+  }
+  return out;
+}
+
+/** 記録用の短い文。cron のログに出します */
+const autoSummary = (r) =>
+  r.skipped
+    ? `自動送信なし（${r.skipped}）`
+    : r.rooms
+        .map((x) => `${x.label}: ${x.skipped ?? `${x.sent}名に送信・外部${x.scheduled?.scheduled ?? 0}件を予約`}`)
+        .join(' / ');
+
+</script>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * デモの裏側
+ *
+ * 判断は本番のコード（runAuto / publishDue）がそのまま行います。
+ * カレンダー・データベース・LINE・Instagram・Google への通信だけを、
+ * この画面の中の入れ物で代用しています。
+ * ------------------------------------------------------------------ */
+
+const esc4 = (s) => String(s ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/* 月曜。2〜3日先（水・木）の空きを見にいく */
+const MON = '2026-09-07';
+const DATES = scheduleDates(MON);
+const OPEN_FROM = 9, OPEN_TO = 19;
+
+/* はじめは、いくつか予定が入っている状態にしておく */
+const busy = {};
+DATES.forEach((d, i) => {
+  busy[d] = new Set();
+  const preset = i === 0 ? [9, 10, 11, 13, 16, 17, 18] : [9, 10, 12, 13, 14, 17, 18];
+  preset.forEach((h) => busy[d].add(h));
+});
+
+const guards = { week: false, nobody: false, notSendDay: false };
+let posts = [];
+let lastRun = null;
+
+/* ---------- カレンダーの見た目 ---------- */
+
+function paintCal() {
+  const head = '<div class="hd"></div>' +
+    DATES.map((d) => '<div class="hd">' + esc4(formatDate(d)) + '</div>').join('');
+  let body = '';
+  for (let h = OPEN_FROM; h < OPEN_TO; h++) {
+    body += '<div class="hr">' + h + ':00</div>';
+    for (const d of DATES) {
+      const on = busy[d].has(h);
+      body += '<button type="button" class="' + (on ? 'busy' : '') + '" ' +
+              'data-d="' + d + '" data-h="' + h + '">' +
+              (on ? 'ご予約' : '空き') + '</button>';
+    }
+  }
+  document.getElementById('cal').innerHTML = head + body;
+}
+
+document.getElementById('cal').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const set = busy[b.dataset.d];
+  const h = Number(b.dataset.h);
+  set.has(h) ? set.delete(h) : set.add(h);
+  paintCal();
+});
+
+/* ---------- 入れ物（本番では D1・LINE・各社のAPI） ---------- */
+
+let sent = 0;
+let scheduled = [];
+let seq = 1;
+
+const DB = {
+  prepare(sql) {
+    const q = {
+      binds: [],
+      bind(...a) { q.binds = a; return q; },
+      first: async () => {
+        if (sql.includes('FROM open_slots')) return { n: guards.week ? 3 : 0 };
+        return null;
+      },
+      all: async () => {
+        if (sql.includes('FROM scheduled_posts')) {
+          return { results: scheduled.filter((r) => r.status === 'waiting') };
+        }
+        if (sql.includes('FROM customers c')) {
+          /* 空き枠のお知らせを希望された方。0名なら送り先がない */
+          return { results: guards.nobody ? [] :
+            Array.from({ length: 46 }, (_, i) => ({ line_user_id: 'U' + i, display_name: '様' })) };
+        }
+        return { results: [] };
+      },
+      run: async () => {
+        if (sql.startsWith('INSERT INTO deliveries')) { sent++; return { meta: { changes: 1 } }; }
+        if (sql.startsWith('INSERT INTO scheduled_posts')) {
+          scheduled.push({ id: seq++, channel: q.binds[0], body: q.binds[1],
+                           image_url: q.binds[2], due_at: q.binds[3], status: 'waiting' });
+          return { meta: { changes: 1 } };
+        }
+        if (sql.includes("SET status = 'sending'")) {
+          const r = scheduled.find((x) => x.id === q.binds[0] && x.status === 'waiting');
+          if (!r) return { meta: { changes: 0 } };
+          r.status = 'sending';
+          return { meta: { changes: 1 } };
+        }
+        if (sql.startsWith('UPDATE scheduled_posts SET status = ?')) {
+          const r = scheduled.find((x) => x.id === q.binds[3]);
+          if (r) r.status = q.binds[0];
+          return { meta: { changes: 1 } };
+        }
+        return { meta: { changes: 1 } };
+      }
+    };
+    return q;
+  }
+};
+
+const ENV = {
+  DB,
+  CHANNEL_ACCESS_TOKEN: 'demo',
+  GOOGLE_SA_EMAIL: 'demo@example.iam.gserviceaccount.com',
+  GOOGLE_SA_KEY: '-----BEGIN PRIVATE KEY-----\n' + btoa('demo') + '\n-----END PRIVATE KEY-----',
+  GOOGLE_CALENDARS: JSON.stringify([{ id: 'therapist@demo', room: 'room', label: 'セラピスト' }]),
+  ROOM_CAPACITY: JSON.stringify({ room: 1 }),
+  STORY_IMAGE_URL: 'https://story.example/api/story',
+  IG_USER_ID: 'demo', IG_ACCESS_TOKEN: 'demo',
+  GBP_ACCOUNT_ID: 'demo', GBP_LOCATION_ID: 'demo',
+  GOOGLE_OAUTH_CLIENT_ID: 'demo', GOOGLE_OAUTH_CLIENT_SECRET: 'demo', GBP_REFRESH_TOKEN: 'demo'
+};
+
+/* 鍵の計算はブラウザに任せず、通ったことにする */
+crypto.subtle.importKey = async () => ({});
+crypto.subtle.sign = async () => new Uint8Array([1, 2, 3, 4]).buffer;
+
+globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  if (u.includes('oauth2.googleapis.com')) {
+    return { ok: true, json: async () => ({ access_token: 'demo', expires_in: 3600 }) };
+  }
+  if (u.includes('freeBusy')) {
+    /* 画面のカレンダーを、そのまま予定として返す */
+    const list = [];
+    for (const d of DATES) {
+      for (const h of [...busy[d]].sort((a, b) => a - b)) {
+        list.push({ start: d + 'T' + String(h).padStart(2, '0') + ':00:00+09:00',
+                    end: d + 'T' + String(h + 1).padStart(2, '0') + ':00:00+09:00' });
+      }
+    }
+    return { ok: true, json: async () => ({ calendars: { 'therapist@demo': { busy: list } } }) };
+  }
+  if (u.endsWith('/consumption')) return { ok: true, json: async () => ({ totalUsage: 900 }) };
+  if (u.includes('/message/quota')) {
+    return { ok: true, json: async () => ({ type: 'limited', value: 5000 }) };
+  }
+  if (u.includes('graph.instagram.com')) {
+    return { ok: true, json: async () => ({ id: 'demo-' + Date.now() }) };
+  }
+  if (u.includes('mybusiness.googleapis.com')) {
+    posts.push(JSON.parse(init.body));
+    return { ok: true, json: async () => ({ name: 'demo' }) };
+  }
+  return { ok: true, json: async () => ({}) };
+};
+
+/* ---------- 進み具合の表示 ---------- */
+
+function step(state, time, label, note) {
+  return '<li class="' + state + '"><span class="t">' + esc4(time) + '</span>' +
+    '<span class="s">' + (state === 'done' ? '●' : state === 'stop' ? '×' : '○') + '</span>' +
+    '<span class="b">' + esc4(label) +
+    (note ? '<small>' + esc4(note) + '</small>' : '') + '</span></li>';
+}
+
+function paintSteps(rows) {
+  document.getElementById('steps').innerHTML = rows.join('');
+}
+
+paintSteps([
+  step('wait', '10:00', 'カレンダーを見る'),
+  step('wait', '10:00', '出す枠を決める'),
+  step('wait', '10:00', 'LINEに送る'),
+  step('wait', '10:30', 'Instagram に出す'),
+  step('wait', '10:30', 'Google に出す')
+]);
+
+/* ---------- 朝10時 ---------- */
+
+document.getElementById('run').addEventListener('click', async () => {
+  sent = 0; scheduled = []; posts = []; seq = 1;
+  document.getElementById('now').textContent = '月曜 10:00';
+
+  /* 送信日でない日を試すときは、火曜として動かす */
+  const today = guards.notSendDay ? '2026-09-08' : MON;
+  const r = await runAuto(ENV, { today });
+  lastRun = r;
+
+  const room = (r.rooms || []).find((x) => x.room === 'room') || {};
+  const stopped = r.skipped || room.skipped;
+
+  if (stopped) {
+    paintSteps([
+      step('done', '10:00', 'カレンダーを見る'),
+      step('stop', '10:00', '止まりました', stopped),
+      step('wait', '10:00', 'LINEに送る'),
+      step('wait', '10:30', 'Instagram に出す'),
+      step('wait', '10:30', 'Google に出す')
+    ]);
+    document.getElementById('nowNote').textContent = stopped;
+    document.getElementById('line').textContent = '送っていません。';
+    document.getElementById('later').disabled = true;
+    return;
+  }
+
+  const slots = room.slots || [];
+  paintSteps([
+    step('done', '10:00', 'カレンダーを見る',
+         formatDate(DATES[0]) + '・' + formatDate(DATES[1]) + ' の空きを確認'),
+    step('done', '10:00', '出す枠を決めた',
+         slots.map((s) => formatDate(s.date) + ' ' + s.time).join(' / ')),
+    step('done', '10:00', room.sent + '名のLINEに送った',
+         '空き枠のお知らせを希望された方だけ'),
+    step('wait', '10:30', 'Instagram に出す', '30分あけます'),
+    step('wait', '10:30', 'Google に出す', '30分あけます')
+  ]);
+
+  document.getElementById('nowNote').textContent =
+    'LINEに送信しました。30分後に外へ出します';
+  document.getElementById('line').textContent = buildLineMessage(slots);
+  document.getElementById('later').disabled = false;
+
+  /* ストーリーズの画像は、本番と同じ描き方でその場に描く */
+  drawStory(storyCtx, slots, { today, delayMinutes: INSTAGRAM_DELAY_MIN });
+  document.getElementById('storyNote').textContent =
+    'この画像を30分後に出します（いまはまだ出していません）。';
+});
+
+/* ---------- 30分後 ---------- */
+
+document.getElementById('later').addEventListener('click', async () => {
+  document.getElementById('now').textContent = '月曜 10:30';
+  const r = await publishDue(ENV, '2030-01-01T00:00:00.000Z');
+
+  const room = (lastRun.rooms || []).find((x) => x.room === 'room') || {};
+  const slots = room.slots || [];
+
+  paintSteps([
+    step('done', '10:00', 'カレンダーを見る'),
+    step('done', '10:00', '出す枠を決めた'),
+    step('done', '10:00', room.sent + '名のLINEに送った'),
+    step('done', '10:30', 'Instagram に出した', 'ストーリーズ'),
+    step('done', '10:30', 'Google に出した', '最新情報として投稿')
+  ]);
+
+  document.getElementById('nowNote').textContent = r.published + '件を投稿しました';
+  document.getElementById('storyNote').textContent = 'Instagram のストーリーズに出しました。';
+
+  const g = posts[0];
+  document.getElementById('gbp').innerHTML = g
+    ? '<div class="gpost"><div class="gh">Google ビジネスプロフィール ／ 最新情報</div>' +
+      '<div class="gb">' + esc4(g.summary) + '</div>' +
+      (g.callToAction ? '<div class="gc">' +
+        (g.callToAction.actionType === 'BOOK' ? '予約' : '電話') + '</div>' : '') +
+      '</div>'
+    : '<p class="empty">出せませんでした。</p>';
+
+  document.getElementById('later').disabled = true;
+});
+
+/* ---------- 歯止め ---------- */
+
+const GUARDS = [
+  ['week', '今週すでに3回出している',
+   '同じお部屋のお知らせは直近7日で3回まで。続けすぎると「いつも空いている店」になります'],
+  ['nobody', '受け取りを希望した方がいない',
+   '頼まれていない方には送りません。リッチメニューから登録していただきます'],
+  ['notSendDay', '送信日ではない（火曜）',
+   '定期のお知らせは月曜と木曜だけ。急な空きはスタッフ用ページから手で出せます']
+];
+
+document.getElementById('guards').innerHTML = GUARDS.map(([id, label, note]) =>
+  '<label class="guard"><input type="checkbox" data-g="' + id + '">' +
+  '<span>' + esc4(label) + '<small>' + esc4(note) + '</small></span></label>'
+).join('');
+
+document.getElementById('guards').addEventListener('change', (e) => {
+  if (!e.target.dataset.g) return;
+  guards[e.target.dataset.g] = e.target.checked;
+});
+
+/* ---------- 最初に戻す ---------- */
+
+document.getElementById('reset').addEventListener('click', () => location.reload());
+
+/* ---------- 立ち上げ ---------- */
+
+const storyCtx = document.getElementById('story').getContext('2d');
+const { drawStory } = makeStory();
+paintCal();
+
+/* ---------- 説明書を読み込む ---------- */
+
+/* 別の枠に入れているのは、説明書とデモで同じ名前の飾りを使っているためです。
+   中身の高さに合わせて枠を伸ばし、ページ全体が1本の流れになるようにします。 */
+(() => {
+  const frame = document.getElementById('guideFrame');
+  const doc = document.getElementById('guideDoc');
+  if (!frame || !doc) return;
+
+  frame.addEventListener('load', () => {
+    const fit = () => {
+      try {
+        const h = frame.contentDocument.documentElement.scrollHeight;
+        if (h > 200) frame.style.height = h + 'px';
+      } catch (e) {
+        /* 中を読めない開き方のときは、そのままの高さで中をスクロールしていただく */
+      }
+    };
+    fit();
+    setTimeout(fit, 300);
+    window.addEventListener('resize', fit);
+  });
+
+  frame.srcdoc = doc.textContent;
+})();
+</script>

@@ -1,0 +1,102 @@
+<title>ミエーレ 空き枠の自動お知らせ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
+    --ink:#2B2724; --ink-soft:#574D48; --muted:#8B7F79;
+    --rule:#E7DBD4; --accent:#98543F; --accent-wash:#F7EBE5;
+    --warn:#8E6415; --warn-wash:#F7EFDF;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+      --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+      --rule:#3A3331; --accent:#D9967C; --accent-wash:#33241F;
+      --warn:#DEAC57; --warn-wash:#2E2619;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
+       font-size:15.5px;line-height:1.9;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto;padding:0 24px 90px}
+  .cover{padding:60px 0 30px;border-bottom:2px solid var(--accent);margin-bottom:30px}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.22em;color:var(--accent);margin:0 0 14px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,5vw,34px);
+     line-height:1.3;margin:0 0 16px;text-wrap:balance}
+  .cover p{color:var(--ink-soft);margin:0 0 8px;max-width:60ch}
+  b.hl{background:linear-gradient(transparent 62%,var(--accent-wash) 62%);font-weight:500}
+  h2{font-family:var(--f-display);font-size:13.5px;letter-spacing:.08em;color:var(--muted);
+     margin:34px 0 12px;font-weight:700}
+  a.item{display:block;background:var(--surface);border:1px solid var(--rule);
+         border-radius:14px;padding:19px 22px;margin-bottom:11px;text-decoration:none;color:inherit}
+  a.item b{display:block;font-family:var(--f-display);font-size:17.5px;color:var(--accent);
+           margin-bottom:4px}
+  a.item span{display:block;font-size:13.5px;color:var(--ink-soft)}
+  a.item em{font-style:normal;font-size:11.5px;color:var(--muted);display:block;margin-top:6px}
+  .flow{background:var(--sunk);border-radius:13px;padding:16px 20px;margin:0 0 24px;
+        font-size:13.5px;color:var(--ink-soft);line-height:2}
+  .flow b{color:var(--accent);font-family:var(--f-display)}
+  .callout{border-left:4px solid var(--warn);background:var(--warn-wash);
+           border-radius:0 12px 12px 0;padding:15px 20px;margin:0 0 26px;font-size:13.5px;
+           color:var(--warn)}
+  .callout p{margin:0}
+  footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--muted);line-height:1.9}
+</style>
+
+<div class="wrap">
+
+<header class="cover">
+  <p class="eyebrow">トータル・ビューティー・サロン ミエーレ</p>
+  <h1>空き枠の自動お知らせ</h1>
+  <p>空いてしまった枠を、<b class="hl">人が触らずに</b>お客様へお知らせするしくみです。
+     実際に触っていただけます。</p>
+</header>
+
+<div class="flow">
+  <b>月・木 10:00</b>　カレンダーの空きを見つけて、LINEに送る<br>
+  <b>　　　 10:30</b>　Instagram と Google に出す
+</div>
+
+<div class="callout">
+  <p><b>これはデモです。</b>実際のLINE・Instagram・Googleには何も送信されません。
+  自由に触ってみてください。</p>
+</div>
+
+<h2>まずこちらを</h2>
+
+<a class="item" href="auto.html">
+  <b>空き枠が、ひとりでに出るまで</b>
+  <span>月曜の朝からの一部始終を、早送りで見られます。
+        カレンダーの予定を触ると、出てくる空き枠が変わります。</span>
+  <em>ページの下のほうに、運用ガイド（説明書）が丸ごと入っています</em>
+</a>
+
+<h2>お客様が見る画面</h2>
+
+<a class="item" href="app.html">
+  <b>LINEの中で開くページ</b>
+  <span>リッチメニューの6つのボタン。コース診断・メニュー料金・ご予約・問診表・空き枠の設定・アクセス。</span>
+  <em>診断にお答えいただくと、空き枠の送り先が絞られていく様子が右側に出ます</em>
+</a>
+
+<h2>印刷したいとき</h2>
+
+<a class="item" href="guide.html">
+  <b>運用ガイド（説明書）だけ</b>
+  <span>オーナー様向け・スタッフの皆さま向け・設定される方向けの4部構成。</span>
+  <em>印刷すると、部ごとに改ページされます</em>
+</a>
+
+<footer>
+  トータル・ビューティー・サロン ミエーレ<br>
+  〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分<br>
+  ご不明な点は店内でお尋ねください。
+</footer>
+
+</div>

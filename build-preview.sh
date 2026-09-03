@@ -134,3 +134,13 @@ cp preview/all.html out/all.html
 cp preview/home.html out/index.html
 check_dupes preview/all.html
 echo "built: out/all.html"
+
+# 配布用の軽いフォルダ。今日お見せするものだけを入れる。
+# ページが多いと、どこを見ればよいか分からなくなるため。
+mkdir -p drop
+cp preview/drop-home.html drop/index.html
+cp preview/auto.html      drop/auto.html
+cp preview/app.html       drop/app.html
+cp preview/guide.html     drop/guide.html
+printf 'User-agent: *\nDisallow: /\n' > drop/robots.txt
+echo "built: drop/（index・auto・app・guide）"
