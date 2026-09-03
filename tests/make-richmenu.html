@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><body>
+<!-- リッチメニューの画像を、いまの MENU から作り直すための道具。
+     ./run-tests.sh tests/make-richmenu.html で組み立てて、
+     ヘッドレスで開き、出てきた文字列を design/richmenu.png に戻す。 -->
+<script type="module">
+import { MENU, LAYOUTS, cellsFor } from '../src/menu.js';
+import { drawRichMenu } from '../src/richmenu.js';
+
+const layout = LAYOUTS[0];                 // 大・3列×2段（6ボタン）
+const cv = document.createElement('canvas');
+cv.width = layout.w;
+cv.height = layout.h;
+drawRichMenu(cv.getContext('2d'), cellsFor(MENU, layout), layout);
+
+const pre = document.createElement('pre');
+pre.id = 'TESTOUT';
+pre.textContent = cv.toDataURL('image/png').split(',')[1];
+document.body.appendChild(pre);
+</script>

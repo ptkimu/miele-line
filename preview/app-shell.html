@@ -43,22 +43,24 @@
   @media (max-width:840px){ .stage{grid-template-columns:1fr} }
 
   /* 端末 */
-  .phone{background:#12100F;border-radius:30px;padding:12px;box-shadow:0 14px 40px rgba(0,0,0,.2)}
-  .screen{background:var(--surface);border-radius:20px;overflow:hidden;height:600px;
+  .phone{background:#12100F;border-radius:30px;padding:12px;max-width:372px;margin:0 auto;
+         box-shadow:0 14px 40px rgba(0,0,0,.2)}
+  .screen{background:var(--surface);border-radius:20px;overflow:hidden;height:640px;
           display:flex;flex-direction:column}
   .bar{background:var(--accent);color:#fff;padding:9px 14px;font-size:12px;
        display:flex;justify-content:space-between;font-family:var(--f-display)}
   iframe{flex:1;width:100%;border:0;background:var(--surface)}
 
-  /* リッチメニュー */
-  .rich{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule-hard);
-        border-top:1px solid var(--rule-hard)}
-  .rich button{background:var(--sunk);border:0;color:var(--ink);font:inherit;font-size:10.5px;
-               line-height:1.4;padding:11px 4px;display:flex;flex-direction:column;
-               align-items:center;gap:4px;cursor:pointer}
-  .rich button.on{background:var(--accent-wash);color:var(--accent);font-weight:700}
-  .rich svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:5.5;
-            stroke-linecap:round;stroke-linejoin:round}
+  /* リッチメニュー（実際に管理画面へ上げる画像そのもの） */
+  .rich{position:relative;border-top:1px solid var(--rule-hard);flex:0 0 auto}
+  .rich img{display:block;width:100%;height:auto}
+  .hot{position:absolute;inset:0;display:grid;
+       grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}
+  .hot button{background:none;border:0;padding:0;cursor:pointer;
+              -webkit-tap-highlight-color:transparent}
+  .hot button:hover{background:rgba(43,39,36,.07)}
+  .hot button.on{box-shadow:inset 0 0 0 3px var(--accent)}
+  .hot button span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
   /* 右側のパネル */
   .panel{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
@@ -112,11 +114,15 @@
       <div class="screen">
         <div class="bar"><span>ミエーレ</span><span id="pageName">コース診断</span></div>
         <iframe id="frame" title="お客様の画面"></iframe>
-        <div class="rich" id="rich"></div>
+        <div class="rich">
+          <img src="/*__RICHMENU_PNG__*/" alt="リッチメニュー">
+          <div class="hot" id="rich"></div>
+        </div>
       </div>
     </div>
     <p class="sub" style="margin-top:12px;font-size:12.5px">
-      下のボタンがリッチメニューです。押すとページが切り替わります。
+      下がリッチメニューです。<b>これは実際に管理画面へ上げる画像そのもの</b>で、
+      6か所のどこを押しても、そのページが開きます。
     </p>
   </div>
 
@@ -292,10 +298,9 @@ function paintNav() {
   });
 }
 
+/* 画像の上に、ボタンと同じ並びで押せる場所を重ねる（3列×2段） */
 document.getElementById('rich').innerHTML = PAGES.map((p) =>
-  '<button type="button" data-path="' + p.path + '">' +
-  '<svg viewBox="0 0 100 100"><path d="' + (ICONS[p.icon] || '') + '"/></svg>' +
-  p.label + '</button>'
+  '<button type="button" data-path="' + p.path + '"><span>' + p.label + '</span></button>'
 ).join('');
 
 document.getElementById('rich').addEventListener('click', (e) => {

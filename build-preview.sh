@@ -94,7 +94,9 @@ echo "built: out/menu.html"
 awk -v file="$TMP" '
   /\/\*__MODULES__\*\// { while ((getline line < file) > 0) print line; next }
   { print }
-' preview/app-shell.html > preview/app.html
+' preview/app-shell.html > "$TMP.app"
+sed "s|/\*__RICHMENU_PNG__\*/|data:image/png;base64,${B64}|" "$TMP.app" > preview/app.html
+rm -f "$TMP.app"
 cp preview/app.html out/app.html
 check_dupes preview/app.html
 echo "built: out/app.html"
