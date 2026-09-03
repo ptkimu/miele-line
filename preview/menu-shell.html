@@ -361,6 +361,20 @@ function renderLineSetup() {
   const pos = ['左上','中上','右上','左下','中下','右下'];
   const posFor = (i) => layout.rows === 1 ? `左から${i + 1}番目` : (pos[i] ?? `${i + 1}番目`);
 
+  /* 管理画面に貼る内容。LIFFのページは liff.line.me のURLになる */
+  const setupTarget = (c) => {
+    if (c.link === 'booking') {
+      return SALON.bookingUrl
+        ? '<code>' + esc2(SALON.bookingUrl) + '</code>'
+        : '<span class="off">予約システムのURLが未設定です</span>';
+    }
+    if (c.link && c.link.startsWith('/app/')) {
+      return '<code>https://liff.line.me/＜LIFF ID＞/' + esc2(c.link.slice(5)) + '</code>';
+    }
+    if (c.link) return esc2(c.link);
+    return c.keyword ? '<code>' + esc2(c.keyword) + '</code>' : '—';
+  };
+
   $('lineSetup').innerHTML = `
     <h4 style="font-family:var(--f-display);font-size:14px;margin:0 0 8px">
       1. トークルーム管理 → 応答設定</h4>
@@ -392,13 +406,16 @@ function renderLineSetup() {
             <td>${esc2(posFor(i))}</td>
             <td>${esc2(c.label)}</td>
             <td>${c.link ? 'リンク' : (c.keyword ? 'テキスト' : '設定しない')}</td>
-            <td>${c.link ? esc2(c.link) : (c.keyword ? '<code>' + esc2(c.keyword) + '</code>' : '—')}</td>
+            <td>${setupTarget(c)}</td>
           </tr>`).join('')}
       </tbody>
     </table></div>
     <p class="note">
-      ポストバックは管理画面から選べないため、すべて「テキスト」で受けています。
-      押すとそのテキストがお客様の発言として送られ、システムが自動で返信します。
+      <b style="color:var(--ink-soft)">LIFF のページは「リンク」で設定します。</b>
+      <code>https://liff.line.me/＜LIFF ID＞/menu</code> の形で、
+      LIFF ID を発行したあとに置き換えてください。
+      ポストバックは管理画面から選べないため、テキストで受けるボタンは
+      押すとその言葉がお客様の発言として送られ、システムが自動で返信します。
     </p>
 
     <h4 style="font-family:var(--f-display);font-size:14px;margin:24px 0 8px">

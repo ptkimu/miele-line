@@ -26,6 +26,12 @@ enabled = true
 #                         （カンマ区切り。週2回・1人1通なので月8通程度）
 #   ADMIN_URL             スタッフ用ページのURL。通知の文面に入れる
 #
+# --- LIFF（LINEの中で開くページ。未設定でもページは開きますが、
+#          どなたか分からないためタグは残りません） ------------------
+#   LIFF_ID               LINE Developers > LIFF タブで発行される LIFF ID
+#   LIFF_CHANNEL_ID       その LIFF を作ったチャネルのチャネルID
+#                         （ページから届いた本人確認に使う）
+#
 # --- Googleカレンダー（空きの取り込み。未設定でも手入力で動きます） ------
 #   GOOGLE_SA_EMAIL       サービスアカウントの client_email
 #   GOOGLE_SA_KEY         サービスアカウントの private_key（-----BEGIN から END まで丸ごと）

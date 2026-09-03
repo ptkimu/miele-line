@@ -68,6 +68,38 @@ CREATE TABLE IF NOT EXISTS deliveries (
 CREATE INDEX IF NOT EXISTS idx_deliveries_sent ON deliveries(sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_deliveries_step ON deliveries(step_id, status);
 
+-- コース診断の回答。どのお悩みを選ばれたかがタグになり、
+-- 空き枠のお知らせを「関心のある方だけ」に絞る材料になる。
+-- 保存するのは選択肢のIDだけで、自由入力は受け取らない。
+CREATE TABLE IF NOT EXISTS diagnoses (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  line_user_id TEXT NOT NULL,
+  gender       TEXT,
+  concerns     TEXT,                              -- JSON配列
+  budget       TEXT,
+  pace         TEXT,
+  results      TEXT,                              -- ご提案したコースのID（JSON配列）
+  created_at   TEXT NOT NULL,
+  FOREIGN KEY (line_user_id) REFERENCES customers(line_user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_diagnoses_user ON diagnoses(line_user_id, created_at DESC);
+
+-- 問診表。健康に関わる内容をお預かりするため、長くは持たない。
+-- expires_on を過ぎたものは、毎朝の cron で削除する。
+CREATE TABLE IF NOT EXISTS intake_forms (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  line_user_id TEXT NOT NULL,
+  display_name TEXT,
+  body         TEXT NOT NULL,                     -- 記入内容（JSON）
+  expires_on   TEXT NOT NULL,                     -- YYYY-MM-DD。この日を過ぎたら消す
+  created_at   TEXT NOT NULL,
+  FOREIGN KEY (line_user_id) REFERENCES customers(line_user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_intake_expires ON intake_forms(expires_on);
+CREATE INDEX IF NOT EXISTS idx_intake_created ON intake_forms(created_at DESC);
+
 -- 空き枠のお知らせを出した履歴。
 -- 「直近7日で何回出したか」をお部屋ごとに数えて、出しすぎを止めるために使う。
 CREATE TABLE IF NOT EXISTS open_slots (

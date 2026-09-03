@@ -20,52 +20,28 @@ import { checkQuota } from './quota.js';
 import { listSegment, RECENT_DAYS } from './segments.js';
 import { OPEN_SLOT_TAG } from './tags.js';
 import { todayJst, nowIso } from './handlers.js';
+import { slotMenusOf, concernTagsOfMenus } from './courses.js';
 
 /**
  * 部屋。セルフブースと施術ルームは独立していて、同時に稼働できます。
  * セラピストが埋まっていてもセルフ枠は出せるので、出せる機会が増えます。
  *
- * 予約はどちらもサロンボードへ手入力するため、運用は変わりません。
+ * メニューは src/courses.js から取ります。
+ * メニューが変わったときに直す場所を1か所にするためです。
+ * 所要時間の掲載があるものだけが、空き枠として出せます。
  */
 export const ROOMS = [
   {
     id: 'self',
     label: 'セルフブース',
     note: '1室。セラピストの予定と関係なく空きます',
-    menus: [
-      { name: 'セルフ脱毛 30分', minutes: 30 },
-      { name: 'セルフ脱毛 60分（全身OK）', minutes: 60 }
-    ]
+    menus: slotMenusOf('self')
   },
   {
     id: 'room',
     label: '施術ルーム',
     note: 'セラピストの予定で決まります',
-    /* 掲載メニューの所要時間。枠の長さに入るものだけを候補に出す */
-    menus: [
-      { name: 'ヘッド & デコルテマッサージ 20分', minutes: 20 },
-      { name: '痛みが少ないLED脱毛 初回体験', minutes: 20 },
-      { name: 'ミルキーフェイシャル 30分', minutes: 30 },
-      { name: '【女性限定】VIO脱毛 30分', minutes: 30 },
-      { name: 'セラピスト脱毛 30分', minutes: 30 },
-      { name: '脂肪冷却 2カップ 二の腕', minutes: 30 },
-      { name: 'アロマトリートメント 40分', minutes: 40 },
-      { name: '脂肪冷却 2カップ お腹 or 太もも or お尻', minutes: 45 },
-      { name: 'お腹・太ももを集中ケア', minutes: 50 },
-      { name: 'プラズマシャワー', minutes: 60 },
-      { name: '韓国肌管理 ララピール', minutes: 60 },
-      { name: 'ダクトピール お試しお手軽コース', minutes: 60 },
-      { name: '韓国肌管理 ダクトピール（毛穴/美白/水光肌）', minutes: 60 },
-      { name: 'プラズマ × 光フェイシャル', minutes: 60 },
-      { name: '小顔輪郭形成 REDショット', minutes: 60 },
-      { name: 'セラピスト脱毛 60分（全身可）', minutes: 60 },
-      { name: 'アロマトリートメント 60分', minutes: 60 },
-      { name: 'ラジオ波 & 脂肪冷却 二の腕 or ふくらはぎ', minutes: 60 },
-      { name: 'ラジオ波 & 脂肪冷却 お腹 or 太もも', minutes: 75 },
-      { name: 'ダクトピール 90分 specialコース', minutes: 90 },
-      { name: 'セラピスト全身脱毛 90分', minutes: 90 },
-      { name: '結婚式向け 花嫁フェイシャル集中コース', minutes: 90 }
-    ]
+    menus: slotMenusOf('room')
   }
 ];
 
@@ -364,12 +340,19 @@ export async function previewOpenSlot(env, slots, opts = {}) {
   const everyone = !!opts.everyone;
   const baseTag = everyone ? [] : [OPEN_SLOT_TAG];
 
-  const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
-  const pick = (tags) => listSegment(env, { ...base, tags }, today);
+  /* コース診断をお受けになった方は、お悩みのタグをお持ちです。
+     枠のメニューに関わるお悩みを1つでも選んでいた方に絞れます。
+     診断をまだの方は当てはまらないので、送り先はぐっと狭くなります。 */
+  const interestTags = opts.byInterest
+    ? concernTagsOfMenus(slots.flatMap((s) => slotMenus(s)))
+    : [];
 
-  const targets = await pick(narrowTag ? [...baseTag, narrowTag] : baseTag);
+  const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
+  const pick = (tags, anyTags = []) => listSegment(env, { ...base, tags, anyTags }, today);
+
+  const targets = await pick(narrowTag ? [...baseTag, narrowTag] : baseTag, interestTags);
   // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
-  const wide = narrowTag ? await pick(baseTag) : targets;
+  const wide = narrowTag || interestTags.length ? await pick(baseTag) : targets;
 
   const quota = await checkQuota(env, targets.length, opts.quota ?? null);
   const weekCount = await recentSendCount(env, today, room);
@@ -382,11 +365,18 @@ export async function previewOpenSlot(env, slots, opts = {}) {
             'ブロックされやすくなります。稼働の直後など、必要なときだけにしてください。'
     });
   }
-  if (narrowTag && !targets.length && wide.length) {
+  if ((narrowTag || interestTags.length) && !targets.length && wide.length) {
     notes.push({
       kind: 'narrow-empty',
-      text: `「${narrowTag}」の方はいませんでした。` +
+      text: `絞り込みに当てはまる方はいませんでした。` +
             `絞り込みを外すと、空き枠を希望された${wide.length}名にお送りできます。`
+    });
+  }
+  if (interestTags.length && targets.length) {
+    notes.push({
+      kind: 'by-interest',
+      text: `コース診断で「${interestTags.map((t) => t.replace('関心:', '')).join('・')}」を` +
+            `選ばれた方に絞っています。診断がまだの方には届きません。`
     });
   }
   if (weekCount >= MAX_PER_WEEK) {
@@ -411,6 +401,7 @@ export async function previewOpenSlot(env, slots, opts = {}) {
     everyone,
     roomLabel: ROOMS.find((r) => r.id === room)?.label ?? '',
     narrowTag,
+    interestTags,
     wideCount: wide.length,
     targets,
     planned: targets.length,

@@ -1,0 +1,388 @@
+<title>LINEアプリ デモ｜ミエーレ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
+    --ink:#2B2724; --ink-soft:#574D48; --muted:#8B7F79;
+    --rule:#E7DBD4; --rule-hard:#D6C6BD;
+    --accent:#98543F; --accent-wash:#F7EBE5;
+    --ok:#1F7A4C; --ok-wash:#E8F3EC;
+    --warn:#8E6415; --warn-wash:#F7EFDF;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+      --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+      --rule:#3A3331; --rule-hard:#4C4340;
+      --accent:#D9967C; --accent-wash:#33241F;
+      --ok:#5CC98C; --ok-wash:#1C2C24;
+      --warn:#DEAC57; --warn-wash:#2E2619;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
+       font-size:15px;line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px 90px}
+
+  .cover{padding:52px 0 26px;border-bottom:2px solid var(--accent);margin-bottom:30px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--accent);margin:0 0 12px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(24px,4.4vw,32px);
+     line-height:1.3;margin:0 0 12px;text-wrap:balance}
+  .cover p{color:var(--ink-soft);margin:0 0 6px;max-width:62ch;font-size:14.5px}
+
+  h2{font-family:var(--f-display);font-weight:700;font-size:19px;margin:44px 0 8px}
+  h3{font-family:var(--f-display);font-weight:700;font-size:14px;margin:0 0 10px;color:var(--muted)}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 18px;max-width:62ch}
+
+  .stage{display:grid;grid-template-columns:340px 1fr;gap:26px;align-items:start}
+  @media (max-width:840px){ .stage{grid-template-columns:1fr} }
+
+  /* 端末 */
+  .phone{background:#12100F;border-radius:30px;padding:12px;box-shadow:0 14px 40px rgba(0,0,0,.2)}
+  .screen{background:var(--surface);border-radius:20px;overflow:hidden;height:600px;
+          display:flex;flex-direction:column}
+  .bar{background:var(--accent);color:#fff;padding:9px 14px;font-size:12px;
+       display:flex;justify-content:space-between;font-family:var(--f-display)}
+  iframe{flex:1;width:100%;border:0;background:var(--surface)}
+
+  /* リッチメニュー */
+  .rich{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule-hard);
+        border-top:1px solid var(--rule-hard)}
+  .rich button{background:var(--sunk);border:0;color:var(--ink);font:inherit;font-size:10.5px;
+               line-height:1.4;padding:11px 4px;display:flex;flex-direction:column;
+               align-items:center;gap:4px;cursor:pointer}
+  .rich button.on{background:var(--accent-wash);color:var(--accent);font-weight:700}
+  .rich svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:5.5;
+            stroke-linecap:round;stroke-linejoin:round}
+
+  /* 右側のパネル */
+  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+         padding:18px 20px;margin-bottom:16px}
+  .panel p{margin:0 0 10px;font-size:13.5px;color:var(--ink-soft)}
+  .panel p:last-child{margin-bottom:0}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:0;list-style:none}
+  .tags li{font-size:11.5px;background:var(--accent-wash);color:var(--accent);
+           border-radius:99px;padding:3px 11px;font-weight:500}
+  .tags li.none{background:var(--sunk);color:var(--muted);font-weight:400}
+  .flow{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);
+        margin:0 0 12px;flex-wrap:wrap}
+  .flow b{color:var(--accent)}
+  .box{background:var(--sunk);border-radius:10px;padding:12px 14px;font-size:12.5px;
+       white-space:pre-wrap;color:var(--ink-soft);margin:0;line-height:1.8;
+       word-break:break-word;font-family:var(--f-body)}
+  .empty{color:var(--muted);font-size:12.5px;margin:0}
+  .callout{border-left:4px solid var(--accent);background:var(--accent-wash);
+           border-radius:0 12px 12px 0;padding:14px 18px;margin:0 0 20px;font-size:13.5px}
+  .callout--warn{border-left-color:var(--warn);background:var(--warn-wash)}
+  .callout p{margin:0 0 8px}
+  .callout p:last-child{margin:0}
+  b.hl{background:linear-gradient(transparent 62%,var(--accent-wash) 62%);font-weight:500}
+  .reset{padding:9px 14px;border:1px solid var(--rule);border-radius:9px;background:none;
+         color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:var(--sunk);
+       padding:2px 6px;border-radius:5px;word-break:break-all}
+  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--muted);line-height:1.9}
+</style>
+
+<div class="wrap">
+
+<header class="cover">
+  <p class="eyebrow">トータル・ビューティー・サロン ミエーレ</p>
+  <h1>LINEの中で開くページ（デモ）</h1>
+  <p>リッチメニューの各ボタンから開くページです。実際に触っていただけます。</p>
+  <p><b class="hl">左が お客様の画面、右が そのとき裏側で起きていること</b>です。
+     コース診断にお答えいただくと、右側にタグが増え、
+     空き枠のお知らせの送り先が絞られていくのが分かります。</p>
+</header>
+
+<div class="callout callout--warn">
+  <p><b>これはデモです。</b>実際のLINEには何も送信されません。
+  ページそのものは本番と同じコードで動いています。</p>
+</div>
+
+<div class="stage">
+  <div>
+    <div class="phone">
+      <div class="screen">
+        <div class="bar"><span>ミエーレ</span><span id="pageName">コース診断</span></div>
+        <iframe id="frame" title="お客様の画面"></iframe>
+        <div class="rich" id="rich"></div>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:12px;font-size:12.5px">
+      下のボタンがリッチメニューです。押すとページが切り替わります。
+    </p>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h3>いま、このお客様に付いているタグ</h3>
+      <ul class="tags" id="tagList"></ul>
+      <p class="empty" id="tagNote"></p>
+      <button type="button" class="reset" id="reset">最初の状態に戻す</button>
+    </div>
+
+    <div class="panel">
+      <h3>このタグで、空き枠のお知らせはどう変わるか</h3>
+      <div class="flow" id="flow"></div>
+      <p class="box" id="target"></p>
+    </div>
+
+    <div class="panel">
+      <h3>問診表がスタッフに届いた様子</h3>
+      <p class="box" id="intake">まだ届いていません。</p>
+    </div>
+  </div>
+</div>
+
+<h2>ボタンごとの中身</h2>
+<p class="sub">6つのボタンは、それぞれ次のページにつながります。</p>
+<div class="panel" id="guide"></div>
+
+<footer>
+  トータル・ビューティー・サロン ミエーレ ／ LINEアプリ デモ<br>
+  〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分
+</footer>
+
+</div>
+
+<script>
+/*__MODULES__*/
+</script>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * デモの裏側
+ *
+ * ページ本体（app.js）は本番のコードをそのまま使い、
+ * データベースとLINEへの送信だけを、この画面の中の入れ物で代用しています。
+ * ------------------------------------------------------------------ */
+
+const esc3 = (s) => String(s ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/* このお客様に付いているタグ。本番では D1 に入ります */
+let TAGS = new Set();
+let INTAKE = null;
+
+const ENV = { LIFF_ID: '', LIFF_CHANNEL_ID: '' };   // デモではLIFFを読み込まない
+
+/* 友だちの人数。空き枠の送り先が何名になるかを見せるための作りものです */
+const FRIENDS = 318;
+const WANT_SLOT = 46;      // 空き枠のお知らせを希望された方
+const DIAGNOSED = 12;      // コース診断をお受けになった方
+
+/* ------------------------------------------------------------------ *
+ * /api/* の代わり
+ * ------------------------------------------------------------------ */
+
+window.__demoFetch = async (url, init) => {
+  const path = String(url);
+  const body = init && init.body ? JSON.parse(init.body) : {};
+  let out = { error: 'not found' };
+
+  if (path.endsWith('/api/diagnosis')) {
+    const a = cleanAnswers(body.answers);
+    if (!a) {
+      out = { error: '回答が足りません' };
+    } else {
+      /* 本物の組み立てをそのまま呼ぶ */
+      out = { ...diagnosisPayload(a), saved: true };
+      for (const c of CONCERNS) TAGS.delete('関心:' + c.label);
+      for (const t of tagsFromDiagnosis(a)) TAGS.add(t.name);
+      paint();
+    }
+  } else if (path.endsWith('/api/me')) {
+    out = {
+      openSlot: TAGS.has(OPEN_SLOT_TAG),
+      rooms: Object.entries(ROOM_TAG).filter(([, n]) => TAGS.has(n)).map(([id]) => id),
+      concerns: CONCERNS.filter((c) => TAGS.has('関心:' + c.label)).map((c) => c.id),
+      diagnosed: [...TAGS].some((t) => t.startsWith('関心:'))
+    };
+  } else if (path.endsWith('/api/prefs')) {
+    if (body.openSlot) TAGS.add(OPEN_SLOT_TAG); else TAGS.delete(OPEN_SLOT_TAG);
+    for (const [id, name] of Object.entries(ROOM_TAG)) {
+      if (body.openSlot && (body.rooms || []).includes(id)) TAGS.add(name);
+      else TAGS.delete(name);
+    }
+    out = { ok: true, openSlot: !!body.openSlot, rooms: body.rooms || [] };
+    paint();
+  } else if (path.endsWith('/api/intake')) {
+    if (!body.consent) out = { error: 'ご同意が必要です' };
+    else if (!body.form || !body.form.name) out = { error: 'お名前をご記入ください' };
+    else {
+      INTAKE = body.form;
+      out = { ok: true };
+      paint();
+    }
+  }
+
+  return { ok: !out.error, json: async () => out };
+};
+
+/* ------------------------------------------------------------------ *
+ * 画面の切り替え
+ * ------------------------------------------------------------------ */
+
+const PAGES = [
+  { path: '/app/diagnosis', label: 'コース診断',   icon: 'search' },
+  { path: '/app/menu',      label: 'メニュー・料金', icon: 'doc' },
+  { path: 'booking',        label: 'ご予約',       icon: 'chat' },
+  { path: '/app/intake',    label: '問診表',       icon: 'clip' },
+  { path: '/app/slot',      label: '空き枠',       icon: 'calendar' },
+  { path: '/app/access',    label: 'アクセス',     icon: 'pin' }
+];
+
+const frame = document.getElementById('frame');
+let current = '/app/diagnosis';
+
+async function open(path) {
+  if (path === 'booking') {
+    frame.srcdoc =
+      '<body style="font-family:sans-serif;padding:28px;color:#8B7F79;line-height:1.9;font-size:14px">' +
+      '<b style="color:#2B2724">ご予約システムが開きます</b><br><br>' +
+      'このボタンは、すでにお使いの予約システムへそのままお通しします。' +
+      '独自の予約フォームは作りません。別々に受け付けると、' +
+      '同じ枠が二重に売れてしまうためです。<br><br>' +
+      '<code style="background:#F3EDE9;padding:3px 7px;border-radius:5px;font-size:12px">' +
+      esc3(SALON.bookingUrl || '（予約システムのURLを入れてください）') + '</code></body>';
+    current = path;
+    paintNav();
+    return;
+  }
+
+  const res = appRequest(null, ENV, new URL('https://demo' + path));
+  let html = await res.text();
+
+  /* ページの中の fetch を、この画面の入れ物につなぎ替える。
+     ページ内の /app/ へのリンクも、この画面の切り替えにつなぐ */
+  const bridge = [
+    'window.fetch=(u,i)=>parent.__demoFetch(u,i);',
+    'document.addEventListener("click",function(e){',
+    '  var a=e.target.closest("a");',
+    '  if(a&&a.getAttribute("href")&&a.getAttribute("href").indexOf("/app/")===0){',
+    '    e.preventDefault(); parent.openFromPage(a.getAttribute("href"));',
+    '  }',
+    '});'
+  ].join('');
+
+  html = html.replace(
+    '<div class="app">',
+    '<scr' + 'ipt>' + bridge + '<\/scr' + 'ipt><div class="app">'
+  );
+
+  frame.srcdoc = html;
+  current = path;
+  paintNav();
+}
+
+window.openFromPage = (p) => open(p);
+
+function paintNav() {
+  const name = PAGES.find((p) => p.path === current);
+  document.getElementById('pageName').textContent = name ? name.label : '';
+  document.querySelectorAll('#rich button').forEach((b) => {
+    b.classList.toggle('on', b.dataset.path === current);
+  });
+}
+
+document.getElementById('rich').innerHTML = PAGES.map((p) =>
+  '<button type="button" data-path="' + p.path + '">' +
+  '<svg viewBox="0 0 100 100"><path d="' + (ICONS[p.icon] || '') + '"/></svg>' +
+  p.label + '</button>'
+).join('');
+
+document.getElementById('rich').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (b) open(b.dataset.path);
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+  TAGS = new Set();
+  INTAKE = null;
+  paint();
+  open(current);
+});
+
+/* ------------------------------------------------------------------ *
+ * 右側のパネル
+ * ------------------------------------------------------------------ */
+
+function paint() {
+  const tags = [...TAGS];
+  document.getElementById('tagList').innerHTML = tags.length
+    ? tags.map((t) => '<li>' + esc3(t) + '</li>').join('')
+    : '<li class="none">まだタグはありません</li>';
+
+  document.getElementById('tagNote').textContent = tags.length
+    ? 'コース診断と空き枠の設定から付きました。お客様が入力した文字は保存していません。'
+    : 'コース診断にお答えいただくか、空き枠のお知らせを登録すると付きます。';
+
+  /* 空き枠のお知らせの送り先が、どう絞られるか */
+  const concerns = CONCERNS.filter((c) => TAGS.has('関心:' + c.label));
+  const rooms = Object.entries(ROOM_TAG).filter(([, n]) => TAGS.has(n)).map(([id]) => id);
+  const wants = TAGS.has(OPEN_SLOT_TAG);
+
+  const steps = ['友だち ' + FRIENDS + '名'];
+  steps.push('受け取り希望 ' + WANT_SLOT + '名');
+  if (rooms.length === 1) {
+    steps.push(ROOMS.find((r) => r.id === rooms[0]).label + 'を希望 ' + Math.round(WANT_SLOT * 0.55) + '名');
+  }
+  if (concerns.length) {
+    steps.push('診断で「' + concerns.map((c) => c.label).join('・') + '」 ' +
+               Math.max(1, Math.round(DIAGNOSED * 0.5)) + '名');
+  }
+
+  document.getElementById('flow').innerHTML =
+    steps.map((s, i) => (i ? '<span>→</span>' : '') + '<b>' + esc3(s) + '</b>').join('');
+
+  const menus = concerns.length
+    ? COURSES.filter((c) => c.slot && c.concerns.some((x) => concerns.some((y) => y.id === x)))
+        .slice(0, 3).map((c) => slotName(c))
+    : [];
+
+  document.getElementById('target').textContent = !wants
+    ? 'このお客様は、空き枠のお知らせを受け取る設定になっていません。'
+      + '「空き枠」のボタンから登録できます。'
+    : concerns.length
+      ? 'このお客様には、次のようなメニューの空き枠が届きます。\n'
+        + (menus.length ? '・' + menus.join('\n・') : '（該当のメニューがありません）')
+        + '\n\n関係のないメニューの空き枠は届きません。'
+      : 'すべての空き枠が届きます。コース診断にお答えいただくと、'
+        + 'お悩みに関わるものだけに絞れます。';
+
+  document.getElementById('intake').textContent = INTAKE
+    ? Object.entries(INTAKE).map(([k, v]) => {
+        const f = INTAKE_FIELDS.find((x) => x.id === k);
+        return (f ? f.label : k) + '：' + v;
+      }).join('\n') + '\n\n※ 14日で自動的に消えます。LINEのトークには残しません。'
+    : 'まだ届いていません。「問診表」のボタンからご記入いただくと、ここに出ます。';
+}
+
+/* ------------------------------------------------------------------ *
+ * ボタンごとの説明
+ * ------------------------------------------------------------------ */
+
+document.getElementById('guide').innerHTML = [
+  ['コース診断', '4つの質問におすすめのコースをご提案します。お答えいただいた内容は'
+    + '<b class="hl">タグ</b>として残り、空き枠のお知らせの絞り込みに使われます。'],
+  ['メニュー・料金', '掲載メニューを新規価格で一覧にします。診断をお受けの方には'
+    + '<b class="hl">「お客様のお悩みに合うメニュー」</b>が上に出ます。'],
+  ['ご予約', 'すでにお使いの<b class="hl">予約システムへそのままお通しします</b>。'
+    + '独自のフォームは作りません（二重予約を防ぐため）。'],
+  ['問診表', 'ご来店前にご記入いただくと、当日のお時間が短くなります。'
+    + '内容は<b class="hl">14日で自動的に消去</b>し、LINEのトークには残しません。'],
+  ['空き枠', 'お知らせを受け取るかどうか、どちらのお席を希望されるかを設定できます。'
+    + '<b class="hl">いつでもご自身で止められます。</b>'],
+  ['アクセス・営業時間', '店舗情報・地図・お電話。内容は <code>src/salon.js</code> の1か所から出ています。']
+].map(([t, d]) => '<p><b>' + t + '</b>　' + d + '</p>').join('');
+
+paint();
+open('/app/diagnosis');
+</script>

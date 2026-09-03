@@ -1,0 +1,183 @@
+<!doctype html><meta charset="utf-8"><body>
+<iframe id="fr" style="width:420px;height:700px"></iframe>
+<script type="module">
+import { appRequest } from '../src/app.js';
+import {
+  COURSES, CONCERNS, diagnose, slotMenusOf, courseByName, slotName,
+  concernTagsOfMenus, tagsFromDiagnosis, budgetCap
+} from '../src/courses.js';
+import { cleanAnswers, diagnosisPayload, apiRequest } from '../src/api.js';
+import { ROOMS, menusWithin, previewOpenSlot } from '../src/openslot.js';
+
+const log = [];
+const board = document.createElement('pre');
+board.id = 'TESTOUT';
+document.body.appendChild(board);
+const ok = (c, m) => {
+  log.push((c ? 'PASS  ' : 'FAIL  ') + m);
+  board.textContent = log.join('\n');
+};
+
+const ENV = { LIFF_ID: '', LIFF_CHANNEL_ID: '' };
+const page = async (path) => {
+  const r = appRequest(null, ENV, new URL('https://x' + path));
+  return { status: r.status, html: await r.text() };
+};
+
+/* --- 1. メニューが1か所から出ていること --------------------------- */
+ok(COURSES.length > 30, 'メニューは30件以上ある（' + COURSES.length + '件）');
+ok(ROOMS[0].menus.length === slotMenusOf('self').length,
+   'セルフブースの候補は courses.js から出ている');
+ok(ROOMS[1].menus.length === slotMenusOf('room').length,
+   '施術ルームの候補は courses.js から出ている');
+ok(ROOMS.every((r) => r.menus.every((m) => m.minutes > 0)),
+   '空き枠に出るメニューには必ず所要時間がある');
+ok(COURSES.filter((c) => c.slot && !c.min).length === 0,
+   '所要時間の無いものは空き枠に出さない');
+ok(courseByName('セラピスト全身脱毛 90分')?.id === 'thera-90-f',
+   '空き枠の短い名前からでも、元のコースを引ける');
+ok(slotName(COURSES.find((c) => c.id === 'red-face')) === '小顔輪郭形成 REDショット',
+   '長い正式名には短い名前を使う');
+
+const sixty = menusWithin('room', 60);
+ok(sixty.length > 8 && sixty.every((m) => m.minutes <= 60), '60分の枠に入る候補が取れる');
+
+/* --- 2. 診断 ------------------------------------------------------- */
+const ans = { gender: 'f', concerns: ['pore'], budget: 'b1', pace: 'trial' };
+const d1 = diagnose(ans);
+ok(d1.results.length > 0, '条件に合うコースが返る');
+ok(d1.results.every((r) => r.course.price <= budgetCap('b1')),
+   'ご予算は上限として扱う（超えるものは出さない）');
+
+const male = diagnose({ gender: 'm', concerns: ['thera'], budget: 'any', pace: 'trial' });
+ok(!male.results.some((r) => r.course.sex === 'f'), '男性に女性限定のコースは出さない');
+
+const bridal = diagnose({ gender: 'f', concerns: ['bridal'], budget: 'any', pace: 'intensive' });
+ok(bridal.results.some((r) => r.course.cat === 'ブライダル'), 'ブライダルは女性にご案内する');
+
+const tight = diagnose({ gender: 'f', concerns: ['lift'], budget: 'b1', pace: 'trial' });
+ok(tight.overBudget === true, 'ご予算内に無ければ、その旨が分かる');
+ok(tight.results.length > 0 && tight.results.length <= 2,
+   'そのときは、条件の近いものを少しだけご案内する');
+
+const any = diagnose({ gender: 'f', concerns: ['pore', 'lift', 'belly'], budget: 'any', pace: 'intensive' });
+ok(new Set(any.results.map((r) => r.course.cat)).size > 1,
+   'こだわらないときは、価格帯が偏らないように選ぶ');
+
+ok(diagnose({ gender: 'f', concerns: [], budget: 'any', pace: 'trial' }).results.length === 0,
+   'お悩みが1つも合わなければ、無理に出さない');
+
+/* --- 3. 受け取る内容を信じない ------------------------------------- */
+ok(cleanAnswers({ gender: 'f', concerns: ['pore'], budget: 'b1', pace: 'trial' }) !== null,
+   '正しい回答は通る');
+ok(cleanAnswers({ gender: 'x', concerns: ['pore'], budget: 'b1', pace: 'trial' }) === null,
+   '選択肢にない性別は受け取らない');
+ok(cleanAnswers({ gender: 'f', concerns: ['<script>'], budget: 'b1', pace: 'trial' }) === null,
+   '選択肢にないお悩みは落とす');
+ok(cleanAnswers({ gender: 'f', concerns: ['pore'] }) === null, '答えが足りなければ受け取らない');
+
+const payload = diagnosisPayload(ans);
+ok(payload.ok && Array.isArray(payload.results), 'ご提案の形が返る');
+ok(payload.results.every((r) => r.id && r.name && r.price), '必要な項目がそろっている');
+ok(diagnosisPayload({ gender: 'm', concerns: ['thera'], budget: 'any', pace: 'trial' }).mensVioNote,
+   '男性がセラピスト脱毛を選ぶと、VIOの注意書きが付く');
+ok(!payload.mensVioNote, '女性には、その注意書きは出さない');
+
+/* --- 4. 診断 → 空き枠の絞り込み ------------------------------------ */
+const tags = tagsFromDiagnosis(ans).map((t) => t.name);
+ok(tags.includes('関心:毛穴・シミ・くすみ'), 'お悩みがタグになる');
+ok(tags.includes('性別:女性'), '性別もタグになる');
+ok(!tags.some((t) => t.includes('undefined')), '空のタグは作らない');
+
+const ct = concernTagsOfMenus(['韓国肌管理 ララピール']);
+ok(ct.includes('関心:毛穴・シミ・くすみ'), '空き枠のメニューから、関わるお悩みを引ける');
+ok(concernTagsOfMenus(['存在しないメニュー']).length === 0, '知らないメニューでは何も返さない');
+
+/* 実際に絞り込みが効くか。DBの代わりに、問い合わせ内容を記録する */
+let asked = [];
+const env = {
+  CHANNEL_ACCESS_TOKEN: 'x',
+  DB: {
+    prepare(sql) {
+      const q = {
+        bind: (...a) => { asked.push({ sql, binds: a }); return q; },
+        first: async () => ({ n: 0 }),
+        all: async () => ({ results: [{ line_user_id: 'U1', display_name: '様' }] }),
+        run: async () => ({ meta: { changes: 1 } })
+      };
+      return q;
+    }
+  }
+};
+globalThis.fetch = async (u) => ({
+  ok: true,
+  json: async () => String(u).endsWith('/consumption')
+    ? { totalUsage: 100 } : { type: 'limited', value: 5000 }
+});
+
+asked = [];
+const slot = { date: '2026-09-10', time: '15:00', minutes: 60, menus: ['韓国肌管理 ララピール'] };
+const pv = await previewOpenSlot(env, [slot], { byInterest: true });
+ok(pv.interestTags.includes('関心:毛穴・シミ・くすみ'), '関心で絞ったことが結果に出る');
+ok(asked.some((a) => a.binds.includes('関心:毛穴・シミ・くすみ')),
+   'そのタグで問い合わせている');
+ok(pv.notes.some((n) => n.kind === 'by-interest'), '絞っていることを画面で知らせる');
+
+const plain = await previewOpenSlot(env, [slot], {});
+ok(plain.interestTags.length === 0, '既定では関心で絞らない');
+
+/* --- 5. ページが出ること ------------------------------------------- */
+const diag = await page('/app/diagnosis');
+ok(diag.html.includes('コース診断'), 'コース診断のページが出る');
+ok(diag.html.includes('__APP_DATA__'), 'ページにメニューのデータが載る');
+ok(!diag.html.includes('static.line-scdn.net'),
+   'LIFFが未設定のときは、外部の読み込みを入れない');
+
+const menu = await page('/app/menu');
+ok(menu.html.includes('メニュー・料金'), 'メニューのページが出る');
+ok(menu.html.includes('新規（初回）価格'), '新規価格である旨を書く');
+
+const intake = await page('/app/intake');
+ok(intake.html.includes('問診表'), '問診表のページが出る');
+ok(intake.html.includes('14日で自動的に消去'), 'お預かりする期間を先に書く');
+ok(intake.html.includes('data-f="name"'), 'お名前の欄がある');
+ok(intake.html.includes('consent'), 'ご同意のチェックがある');
+
+const access = await page('/app/access');
+ok(access.html.includes('古河市本町3丁目19-1'), '住所が出る');
+ok(access.html.includes('9:00〜19:00'), '営業時間が出る');
+ok(access.html.includes('tel:09032864994'), '電話をかけられる');
+
+const slotPage = await page('/app/slot');
+ok(slotPage.html.includes('セルフブース') && slotPage.html.includes('施術ルーム'),
+   'どちらのお席かを選べる');
+ok(slotPage.html.includes('30分早く'), 'LINEが先である理由を書く');
+
+ok((await page('/app/なにか')).status === 404, '知らないページは404');
+
+/* --- 6. 画面が実際に組み上がるか ------------------------------------ */
+const fr = document.getElementById('fr');
+await new Promise((r) => { fr.onload = r; fr.srcdoc = diag.html; });
+const doc = fr.contentDocument;
+await new Promise((r) => setTimeout(r, 60));
+
+ok(doc.querySelectorAll('.opt').length === 2, '最初は性別の2択が出る');
+doc.querySelector('.opt[data-id="f"]').click();
+ok(doc.querySelectorAll('.opt').length === CONCERNS.length,
+   '女性ならお悩みは全項目が出る（' + CONCERNS.length + '件）');
+
+doc.getElementById('back').click();
+doc.querySelector('.opt[data-id="m"]').click();
+ok(doc.querySelectorAll('.opt').length === CONCERNS.filter((c) => !c.sex).length,
+   '男性のときは女性限定の項目を出さない');
+
+doc.querySelector('.opt[data-id="thera"]').click();
+ok(doc.querySelector('.warn')?.textContent.includes('メンズのVIO'),
+   'メンズがセラピスト脱毛を選ぶと、その場で注意書きが出る');
+
+doc.getElementById('next').click();
+ok(doc.querySelectorAll('.opt').length === 5, 'ご予算は5択');
+
+board.textContent = log.join('\n') + '\n----\n' +
+  log.filter((l) => l.startsWith('FAIL')).length + ' 件の失敗 / ' + log.length + ' 件中';
+</script>

@@ -11,6 +11,8 @@
 import { verifySignature } from './line.js';
 import { handleEvent } from './handlers.js';
 import { adminRequest } from './admin.js';
+import { appRequest } from './app.js';
+import { apiRequest, sweepIntake } from './api.js';
 import { remindStaff } from './openslot.js';
 
 export default {
@@ -24,6 +26,16 @@ export default {
 
     if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
       return adminRequest(request, env, url);
+    }
+
+    /* LINEの中で開くページ（コース診断・メニュー・問診表・アクセス・空き枠の設定） */
+    if (url.pathname.startsWith('/app/')) {
+      return appRequest(request, env, url);
+    }
+
+    /* そのページから届く問い合わせ。IDトークンで本人確認をしてから処理する */
+    if (url.pathname.startsWith('/api/')) {
+      return apiRequest(request, env, url);
     }
 
     if (url.pathname === '/health') {
@@ -43,6 +55,13 @@ export default {
       remindStaff(env)
         .then((r) => console.log('staff reminder', JSON.stringify(r.skipped ?? { sent: r.sent })))
         .catch((err) => console.error('staff reminder failed', err))
+    );
+
+    /* 期限の切れた問診表を消す。健康に関わる内容を長く持たないため */
+    ctx.waitUntil(
+      sweepIntake(env)
+        .then((r) => console.log('intake sweep', JSON.stringify(r)))
+        .catch((err) => console.error('intake sweep failed', err))
     );
   }
 };

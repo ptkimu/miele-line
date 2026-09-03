@@ -1,0 +1,97 @@
+<!doctype html><meta charset="utf-8"><body>
+<!-- out/app.html をそのまま開いて操作を確かめる。run-tests.sh は不要。
+     http://localhost:8099/tests/demo-app.html で実行する -->
+<iframe id="host" src="../out/app.html" style="width:1200px;height:900px"></iframe>
+<script>
+const log = [];
+const ok = (c, m) => log.push((c ? 'PASS  ' : 'FAIL  ') + m);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+(async () => {
+  const host = document.getElementById('host');
+  await new Promise((r) => { host.onload = r; });
+  await wait(400);
+  const W = host.contentWindow, D = host.contentDocument;
+
+  ok(D.querySelectorAll('#rich button').length === 6, 'リッチメニューのボタンが6つ出る');
+  ok(D.getElementById('tagList').textContent.includes('まだタグ'), '最初はタグが無い');
+
+  /* 診断のページが読み込まれるのを待つ */
+  const inner = () => D.getElementById('frame').contentDocument;
+  for (let i = 0; i < 40 && !inner()?.querySelector('.opt'); i++) await wait(100);
+  ok(!!inner().querySelector('.opt'), '端末の中に診断のページが出る');
+
+  /* 女性 → 毛穴 → 次へ → 予算 → 通い方 */
+  inner().querySelector('.opt[data-id="f"]').click(); await wait(60);
+  inner().querySelector('.opt[data-id="pore"]').click(); await wait(60);
+  inner().getElementById('next').click(); await wait(60);
+  inner().querySelector('.opt[data-id="b2"]').click(); await wait(60);
+  inner().querySelector('.opt[data-id="monthly"]').click();
+
+  for (let i = 0; i < 40 && !inner().querySelector('.card'); i++) await wait(100);
+  ok(!!inner().querySelector('.card'), 'おすすめのコースが出る');
+  ok(inner().querySelectorAll('.card').length <= 4, '出しすぎない（4件まで）');
+  ok(inner().body.textContent.includes('¥'), '価格が入っている');
+
+  await wait(200);
+  const tags = D.getElementById('tagList').textContent;
+  ok(tags.includes('関心:毛穴'), '診断のあと、タグが右側に増える');
+  ok(tags.includes('性別:女性'), '性別のタグも付く');
+  ok(D.getElementById('flow').textContent.includes('診断で'),
+     '空き枠の送り先が、その分だけ絞られると示される');
+
+  /* 空き枠の設定ページへ */
+  D.querySelector('#rich button[data-path="/app/slot"]').click();
+  for (let i = 0; i < 40 && !inner()?.getElementById('on'); i++) await wait(100);
+  ok(!!inner().getElementById('on'), '空き枠の設定ページが開く');
+
+  inner().getElementById('on').click(); await wait(60);
+  const box = inner().querySelector('[data-room="self"]');
+  box.checked = true;
+  box.dispatchEvent(new (inner().defaultView.Event)('change', { bubbles: true }));
+  inner().getElementById('save').click();
+  await wait(300);
+
+  ok(D.getElementById('tagList').textContent.includes('希望:空き枠のお知らせ'),
+     '受け取りを登録すると、タグが増える');
+  ok(D.getElementById('tagList').textContent.includes('希望:セルフ脱毛'),
+     'お部屋の希望もタグになる');
+  ok(D.getElementById('target').textContent.includes('次のようなメニュー'),
+     'このお客様に届く空き枠のメニューが出る');
+
+  /* 問診表 */
+  D.querySelector('#rich button[data-path="/app/intake"]').click();
+  for (let i = 0; i < 40 && !inner()?.querySelector('[data-f="name"]'); i++) await wait(100);
+  ok(!!inner().querySelector('[data-f="name"]'), '問診表が開く');
+
+  const nameInput = inner().querySelector('[data-f="name"]');
+  nameInput.value = '古河 花子';
+  nameInput.dispatchEvent(new (inner().defaultView.Event)('input', { bubbles: true }));
+  inner().querySelector('#f').dispatchEvent(new (inner().defaultView.Event)('submit', { bubbles: true, cancelable: true }));
+  await wait(200);
+  ok(inner().getElementById('msg').textContent.includes('同意'),
+     '同意のチェックが無いと送信できない');
+
+  inner().getElementById('consent').checked = true;
+  inner().querySelector('#f').dispatchEvent(new (inner().defaultView.Event)('submit', { bubbles: true, cancelable: true }));
+  await wait(300);
+  ok(D.getElementById('intake').textContent.includes('古河 花子'),
+     '同意すると、スタッフ側に届いた様子が出る');
+  ok(D.getElementById('intake').textContent.includes('14日'),
+     '消去までの日数が添えられている');
+
+  /* 元に戻す */
+  D.getElementById('reset').click();
+  await wait(200);
+  ok(D.getElementById('tagList').textContent.includes('まだタグ'), '最初の状態に戻せる');
+
+  const pre = document.createElement('pre'); pre.id = 'TESTOUT';
+  pre.textContent = log.join('\n') + '\n----\n' +
+    log.filter((l) => l.startsWith('FAIL')).length + ' 件の失敗 / ' + log.length + ' 件中';
+  document.body.appendChild(pre);
+})().catch((e) => {
+  const pre = document.createElement('pre'); pre.id = 'TESTOUT';
+  pre.textContent = log.join('\n') + '\nERROR ' + (e && e.stack ? e.stack : e);
+  document.body.appendChild(pre);
+});
+</script>

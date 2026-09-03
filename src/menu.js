@@ -33,7 +33,10 @@ export const ICONS = {
     'M14 44 h72 v14 h-72 z M20 58 h60 v30 h-60 z M50 44 v44 ' +
     'M50 44 c-14 0 -22 -6 -22 -14 a10 10 0 0 1 22 -2 a10 10 0 0 1 22 2 c0 8 -8 14 -22 14 z',
   star:
-    'M50 16 l10 22 24 3 -18 17 5 24 -21 -12 -21 12 5 -24 -18 -17 24 -3 z'
+    'M50 16 l10 22 24 3 -18 17 5 24 -21 -12 -21 12 5 -24 -18 -17 24 -3 z',
+  clip:
+    'M32 16 h36 a6 6 0 0 1 6 6 v62 a6 6 0 0 1 -6 6 h-36 a6 6 0 0 1 -6 -6 v-62 a6 6 0 0 1 6 -6 z ' +
+    'M40 10 h20 a4 4 0 0 1 4 4 v6 h-28 v-6 a4 4 0 0 1 4 -4 z M38 44 h24 M38 58 h24 M38 72 h14'
 };
 
 /** 画像の大きさと区切り方。管理画面のテンプレートに対応する */
@@ -54,13 +57,37 @@ export const LAYOUTS = [
  *   link    リンクにする場合の説明（keyword の代わり）
  */
 export const MENU = [
-  { id:'open_slot', label:'空き枠のお知らせ', sub:'受け取り設定はこちら', icon:'calendar', keyword:'空き枠', lead:true, badge:'NEW' },
-  { id:'booking',   label:'ご予約・ご相談',   sub:'LINEで承ります',       icon:'chat',     keyword:'予約' },
-  { id:'menu',      label:'メニュー・料金',   sub:'新規価格でご案内',     icon:'doc',      keyword:'メニュー' },
-  { id:'diagnosis', label:'コース診断',       sub:'1分でおすすめを提案',  icon:'search',   link:'LIFFのURL' },
-  { id:'access',    label:'アクセス',         sub:'古河駅 徒歩8分',       icon:'pin',      keyword:'場所' },
-  { id:'hours',     label:'営業時間',         sub:'定休日のご案内',       icon:'clock',    keyword:'営業時間' }
+  { id:'diagnosis', label:'コース診断',       sub:'1分でおすすめを提案',  icon:'search',   link:'/app/diagnosis', lead:true },
+  { id:'menu',      label:'メニュー・料金',   sub:'新規価格でご案内',     icon:'doc',      link:'/app/menu' },
+  { id:'booking',   label:'ご予約',           sub:'予約システムへ',       icon:'chat',     link:'booking' },
+  { id:'intake',    label:'問診表',           sub:'ご来店前にご記入',     icon:'clip',     link:'/app/intake' },
+  { id:'open_slot', label:'空き枠のお知らせ', sub:'受け取り設定はこちら', icon:'calendar', link:'/app/slot', badge:'NEW' },
+  { id:'access',    label:'アクセス・営業時間', sub:'古河駅 徒歩8分',     icon:'pin',      link:'/app/access' }
 ];
+
+/**
+ * ボタンの行き先。
+ *
+ * LIFFのURLは https://liff.line.me/＜LIFF ID＞/＜続き＞ の形です。
+ * 「続き」がエンドポイントURLの後ろに足されるので、
+ * エンドポイントを .../app/ にしておけば
+ *   https://liff.line.me/＜LIFF ID＞/menu → .../app/menu
+ * のように、1つのLIFF IDで全ページをまかなえます。
+ *
+ *   '/app/...'  LIFFのページ
+ *   'booking'   予約システム（src/salon.js の bookingUrl）
+ *   keyword     テキスト送信 →自動応答（LIFFを使わない場合の代わり）
+ */
+export const LIFF_ENDPOINT_PATH = '/app/';
+
+export const linkTarget = (item, salon, liffId = '') => {
+  if (item.link === 'booking') return salon?.bookingUrl ?? '';
+  if (item.link?.startsWith('/app/')) {
+    const rest = item.link.slice('/app/'.length);
+    return liffId ? `https://liff.line.me/${liffId}/${rest}` : item.link;
+  }
+  return item.link ?? '';
+};
 
 /** レイアウトに合わせて必要な数だけ切り出す */
 export function cellsFor(menu, layout) {

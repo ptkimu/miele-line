@@ -13,6 +13,7 @@ import { todayJst } from './handlers.js';
 /**
  * @typedef {object} SegmentSpec
  * @property {string[]} [tags]              このタグを「すべて」持つ人
+ * @property {string[]} [anyTags]           このうち「どれか1つでも」持つ人
  * @property {number}   [excludeRecentDays] 直近n日以内にお知らせを受け取った人を外す
  */
 
@@ -28,6 +29,17 @@ function buildQuery(spec, today) {
       SELECT 1 FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
        WHERE ct.line_user_id = c.line_user_id AND t.name = ?)`);
     binds.push(tag);
+  }
+
+  /* 診断で選ばれたお悩みのタグ。枠のメニューに関わるものを1つでも
+     持っている方に絞る。すべて一致では狭くなりすぎるため「どれか1つ」 */
+  const any = (spec.anyTags ?? []).filter(Boolean);
+  if (any.length) {
+    where.push(`EXISTS (
+      SELECT 1 FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
+       WHERE ct.line_user_id = c.line_user_id
+         AND t.name IN (${any.map(() => '?').join(',')}))`);
+    binds.push(...any);
   }
 
   if (spec.excludeRecentDays != null) {

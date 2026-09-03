@@ -10,13 +10,16 @@
 set -e
 cd "$(dirname "$0")"
 
-MODULES="src/salon.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/segments.js src/openslot.js src/story.js src/richmenu.js"
+MODULES="src/salon.js src/courses.js src/menu.js src/line.js src/replies.js src/handlers.js src/tags.js src/quota.js src/segments.js src/openslot.js src/story.js src/richmenu.js src/liff.js src/api.js src/app.js"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
 for f in $MODULES; do
   echo "/* ---------- $f ---------- */"
-  sed -E '/^import .*from .*;$/d; s/^export //' "$f"
+  # import は1行のものと、複数行にまたがるものの両方を外す
+  sed -E '/^import .*from .*;$/d' "$f" \
+    | sed -E "/^import /,/^\} from '[^']*';$/d" \
+    | sed -E 's/^export //'
   echo
 done > "$TMP"
 
@@ -87,6 +90,15 @@ cp preview/menu.html out/menu.html
 check_dupes preview/menu.html
 echo "built: out/menu.html"
 
+# LINEの中で開くページ（コース診断・メニュー・問診表・アクセス・空き枠の設定）
+awk -v file="$TMP" '
+  /\/\*__MODULES__\*\// { while ((getline line < file) > 0) print line; next }
+  { print }
+' preview/app-shell.html > preview/app.html
+cp preview/app.html out/app.html
+check_dupes preview/app.html
+echo "built: out/app.html"
+
 # 空き枠のしくみ ＋ リッチメニュー編集 を1枚にした画面
 EDCSS="$(awk '/\/\*EDITOR-CSS\*\//{f=1;next} /\/\*\/EDITOR-CSS\*\//{f=0} f' preview/menu-shell.html)"
 EDSEC="$(awk '/<!--EDITOR-SECTIONS-->/{f=1;next} /<!--\/EDITOR-SECTIONS-->/{f=0} f' preview/menu-shell.html)"
@@ -107,6 +119,6 @@ awk -v css="$TMP.css" -v sec="$TMP.sec" -v js="$TMP.js" -v mod="$TMP" '
 sed "s|/\*__RICHMENU_PNG__\*/|data:image/png;base64,${B64}|" "$TMP.all" > preview/all.html
 rm -f "$TMP.css" "$TMP.sec" "$TMP.js" "$TMP.all"
 cp preview/all.html out/all.html
-cp preview/all.html out/index.html
+cp preview/home.html out/index.html
 check_dupes preview/all.html
 echo "built: out/all.html"

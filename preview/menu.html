@@ -234,6 +234,383 @@ const SALON = {
 /** 未設定の項目を使った案内は出さない */
 const has = (value) => typeof value === 'string' && value.length > 0;
 
+/* ---------- src/courses.js ---------- */
+/**
+ * メニューの一覧。ここが唯一の置き場所です。
+ *
+ * コース診断・メニュー料金ページ・空き枠のお知らせは、すべてここを読みます。
+ * メニューが変わったときに直すのはこのファイルだけで、
+ * 3か所に書き写す必要はありません。
+ *
+ *   price    新規（初回）価格。掲載価格はすべて新規価格でそろえています
+ *   reg      2回目以降の通常価格（ある場合のみ）
+ *   min      所要時間（分）。null は掲載がないもの
+ *   room     'self' セルフブース / 'room' 施術ルーム
+ *   slot     空き枠のお知らせに出せるか。所要時間が分かっているものだけ true
+ *   short    空き枠のお知らせで使う短い名前（長い正式名の代わり）
+ *   sex      'f' 女性限定 / 'm' 男性向け。無ければどなたでも
+ *   concerns お悩み。診断で突き合わせる
+ *   paces    通い方
+ */
+
+const GENDERS = [
+  { id: 'f', label: '女性', em: '👩' },
+  { id: 'm', label: '男性', em: '👨' }
+];
+
+/* 女性限定の項目（sex:'f'）は末尾に置く。男性のとき2つ消えても
+   「セルフ脱毛／セラピスト脱毛」が同じ行に並ぶよう並び順を固定している */
+const CONCERNS = [
+  { id: 'pore',   label: '毛穴・シミ・くすみ',   em: '✨' },
+  { id: 'acne',   label: 'ニキビ・肌荒れ',       em: '🌿' },
+  { id: 'lift',   label: 'たるみ・小顔',         em: '🪞' },
+  { id: 'belly',  label: 'お腹・太ももの脂肪',   em: '🎯' },
+  { id: 'arm',    label: '二の腕・脚のライン',   em: '💧' },
+  { id: 'relax',  label: '疲れ・肩こり・むくみ', em: '🌙' },
+  { id: 'self',   label: 'セルフ脱毛',           em: '🪶', sub: 'ご自身で照射／低価格' },
+  { id: 'thera',  label: 'セラピスト脱毛',       em: '🧔', sub: 'スタッフにおまかせ' },
+  { id: 'post',   label: '産後の体型戻し',       em: '🍼', sex: 'f' },
+  { id: 'bridal', label: '結婚式・イベント前',   em: '💍', sex: 'f' }
+];
+
+/** cap = ご予算の上限額。この金額を超えるコースは候補に出さない */
+const BUDGETS = [
+  { id: 'b1',  tier: 1, cap: 5000,     label: '〜5,000円',        sub: 'まずは気軽に試したい' },
+  { id: 'b2',  tier: 2, cap: 10000,    label: '5,000〜10,000円',  sub: '続けやすい価格帯' },
+  { id: 'b3',  tier: 3, cap: 15000,    label: '10,000〜15,000円', sub: 'しっかりケアしたい' },
+  { id: 'b4',  tier: 4, cap: Infinity, label: '15,000円以上',     sub: '結果を最優先したい' },
+  { id: 'any', tier: 0, cap: Infinity, label: 'こだわらない',      sub: '内容で選びたい' }
+];
+
+const PACES = [
+  { id: 'trial',     label: 'まずは1回体験したい',     sub: '初回体験・お試しメニュー' },
+  { id: 'intensive', label: '短期集中で結果を出したい', sub: '回数を重ねてしっかり' },
+  { id: 'monthly',   label: '月1〜2回でコツコツ',       sub: '無理なく続けたい' },
+  { id: 'quick',     label: '30分以内でサッと',         sub: '仕事帰り・すきま時間に' }
+];
+
+/** 男性がセラピスト脱毛を選んだときに出す注意書き */
+const MENS_VIO_NOTE =
+  '※ メンズのVIO脱毛は、セラピストによる施術は行っておりません。' +
+  'セルフ脱毛でのご対応となります（ブースをご用意しています）。';
+
+const COURSES = [
+  /* --- 肌管理・フェイシャル --- */
+  { id: 'duct-try', name: 'ダクトピール お試しお手軽コース', price: 5800, min: 60,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore', 'acne'], paces: ['trial'],
+    desc: '日本初上陸の第5世代韓国ピーリング。毛穴ケア・シミケアをまず1回試したい方へ。' },
+  { id: 'duct', name: '韓国肌管理 ダクトピール（毛穴/美白/水光肌）', price: 7800, min: 60,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore', 'acne'], paces: ['monthly', 'intensive'],
+    desc: 'ピーリング→美容導入→特殊ゲルマスクの3ステップ。透明感のある水光肌へ。' },
+  { id: 'duct-90', name: 'ダクトピール 90分 specialコース', price: 12800, min: 90,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore', 'acne', 'bridal'], paces: ['intensive'],
+    desc: 'ピールクレンザーから美容導入・ゲルマスクまで、90分かけて行うフルコースです。' },
+  { id: 'duct-plasma', name: 'ダクトピール × プラズマ トリプルアプローチ', price: 10800, min: null,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: false,
+    concerns: ['pore', 'acne'], paces: ['intensive'],
+    desc: 'DactorPeel のあとにプラズマ＋ヒト幹細胞導入。肌トラブルを多角的にケアします。' },
+  { id: 'plasma', name: 'プラズマシャワー', price: 5500, min: 60,
+    cat: 'フェイシャル', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['acne', 'pore'], paces: ['trial', 'quick', 'monthly'],
+    desc: 'オゾンプラズマ→フラッシュプラズマ→幹細胞導入。肌荒れが気になる季節におすすめ。' },
+  { id: 'plasma-photo', name: 'プラズマ × 光フェイシャル', price: 8800, min: 60,
+    cat: 'フェイシャル', badge: '期間限定', room: 'room', slot: true,
+    concerns: ['pore', 'acne'], paces: ['monthly', 'intensive'],
+    desc: 'プラズマシャワー後にミルキー光フェイシャル。毛穴とシミをまとめてケアします。' },
+  { id: 'milky', name: 'ミルキーフェイシャル 30分', price: 3300, reg: 5390, min: 30,
+    cat: 'フェイシャル', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore'], paces: ['quick', 'trial', 'monthly'],
+    desc: '光フェイシャル＋保湿パックを30分で。すきま時間に肌のトーンを整えたい方へ。' },
+  { id: 'lala', name: '韓国肌管理 ララピール', price: 8800, reg: 11000, min: 60,
+    cat: '韓国肌管理', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['pore', 'bridal'], paces: ['monthly', 'intensive'],
+    desc: '第4世代ピーリング。ごわつきをリセットし、なめらかな肌質へ導きます。' },
+  { id: 'potenza', name: 'エステ版ポテンツァ リジュラン導入', price: 16800, min: null,
+    cat: '韓国肌管理', badge: '', room: 'room', slot: false,
+    concerns: ['pore', 'lift', 'bridal'], paces: ['intensive'],
+    desc: 'DactorPeel後にマイクロチップニードルマシンで導入。ハリ不足が気になる方に。' },
+
+  /* --- 小顔・リフト --- */
+  { id: 'red-face', name: '小顔輪郭形成 REDショット（目の下・頬・ほうれい線）',
+    short: '小顔輪郭形成 REDショット', price: 9800, min: 60,
+    cat: '小顔', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['lift'], paces: ['intensive'],
+    desc: 'REDショット×プラズマ×EMSで、目の下・頬・ほうれい線に集中アプローチ。' },
+  { id: 'red-jaw', name: '小顔輪郭形成 REDショット（二重アゴ・フェイスライン）', price: 9800, min: null,
+    cat: '小顔', badge: '新規限定', room: 'room', slot: false,
+    concerns: ['lift'], paces: ['intensive'],
+    desc: 'REDショット×プラズマ×EMSで、フェイスラインと二重アゴを集中ケアします。' },
+  { id: 'therma-low', name: 'サーマエッジ 下顔ショット 時間内打ち放題', price: 11000, min: null,
+    cat: '小顔', badge: '', room: 'room', slot: false,
+    concerns: ['lift'], paces: ['intensive', 'monthly'],
+    desc: '下顔まわりを時間内打ち放題で引き締め。フェイスラインの変化を狙う方に。' },
+  { id: 'therma-full', name: 'サーマエッジ 全顔ショット 時間内打ち放題', price: 16000, min: null,
+    cat: '小顔', badge: '', room: 'room', slot: false,
+    concerns: ['lift', 'bridal'], paces: ['intensive'],
+    desc: '顔全体を時間内打ち放題。しっかり結果を出したい方向けのハイグレードコースです。' },
+  { id: 'bridal-face', name: '結婚式向け 花嫁フェイシャル集中コース', price: 14300, min: 90,
+    cat: 'ブライダル', badge: '新規限定', sex: 'f', room: 'room', slot: true,
+    concerns: ['bridal', 'pore', 'lift'], paces: ['intensive'],
+    desc: 'ララピール→光フェイシャル→高浸透パックの90分。式当日のベストコンディションへ。' },
+
+  /* --- 痩身・ボディ --- */
+  { id: 'cryo-arm', name: '脂肪冷却 2カップ 二の腕', price: 7800, min: 30,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['arm'], paces: ['trial', 'intensive'],
+    desc: 'マイナス12度の脂肪冷却で二の腕を集中ケア。30分で気軽に始められます。' },
+  { id: 'cryo-belly', name: '脂肪冷却 2カップ お腹 or 太もも or お尻', price: 9800, min: 45,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['belly'], paces: ['trial', 'intensive'],
+    desc: '話題の脂肪冷却をマイナス12度で。気になる1箇所をピンポイントで狙います。' },
+  { id: 'redbody-arm', name: 'レッドショットBODY 二の腕コース', price: 7700, min: null,
+    cat: '痩身', badge: '', room: 'room', slot: false,
+    concerns: ['arm'], paces: ['intensive'],
+    desc: '韓国発の痩身マシン。REDショット×超音波で二の腕をすっきり見せます。' },
+  { id: 'redbody-belly', name: 'レッドショットBODY お腹 or 脚コース', price: 14800, min: null,
+    cat: '痩身', badge: '', room: 'room', slot: false,
+    concerns: ['belly'], paces: ['intensive'],
+    desc: 'RED×超音波×EMSの組み合わせで、お腹または脚を本格的にケアします。' },
+  { id: 'rf-pulse', name: 'お腹・太ももを集中ケア（ラジオ波×電磁パルス）',
+    short: 'お腹・太ももを集中ケア', price: 6300, min: 50,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['belly', 'post'], paces: ['monthly', 'trial'],
+    desc: 'ラジオ波20分＋電磁パルス30分。まずは続けやすい価格で始めたい方に。' },
+  { id: 'rf-cryo-arm', name: 'ラジオ波 & 脂肪冷却 二の腕 or ふくらはぎ', price: 11100, min: 60,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['arm'], paces: ['intensive', 'monthly'],
+    desc: 'ラジオ波20分＋冷却30分＋マッサージ。温めてから冷やす二段階アプローチ。' },
+  { id: 'rf-cryo-belly', name: 'ラジオ波 & 脂肪冷却 お腹 or 太もも', price: 13100, min: 75,
+    cat: '痩身', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['belly'], paces: ['intensive', 'monthly'],
+    desc: 'ラジオ波20分＋脂肪冷却45分の75分コース。お腹・太ももをじっくりケアします。' },
+  { id: 'cryo-rf-60', name: '最新 脂肪冷却 × 全身ラジオ波 60分', price: 17500, min: 60,
+    cat: '痩身', badge: '期間限定', room: 'room', slot: true,
+    concerns: ['belly', 'relax', 'post'], paces: ['intensive'],
+    desc: '痩身と疲労回復を同時に。全身のめぐりを整えながら脂肪にアプローチします。' },
+  { id: 'cryo-4', name: '脂肪冷却 4カップ 痩身コース', price: 20900, min: null,
+    cat: '痩身', badge: '期間限定', room: 'room', slot: false,
+    concerns: ['belly', 'arm', 'post'], paces: ['intensive'],
+    desc: '脂肪冷却4カップ＋ラジオ波で2箇所同時施術。短期で変化を出したい方へ。' },
+  { id: 'post-diet', name: '産後ダイエット向け マシン3種コース', price: 16100, min: null,
+    cat: '痩身', badge: '新規限定', sex: 'f', room: 'room', slot: false,
+    concerns: ['post', 'belly'], paces: ['intensive'],
+    desc: '脂肪冷却・電磁パルス・ラジオ波の3種で、産後の気になる脂肪をケアします。' },
+
+  /* --- リラクゼーション --- */
+  { id: 'head-20', name: 'ヘッド & デコルテマッサージ 20分', price: 2200, min: 20,
+    cat: 'リラク', badge: '', room: 'room', slot: true,
+    concerns: ['relax'], paces: ['quick', 'trial'],
+    desc: 'デコルテオイル10分＋ヘッドマッサージ10分。仕事帰りのリセットに。' },
+  { id: 'aroma-40', name: 'アロマトリートメント 40分', price: 5500, min: 40,
+    cat: 'リラク', badge: '', room: 'room', slot: true,
+    concerns: ['relax'], paces: ['quick', 'monthly', 'trial'],
+    desc: 'エッセンシャルオイルを使った全身トリートメント。心身をゆるめたい日に。' },
+  { id: 'aroma-60', name: 'アロマトリートメント 60分', price: 7700, min: 60,
+    cat: 'リラク', badge: '', room: 'room', slot: true,
+    concerns: ['relax'], paces: ['monthly'],
+    desc: 'アロマトリートメント＋もも・ふくらはぎのリンパマッサージでむくみもケア。' },
+
+  /* --- 脱毛 --- */
+  { id: 'led-try', name: '痛みが少ないLED脱毛 初回体験', price: 2200, min: 20,
+    cat: '脱毛', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['trial', 'quick'],
+    desc: '1部位20分。痛みが少ないLED脱毛を、まずは初回体験価格でお試しいただけます。' },
+  { id: 'vio-30', name: '【女性限定】VIO脱毛 30分', price: 4950, min: 30,
+    cat: '脱毛', badge: '新規限定', sex: 'f', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['trial', 'quick', 'intensive'],
+    desc: 'セラピストによるVIO脱毛30分。デリケートゾーンもお任せください。' },
+  { id: 'thera-30', name: 'セラピスト脱毛 30分', price: 4950, reg: 6600, min: 30,
+    cat: '脱毛', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['monthly', 'quick', 'intensive'],
+    desc: 'LED脱毛30分の打ち放題。気になる部位を時間内で自由にお手入れできます。' },
+  { id: 'self-30', name: 'セルフ脱毛 30分', price: 3300, reg: 4950, min: 30,
+    cat: '脱毛', badge: '新規限定', room: 'self', slot: true,
+    concerns: ['self'], paces: ['quick', 'trial', 'monthly'],
+    desc: '時間内でご自身でお手入れ。費用を抑えながら、気になる部位をこまめにケアできます。' },
+  { id: 'thera-60', name: 'セラピスト脱毛 60分（全身可）', price: 9900, reg: 13200, min: 60,
+    cat: '脱毛', badge: '新規限定', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['intensive', 'monthly'],
+    desc: '60分の打ち放題。全身をまとめてでも、気になる部位を重点的にでもOK。顔・VIOをご希望の方は90分コースへ。' },
+  { id: 'self-60', name: 'セルフ脱毛 60分（全身OK）', price: 6600, reg: 9900, min: 60,
+    cat: '脱毛', badge: '新規限定', room: 'self', slot: true,
+    concerns: ['self'], paces: ['monthly', 'intensive'],
+    desc: '60分のセルフ脱毛。全身をまるごと、ご自身のペースでお手入れいただけます。' },
+  /* 90分の全身は顔・VIOの扱いが男女で異なるため2本立て（メンズVIOはセルフのため対象外） */
+  { id: 'thera-90-f', name: 'セラピスト全身脱毛（顔・VIOあり）90分',
+    short: 'セラピスト全身脱毛 90分', price: 14850, reg: 19800, min: 90,
+    cat: '脱毛', badge: '新規限定', sex: 'f', room: 'room', slot: true,
+    concerns: ['thera', 'bridal'], paces: ['intensive'],
+    desc: '顔・VIOまで含めた90分の全身脱毛。まるごとお手入れしたい方の決定版プランです。' },
+  { id: 'thera-90-m', name: 'セラピスト全身脱毛（顔あり・VIO無し）90分',
+    short: 'セラピスト全身脱毛 90分（VIO無し）', price: 14850, reg: 19800, min: 90,
+    cat: '脱毛', badge: '新規限定', sex: 'm', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['intensive'],
+    desc: '顔を含めた90分の全身脱毛。VIOはセルフ脱毛のご用意がありますのでご相談ください。' },
+  { id: 'mens-beard', name: 'メンズ髭脱毛 LED脱毛 初回体験', price: 2200, min: 20,
+    cat: 'メンズ', badge: '新規限定', sex: 'm', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['trial', 'quick'],
+    desc: '痛みが少ないLED脱毛でヒゲを。毎日の髭剃り負担を減らしたい方へ。' },
+  { id: 'mens-body', name: '体毛が濃いメンズへ LED脱毛 初回体験', price: 2200, min: 20,
+    cat: 'メンズ', badge: '新規限定', sex: 'm', room: 'room', slot: true,
+    concerns: ['thera'], paces: ['trial', 'quick'],
+    desc: '1部位20分以内。体毛の濃さが気になる男性の初回体験メニューです。' }
+];
+
+/* ------------------------------------------------------------------ *
+ * 取り出し
+ * ------------------------------------------------------------------ */
+
+/** 空き枠のお知らせに出す名前。長い正式名には短い名前を用意している */
+const slotName = (course) => course.short ?? course.name;
+
+/** 空き枠に出せるメニュー（所要時間が分かっているもの）を部屋ごとに */
+const slotMenusOf = (room) =>
+  COURSES.filter((c) => c.slot && c.room === room && c.min)
+    .map((c) => ({ name: slotName(c), minutes: c.min }))
+    .sort((a, b) => a.minutes - b.minutes);
+
+/** 名前からコースを引く。空き枠の短い名前でも引けるようにしておく */
+const courseByName = (name) =>
+  COURSES.find((c) => c.name === name || c.short === name) ?? null;
+
+const courseById = (id) => COURSES.find((c) => c.id === id) ?? null;
+
+/** 性別で対象外のもの（女性限定／男性限定）は外す。質問項目にも使う */
+const forGender = (item, gender) => !item.sex || item.sex === gender;
+
+const labelOf = (list, id) => list.find((o) => o.id === id)?.label ?? '';
+
+/* ------------------------------------------------------------------ *
+ * 診断
+ * ------------------------------------------------------------------ *
+ * お悩み一致 +2 / 予算ぴったり +3・隣の価格帯 +1 / 通い方一致 +3
+ * ご予算は「上限」として扱い、超える金額のコースは出しません。
+ */
+
+const MAX_RESULTS = 4;
+
+const tierOf = (price) => (price <= 5000 ? 1 : price <= 10000 ? 2 : price <= 15000 ? 3 : 4);
+
+const budgetCap = (budgetId) =>
+  BUDGETS.find((b) => b.id === budgetId)?.cap ?? Infinity;
+
+function needsMensVioNote(answers) {
+  return answers?.gender === 'm' && (answers?.concerns ?? []).includes('thera');
+}
+
+function scoreCourse(course, answers) {
+  const hits = [];
+  let score = 0;
+
+  const matched = course.concerns.filter((c) => (answers.concerns ?? []).includes(c));
+  score += matched.length * 2;
+  for (const m of matched) hits.push(labelOf(CONCERNS, m) + ' に対応');
+
+  const budget = BUDGETS.find((b) => b.id === answers.budget) ?? BUDGETS[4];
+  const t = tierOf(course.price);
+  if (budget.tier === 0) {
+    score += 2;
+    hits.push('価格帯おまかせ');
+  } else if (budget.tier === t) {
+    score += 3;
+    hits.push('ご予算にぴったり');
+  } else if (Math.abs(budget.tier - t) === 1) {
+    score += 1;
+    hits.push('ご予算に近い');
+  }
+
+  if (course.paces.includes(answers.pace)) {
+    score += 3;
+    hits.push(labelOf(PACES, answers.pace).replace(/したい$/, '').replace(/で$/, '') + ' に最適');
+  }
+
+  const max = (answers.concerns ?? []).length * 2 + 3 + 3;
+  return { course, score, hits, rate: Math.round((score / max) * 100), matched: matched.length };
+}
+
+/* ご予算「こだわらない」のときは、同じ価格帯だけで枠が埋まらないよう
+   価格帯が重ならないように上位から採り、余った枠をスコア順で埋める。
+   お手頃コースだけが並んで、しっかりコースが埋もれるのを防ぐ */
+function pickSpread(list, n) {
+  const picked = [];
+  const seen = new Set();
+  for (const r of list) {
+    if (picked.length >= n) break;
+    const t = tierOf(r.course.price);
+    if (seen.has(t)) continue;
+    seen.add(t);
+    picked.push(r);
+  }
+  for (const r of list) {
+    if (picked.length >= n) break;
+    if (!picked.includes(r)) picked.push(r);
+  }
+  return picked.sort((a, b) => list.indexOf(a) - list.indexOf(b));
+}
+
+/**
+ * 診断の結果。
+ * @returns {{results:object[], overBudget:boolean}}
+ */
+function diagnose(answers) {
+  const cap = budgetCap(answers.budget);
+
+  const ranked = COURSES.filter((c) => forGender(c, answers.gender))
+    .map((c) => scoreCourse(c, answers))
+    .sort((a, b) => b.score - a.score || a.course.price - b.course.price);
+
+  // お悩みが1つも一致しないコースは出さない
+  const hit = ranked.filter((r) => r.matched > 0);
+  const within = hit.filter((r) => r.course.price <= cap);
+
+  if (within.length) {
+    return {
+      results: answers.budget === 'any' ? pickSpread(within, MAX_RESULTS) : within.slice(0, MAX_RESULTS),
+      overBudget: false
+    };
+  }
+
+  // ご予算内に該当が無い場合だけ、条件に合う中で安いものを2件ご案内する
+  if (hit.length) {
+    return {
+      results: [...hit].sort((a, b) => a.course.price - b.course.price).slice(0, 2),
+      overBudget: true
+    };
+  }
+  return { results: [], overBudget: false };
+}
+
+/* ------------------------------------------------------------------ *
+ * タグ
+ * ------------------------------------------------------------------ *
+ * 診断の答えをタグに変えます。
+ * このタグが、空き枠のお知らせを「関心のある方だけ」に絞る材料になります。
+ */
+
+function tagsFromDiagnosis(answers, results = []) {
+  const out = [];
+  const push = (kind, name) => name && !name.endsWith(':') && out.push({ kind, name });
+
+  push('gender', '性別:' + (answers.gender === 'm' ? '男性' : '女性'));
+  for (const c of answers.concerns ?? []) push('concern', '関心:' + labelOf(CONCERNS, c));
+  push('budget', '予算:' + labelOf(BUDGETS, answers.budget));
+  push('pace', '通い方:' + labelOf(PACES, answers.pace));
+
+  return out;
+}
+
+/** 空き枠のメニューから、関心タグの名前を作る（絞り込みの突き合わせ用） */
+function concernTagsOfMenus(menuNames = []) {
+  const ids = new Set();
+  for (const name of menuNames) {
+    for (const c of courseByName(name)?.concerns ?? []) ids.add(c);
+  }
+  return [...ids].map((id) => '関心:' + labelOf(CONCERNS, id));
+}
+
 /* ---------- src/menu.js ---------- */
 /**
  * リッチメニューのボタン
@@ -270,7 +647,10 @@ const ICONS = {
     'M14 44 h72 v14 h-72 z M20 58 h60 v30 h-60 z M50 44 v44 ' +
     'M50 44 c-14 0 -22 -6 -22 -14 a10 10 0 0 1 22 -2 a10 10 0 0 1 22 2 c0 8 -8 14 -22 14 z',
   star:
-    'M50 16 l10 22 24 3 -18 17 5 24 -21 -12 -21 12 5 -24 -18 -17 24 -3 z'
+    'M50 16 l10 22 24 3 -18 17 5 24 -21 -12 -21 12 5 -24 -18 -17 24 -3 z',
+  clip:
+    'M32 16 h36 a6 6 0 0 1 6 6 v62 a6 6 0 0 1 -6 6 h-36 a6 6 0 0 1 -6 -6 v-62 a6 6 0 0 1 6 -6 z ' +
+    'M40 10 h20 a4 4 0 0 1 4 4 v6 h-28 v-6 a4 4 0 0 1 4 -4 z M38 44 h24 M38 58 h24 M38 72 h14'
 };
 
 /** 画像の大きさと区切り方。管理画面のテンプレートに対応する */
@@ -291,13 +671,37 @@ const LAYOUTS = [
  *   link    リンクにする場合の説明（keyword の代わり）
  */
 const MENU = [
-  { id:'open_slot', label:'空き枠のお知らせ', sub:'受け取り設定はこちら', icon:'calendar', keyword:'空き枠', lead:true, badge:'NEW' },
-  { id:'booking',   label:'ご予約・ご相談',   sub:'LINEで承ります',       icon:'chat',     keyword:'予約' },
-  { id:'menu',      label:'メニュー・料金',   sub:'新規価格でご案内',     icon:'doc',      keyword:'メニュー' },
-  { id:'diagnosis', label:'コース診断',       sub:'1分でおすすめを提案',  icon:'search',   link:'LIFFのURL' },
-  { id:'access',    label:'アクセス',         sub:'古河駅 徒歩8分',       icon:'pin',      keyword:'場所' },
-  { id:'hours',     label:'営業時間',         sub:'定休日のご案内',       icon:'clock',    keyword:'営業時間' }
+  { id:'diagnosis', label:'コース診断',       sub:'1分でおすすめを提案',  icon:'search',   link:'/app/diagnosis', lead:true },
+  { id:'menu',      label:'メニュー・料金',   sub:'新規価格でご案内',     icon:'doc',      link:'/app/menu' },
+  { id:'booking',   label:'ご予約',           sub:'予約システムへ',       icon:'chat',     link:'booking' },
+  { id:'intake',    label:'問診表',           sub:'ご来店前にご記入',     icon:'clip',     link:'/app/intake' },
+  { id:'open_slot', label:'空き枠のお知らせ', sub:'受け取り設定はこちら', icon:'calendar', link:'/app/slot', badge:'NEW' },
+  { id:'access',    label:'アクセス・営業時間', sub:'古河駅 徒歩8分',     icon:'pin',      link:'/app/access' }
 ];
+
+/**
+ * ボタンの行き先。
+ *
+ * LIFFのURLは https://liff.line.me/＜LIFF ID＞/＜続き＞ の形です。
+ * 「続き」がエンドポイントURLの後ろに足されるので、
+ * エンドポイントを .../app/ にしておけば
+ *   https://liff.line.me/＜LIFF ID＞/menu → .../app/menu
+ * のように、1つのLIFF IDで全ページをまかなえます。
+ *
+ *   '/app/...'  LIFFのページ
+ *   'booking'   予約システム（src/salon.js の bookingUrl）
+ *   keyword     テキスト送信 →自動応答（LIFFを使わない場合の代わり）
+ */
+const LIFF_ENDPOINT_PATH = '/app/';
+
+const linkTarget = (item, salon, liffId = '') => {
+  if (item.link === 'booking') return salon?.bookingUrl ?? '';
+  if (item.link?.startsWith('/app/')) {
+    const rest = item.link.slice('/app/'.length);
+    return liffId ? `https://liff.line.me/${liffId}/${rest}` : item.link;
+  }
+  return item.link ?? '';
+};
 
 /** レイアウトに合わせて必要な数だけ切り出す */
 function cellsFor(menu, layout) {
@@ -943,6 +1347,7 @@ async function checkQuota(env, planned, override = null) {
 /**
  * @typedef {object} SegmentSpec
  * @property {string[]} [tags]              このタグを「すべて」持つ人
+ * @property {string[]} [anyTags]           このうち「どれか1つでも」持つ人
  * @property {number}   [excludeRecentDays] 直近n日以内にお知らせを受け取った人を外す
  */
 
@@ -958,6 +1363,17 @@ function buildQuery(spec, today) {
       SELECT 1 FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
        WHERE ct.line_user_id = c.line_user_id AND t.name = ?)`);
     binds.push(tag);
+  }
+
+  /* 診断で選ばれたお悩みのタグ。枠のメニューに関わるものを1つでも
+     持っている方に絞る。すべて一致では狭くなりすぎるため「どれか1つ」 */
+  const any = (spec.anyTags ?? []).filter(Boolean);
+  if (any.length) {
+    where.push(`EXISTS (
+      SELECT 1 FROM customer_tags ct JOIN tags t ON t.id = ct.tag_id
+       WHERE ct.line_user_id = c.line_user_id
+         AND t.name IN (${any.map(() => '?').join(',')}))`);
+    binds.push(...any);
   }
 
   if (spec.excludeRecentDays != null) {
@@ -1018,47 +1434,22 @@ async function listSegment(env, spec, today = todayJst()) {
  * 部屋。セルフブースと施術ルームは独立していて、同時に稼働できます。
  * セラピストが埋まっていてもセルフ枠は出せるので、出せる機会が増えます。
  *
- * 予約はどちらもサロンボードへ手入力するため、運用は変わりません。
+ * メニューは src/courses.js から取ります。
+ * メニューが変わったときに直す場所を1か所にするためです。
+ * 所要時間の掲載があるものだけが、空き枠として出せます。
  */
 const ROOMS = [
   {
     id: 'self',
     label: 'セルフブース',
     note: '1室。セラピストの予定と関係なく空きます',
-    menus: [
-      { name: 'セルフ脱毛 30分', minutes: 30 },
-      { name: 'セルフ脱毛 60分（全身OK）', minutes: 60 }
-    ]
+    menus: slotMenusOf('self')
   },
   {
     id: 'room',
     label: '施術ルーム',
     note: 'セラピストの予定で決まります',
-    /* 掲載メニューの所要時間。枠の長さに入るものだけを候補に出す */
-    menus: [
-      { name: 'ヘッド & デコルテマッサージ 20分', minutes: 20 },
-      { name: '痛みが少ないLED脱毛 初回体験', minutes: 20 },
-      { name: 'ミルキーフェイシャル 30分', minutes: 30 },
-      { name: '【女性限定】VIO脱毛 30分', minutes: 30 },
-      { name: 'セラピスト脱毛 30分', minutes: 30 },
-      { name: '脂肪冷却 2カップ 二の腕', minutes: 30 },
-      { name: 'アロマトリートメント 40分', minutes: 40 },
-      { name: '脂肪冷却 2カップ お腹 or 太もも or お尻', minutes: 45 },
-      { name: 'お腹・太ももを集中ケア', minutes: 50 },
-      { name: 'プラズマシャワー', minutes: 60 },
-      { name: '韓国肌管理 ララピール', minutes: 60 },
-      { name: 'ダクトピール お試しお手軽コース', minutes: 60 },
-      { name: '韓国肌管理 ダクトピール（毛穴/美白/水光肌）', minutes: 60 },
-      { name: 'プラズマ × 光フェイシャル', minutes: 60 },
-      { name: '小顔輪郭形成 REDショット', minutes: 60 },
-      { name: 'セラピスト脱毛 60分（全身可）', minutes: 60 },
-      { name: 'アロマトリートメント 60分', minutes: 60 },
-      { name: 'ラジオ波 & 脂肪冷却 二の腕 or ふくらはぎ', minutes: 60 },
-      { name: 'ラジオ波 & 脂肪冷却 お腹 or 太もも', minutes: 75 },
-      { name: 'ダクトピール 90分 specialコース', minutes: 90 },
-      { name: 'セラピスト全身脱毛 90分', minutes: 90 },
-      { name: '結婚式向け 花嫁フェイシャル集中コース', minutes: 90 }
-    ]
+    menus: slotMenusOf('room')
   }
 ];
 
@@ -1357,12 +1748,19 @@ async function previewOpenSlot(env, slots, opts = {}) {
   const everyone = !!opts.everyone;
   const baseTag = everyone ? [] : [OPEN_SLOT_TAG];
 
-  const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
-  const pick = (tags) => listSegment(env, { ...base, tags }, today);
+  /* コース診断をお受けになった方は、お悩みのタグをお持ちです。
+     枠のメニューに関わるお悩みを1つでも選んでいた方に絞れます。
+     診断をまだの方は当てはまらないので、送り先はぐっと狭くなります。 */
+  const interestTags = opts.byInterest
+    ? concernTagsOfMenus(slots.flatMap((s) => slotMenus(s)))
+    : [];
 
-  const targets = await pick(narrowTag ? [...baseTag, narrowTag] : baseTag);
+  const base = opts.excludeRecent ? { excludeRecentDays: RECENT_DAYS } : {};
+  const pick = (tags, anyTags = []) => listSegment(env, { ...base, tags, anyTags }, today);
+
+  const targets = await pick(narrowTag ? [...baseTag, narrowTag] : baseTag, interestTags);
   // 絞った結果いなかったとき、広げれば何名になるかを示せるようにしておく
-  const wide = narrowTag ? await pick(baseTag) : targets;
+  const wide = narrowTag || interestTags.length ? await pick(baseTag) : targets;
 
   const quota = await checkQuota(env, targets.length, opts.quota ?? null);
   const weekCount = await recentSendCount(env, today, room);
@@ -1375,11 +1773,18 @@ async function previewOpenSlot(env, slots, opts = {}) {
             'ブロックされやすくなります。稼働の直後など、必要なときだけにしてください。'
     });
   }
-  if (narrowTag && !targets.length && wide.length) {
+  if ((narrowTag || interestTags.length) && !targets.length && wide.length) {
     notes.push({
       kind: 'narrow-empty',
-      text: `「${narrowTag}」の方はいませんでした。` +
+      text: `絞り込みに当てはまる方はいませんでした。` +
             `絞り込みを外すと、空き枠を希望された${wide.length}名にお送りできます。`
+    });
+  }
+  if (interestTags.length && targets.length) {
+    notes.push({
+      kind: 'by-interest',
+      text: `コース診断で「${interestTags.map((t) => t.replace('関心:', '')).join('・')}」を` +
+            `選ばれた方に絞っています。診断がまだの方には届きません。`
     });
   }
   if (weekCount >= MAX_PER_WEEK) {
@@ -1404,6 +1809,7 @@ async function previewOpenSlot(env, slots, opts = {}) {
     everyone,
     roomLabel: ROOMS.find((r) => r.id === room)?.label ?? '',
     narrowTag,
+    interestTags,
     wideCount: wide.length,
     targets,
     planned: targets.length,
@@ -1756,6 +2162,968 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+/* ---------- src/liff.js ---------- */
+/**
+ * LIFF（LINEの中で開くページ）から届いた「どなたか」を確かめる
+ *
+ * ページ側の JavaScript は誰でも書き換えられるので、
+ * 「私は○○です」と言われた内容をそのまま信じることはできません。
+ * LIFF が発行する IDトークンを LINE に問い合わせて、本物か確かめます。
+ *
+ * LINEヤフーは LIFF を LINEミニアプリに統合する方針を示していますが、
+ * 確かめ方はどちらも同じ（IDトークンの検証）なので、
+ * ミニアプリへ移した後もこのファイルはそのまま使えます。
+ */
+
+const VERIFY_URL = 'https://api.line.me/oauth2/v2.1/verify';
+
+/**
+ * IDトークンからユーザーIDを取り出す。
+ * 偽物・期限切れ・別のチャネル宛のものは null を返します。
+ *
+ * @returns {Promise<{userId:string, name:string|null}|null>}
+ */
+async function verifyIdToken(env, idToken) {
+  if (!idToken || !env.LIFF_CHANNEL_ID) return null;
+
+  const res = await fetch(VERIFY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ id_token: idToken, client_id: env.LIFF_CHANNEL_ID })
+  });
+  if (!res.ok) return null;
+
+  const claim = await res.json();
+  /* aud（宛先）が自分のチャネルであることまで見る。
+     LINEが検証してくれる範囲だが、設定を取り違えたときに気づけるようにしておく */
+  if (!claim?.sub || (claim.aud && claim.aud !== env.LIFF_CHANNEL_ID)) return null;
+
+  return { userId: claim.sub, name: claim.name ?? null };
+}
+
+/** 各ページに渡す設定。LIFF ID はページに出てよい値です */
+const liffConfig = (env) => ({
+  liffId: env.LIFF_ID ?? '',
+  ready: !!env.LIFF_ID && !!env.LIFF_CHANNEL_ID
+});
+
+/* ---------- src/api.js ---------- */
+/**
+ * LIFFのページから届く問い合わせ
+ *
+ * どれも IDトークンの検証を通してから処理します。
+ * ページ側から送られてきた「私は○○です」は信じません。
+ *
+ * ここで扱うのは3つだけです。
+ *   /api/me         いまのご登録状況（診断済みか、空き枠を受け取るか）
+ *   /api/diagnosis  診断の結果をタグとして残す
+ *   /api/prefs      空き枠のお知らせの受け取り設定
+ *   /api/intake     問診表。保存はスタッフが読むまでの短い間だけ
+ */
+
+
+/** 問診表をお預かりする日数。過ぎたものは毎朝の掃除で消えます */
+const INTAKE_KEEP_DAYS = 14;
+
+async function apiRequest(request, env, url) {
+  if (request.method !== 'POST' && url.pathname !== '/api/me') {
+    return apiJson({ error: 'method not allowed' }, 405);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return apiJson({ error: '内容を読み取れませんでした' }, 400);
+  }
+
+  const who = await verifyIdToken(env, body?.idToken);
+  if (who) await ensureCustomer(env, who);
+
+  /* 診断だけは、LINEの外から開かれても結果をお返しします。
+     お店の外（デモや、ブラウザで直接開いた場合）でも使えるようにするためで、
+     タグとして残すのは、どなたか分かったときだけです。 */
+  if (url.pathname === '/api/diagnosis') return diagnosisRoute(env, who, body);
+
+  if (!who) return apiJson({ error: 'LINEでの確認ができませんでした' }, 401);
+
+  switch (url.pathname) {
+    case '/api/me':     return meRoute(env, who);
+    case '/api/prefs':  return prefsRoute(env, who, body);
+    case '/api/intake': return intakeRoute(env, who, body);
+    default:            return apiJson({ error: 'not found' }, 404);
+  }
+}
+
+/* 友だち追加より先にページを開かれることがあるので、無ければ作る */
+async function ensureCustomer(env, who) {
+  await env.DB.prepare(
+    `INSERT INTO customers (line_user_id, display_name, followed_at, status)
+     VALUES (?, ?, ?, 'active')
+     ON CONFLICT(line_user_id) DO UPDATE SET
+       display_name = COALESCE(excluded.display_name, customers.display_name)`
+  )
+    .bind(who.userId, who.name, nowIso())
+    .run();
+}
+
+/* ------------------------------------------------------------------ *
+ * いまのご登録状況
+ * ------------------------------------------------------------------ */
+
+async function meRoute(env, who) {
+  const tags = (await tagsOf(env, who.userId)).map((t) => t.name ?? t);
+  return apiJson({
+    openSlot: tags.includes(OPEN_SLOT_TAG),
+    rooms: Object.entries(ROOM_TAG)
+      .filter(([, name]) => tags.includes(name))
+      .map(([id]) => id),
+    concerns: CONCERNS.filter((c) => tags.includes('関心:' + c.label)).map((c) => c.id),
+    diagnosed: tags.some((t) => t.startsWith('関心:'))
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * コース診断
+ * ------------------------------------------------------------------ */
+
+/**
+ * 診断の答えをタグとして残します。
+ * このタグがあると、空き枠のお知らせを「そのお悩みの方だけ」に絞れます。
+ *
+ * 答えの中身（どのコースをご提案したか）も残しますが、
+ * 保存するのは選択肢のIDだけで、自由入力は受け取りません。
+ */
+async function diagnosisRoute(env, who, body) {
+  const answers = cleanAnswers(body?.answers);
+  if (!answers) return apiJson({ error: '回答が足りません' }, 400);
+
+  const payload = diagnosisPayload(answers);
+  if (!who) return apiJson(payload);
+
+  /* 前回の診断のタグを消してから付け直す。
+     お悩みが変わった方に、古い関心のお知らせが届き続けないようにする */
+  for (const c of CONCERNS) await revokeTag(env, who.userId, '関心:' + c.label);
+
+  const tags = tagsFromDiagnosis(answers);
+  await grantTags(env, who.userId, tags);
+
+  await env.DB.prepare(
+    `INSERT INTO diagnoses (line_user_id, gender, concerns, budget, pace, results, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(
+      who.userId,
+      answers.gender,
+      JSON.stringify(answers.concerns),
+      answers.budget,
+      answers.pace,
+      JSON.stringify(payload.results.map((r) => r.id)),
+      nowIso()
+    )
+    .run();
+
+  return apiJson({ ...payload, saved: true, tags: tags.map((t) => t.name) });
+}
+
+/**
+ * おすすめの組み立ては、必ずこちら側で行います。
+ * ページ側にも同じ処理を置くと、片方だけ古くなるためです。
+ */
+function diagnosisPayload(answers) {
+  const { results, overBudget } = diagnose(answers);
+  return {
+    ok: true,
+    overBudget,
+    mensVioNote: needsMensVioNote(answers) ? MENS_VIO_NOTE : null,
+    results: results.map((r) => ({
+      id: r.course.id,
+      name: r.course.name,
+      price: r.course.price,
+      reg: r.course.reg ?? null,
+      min: r.course.min,
+      cat: r.course.cat,
+      badge: r.course.badge,
+      desc: r.course.desc,
+      hits: r.hits,
+      rate: r.rate
+    })),
+    saved: false
+  };
+}
+
+/** 選択肢にあるものだけを通す。自由入力は受け取らない */
+function cleanAnswers(a) {
+  const gender = a?.gender === 'm' ? 'm' : a?.gender === 'f' ? 'f' : null;
+  const concerns = (Array.isArray(a?.concerns) ? a.concerns : [])
+    .filter((c) => CONCERNS.some((x) => x.id === c));
+  if (!gender || !concerns.length || !a?.budget || !a?.pace) return null;
+  return { gender, concerns, budget: String(a.budget), pace: String(a.pace) };
+}
+
+/* ------------------------------------------------------------------ *
+ * 空き枠のお知らせの受け取り設定
+ * ------------------------------------------------------------------ */
+
+async function prefsRoute(env, who, body) {
+  const wants = !!body?.openSlot;
+  const rooms = (Array.isArray(body?.rooms) ? body.rooms : []).filter((r) => ROOM_TAG[r]);
+
+  if (wants) {
+    await grantTags(env, who.userId, [{ kind: 'preference', name: OPEN_SLOT_TAG }]);
+  } else {
+    await revokeTag(env, who.userId, OPEN_SLOT_TAG);
+  }
+
+  for (const [id, name] of Object.entries(ROOM_TAG)) {
+    if (wants && rooms.includes(id)) {
+      await grantTags(env, who.userId, [{ kind: 'preference', name }]);
+    } else {
+      await revokeTag(env, who.userId, name);
+    }
+  }
+
+  return apiJson({ ok: true, openSlot: wants, rooms: wants ? rooms : [] });
+}
+
+/* ------------------------------------------------------------------ *
+ * 問診表
+ * ------------------------------------------------------------------ */
+
+/* お伺いする項目。ここにない内容は受け取りません */
+const INTAKE_FIELDS = [
+  { id: 'name',      label: 'お名前',            type: 'text',  required: true,
+    note: 'ご予約のお名前と同じものをご記入ください' },
+  { id: 'kana',      label: 'ふりがな',          type: 'text' },
+  { id: 'allergy',   label: 'アレルギー',        type: 'yesno', detail: '差し支えなければ内容を' },
+  { id: 'illness',   label: '治療中のご病気・お薬', type: 'yesno', detail: '差し支えなければ内容を' },
+  { id: 'pregnant',  label: '妊娠中・授乳中',    type: 'yesno', sex: 'f' },
+  { id: 'metal',     label: '体内に金属・ペースメーカー', type: 'yesno',
+    note: 'ラジオ波・EMSを使うメニューで確認が必要です' },
+  { id: 'skin',      label: '肌のお悩み',        type: 'text' },
+  { id: 'note',      label: 'その他ご要望',      type: 'text' }
+];
+
+/**
+ * 問診表はスタッフにお送りするだけで、長くは持ちません。
+ * 期限を入れておき、毎朝の掃除で消します。
+ *
+ * 健康に関わる内容をお預かりするため、
+ *   - ご同意のチェックが無ければ受け取らない
+ *   - 保存は14日だけ
+ *   - スタッフには「届きました」とだけ通知し、中身はスタッフ用ページで見る
+ * という形にしています。
+ */
+async function intakeRoute(env, who, body) {
+  if (!body?.consent) return apiJson({ error: 'ご同意が必要です' }, 400);
+
+  const form = {};
+  for (const f of INTAKE_FIELDS) {
+    const v = body?.form?.[f.id];
+    if (v == null || v === '') continue;
+    form[f.id] = String(v).slice(0, 300);
+  }
+  if (!form.name) return apiJson({ error: 'お名前をご記入ください' }, 400);
+
+  const expires = new Date(Date.parse(todayJst() + 'T00:00:00Z') + INTAKE_KEEP_DAYS * 86400000)
+    .toISOString()
+    .slice(0, 10);
+
+  await env.DB.prepare(
+    `INSERT INTO intake_forms (line_user_id, display_name, body, expires_on, created_at)
+     VALUES (?, ?, ?, ?, ?)`
+  )
+    .bind(who.userId, who.name, JSON.stringify(form), expires, nowIso())
+    .run();
+
+  /* スタッフへの合図。中身は入れない（LINEのトークに健康情報を残さないため） */
+  const ids = String(env.STAFF_USER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  for (const id of ids) {
+    await push(env, id, [
+      text(`【問診表が届きました】\n${form.name} 様\n\nスタッフ用ページでご確認ください。`)
+    ]);
+  }
+
+  return apiJson({ ok: true });
+}
+
+/** 期限の切れた問診表を消す。毎朝の cron から呼びます */
+async function sweepIntake(env, today = todayJst()) {
+  const res = await env.DB.prepare('DELETE FROM intake_forms WHERE expires_on < ?')
+    .bind(today)
+    .run();
+  return { deleted: res.meta?.changes ?? 0 };
+}
+
+/* ------------------------------------------------------------------ */
+
+const apiJson = (body, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' }
+  });
+
+/* ---------- src/app.js ---------- */
+/**
+ * LINEの中で開くページ（LIFF）
+ *
+ *   /app/diagnosis  コース診断
+ *   /app/menu       メニュー・料金
+ *   /app/intake     問診表
+ *   /app/access     アクセス・営業時間
+ *   /app/slot       空き枠のお知らせの受け取り設定
+ *
+ * つながり方：
+ *   診断 → お悩みがタグになる → 空き枠のお知らせが「その方に関わるもの」だけになる
+ *   診断 → 料金ページの並び順が、その方のお悩みの順になる
+ *   料金 → ご予約（お使いの予約システムへ）
+ *   空き枠のお知らせ → ご予約
+ *
+ * ご予約フォームはここでは作りません。すでにお使いの予約システムがあり、
+ * 別に受けてしまうと同じ枠が二重に売れるためです。
+ */
+
+
+const APP_PAGES = [
+  { path: '/app/diagnosis', title: 'コース診断' },
+  { path: '/app/menu',      title: 'メニュー・料金' },
+  { path: '/app/intake',    title: '問診表' },
+  { path: '/app/access',    title: 'アクセス・営業時間' },
+  { path: '/app/slot',      title: '空き枠のお知らせ' }
+];
+
+function appRequest(request, env, url) {
+  switch (url.pathname) {
+    /* LIFF のエンドポイントはここにします。
+       https://liff.line.me/＜LIFF ID＞/menu のように後ろを足すと、
+       1つの LIFF ID で全ページをまかなえます */
+    case '/app':
+    case '/app/':          return appPage(env, 'ミエーレ', hubBody(), '');
+    case '/app/diagnosis': return appPage(env, 'コース診断', diagnosisBody(), diagnosisJs);
+    case '/app/menu':      return appPage(env, 'メニュー・料金', menuBody(), menuJs);
+    case '/app/intake':    return appPage(env, '問診表', intakeBody(), intakeJs);
+    case '/app/access':    return appPage(env, 'アクセス・営業時間', accessBody(), '');
+    case '/app/slot':      return appPage(env, '空き枠のお知らせ', slotBody(), slotJs);
+    default:               return new Response('not found', { status: 404 });
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 入口（LIFF のエンドポイント）
+ * ------------------------------------------------------------------ */
+
+function hubBody() {
+  const link = (p, title, note) =>
+    `<a class="hubitem" href="${appEsc(p)}"><b>${appEsc(title)}</b><small>${appEsc(note)}</small></a>`;
+
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>${appEsc(SALON.name)}</h1>
+      <p class="lead">${appEsc(SALON.hours)}／${appEsc(SALON.closed)}／${appEsc(SALON.reservation)}</p>
+    </header>
+    <div class="hub">
+      ${link('/app/diagnosis', 'コース診断', '4つの質問でおすすめをご提案します')}
+      ${link('/app/menu', 'メニュー・料金', '新規価格でご案内しています')}
+      ${has(SALON.bookingUrl) ? `<a class="hubitem" href="${appEsc(SALON.bookingUrl)}" target="_blank" rel="noopener"><b>ご予約</b><small>ご予約ページが開きます</small></a>` : ''}
+      ${link('/app/intake', '問診表', 'ご来店前にご記入いただけます')}
+      ${link('/app/slot', '空き枠のお知らせ', '急なお席が空いたときにお知らせします')}
+      ${link('/app/access', 'アクセス・営業時間', 'JR古河駅から徒歩8分')}
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * コース診断
+ * ------------------------------------------------------------------ */
+
+function diagnosisBody() {
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>コース診断</h1>
+      <p class="lead">4つの質問にお答えいただくと、おすすめのコースをご提案します。
+      表示はすべて<b>新規（初回）価格</b>です。</p>
+    </header>
+    <div class="bar"><span id="bar"></span></div>
+    <div id="q"></div>`;
+}
+
+const diagnosisJs = `
+  const state = { step: 0, gender: null, concerns: [], budget: null, pace: null };
+  const q = document.getElementById('q');
+
+  const forSex = (o) => !o.sex || o.sex === state.gender;
+  const opt = (o, on) =>
+    '<button type="button" class="opt' + (on ? ' on' : '') + '" data-id="' + o.id + '">' +
+    (o.em ? '<span class="em">' + o.em + '</span>' : '') +
+    '<span class="t">' + o.label + (o.sub ? '<small>' + o.sub + '</small>' : '') + '</span></button>';
+
+  const STEPS = [
+    { key: 'gender',   title: 'お客様について',       list: () => DATA.genders,  multi: false },
+    { key: 'concerns', title: '気になるところは？',   list: () => DATA.concerns.filter(forSex), multi: true,
+      note: 'いくつでもお選びいただけます' },
+    { key: 'budget',   title: '1回あたりのご予算は？', list: () => DATA.budgets,  multi: false,
+      note: 'この金額を超えるコースはご提案しません' },
+    { key: 'pace',     title: 'どのように通いたいですか？', list: () => DATA.paces, multi: false }
+  ];
+
+  function render() {
+    document.getElementById('bar').style.width =
+      Math.round((state.step / STEPS.length) * 100) + '%';
+
+    if (state.step >= STEPS.length) return finish();
+
+    const s = STEPS[state.step];
+    q.innerHTML =
+      '<section class="step"><h2>' + s.title + '</h2>' +
+      (s.note ? '<p class="note">' + s.note + '</p>' : '') +
+      '<div class="opts">' +
+      s.list().map((o) => opt(o, s.multi ? state[s.key].includes(o.id) : state[s.key] === o.id)).join('') +
+      '</div>' +
+      (needsVio() ? '<p class="warn">' + DATA.mensVio + '</p>' : '') +
+      '<div class="nav">' +
+      (state.step > 0 ? '<button type="button" class="back" id="back">戻る</button>' : '') +
+      (s.multi ? '<button type="button" class="go" id="next">次へ</button>' : '') +
+      '</div></section>';
+  }
+
+  const needsVio = () =>
+    state.gender === 'm' && state.concerns.includes('thera') &&
+    STEPS[state.step] && STEPS[state.step].key === 'concerns';
+
+  q.addEventListener('click', (e) => {
+    const b = e.target.closest('.opt');
+    if (b) {
+      const s = STEPS[state.step];
+      if (s.multi) {
+        const i = state[s.key].indexOf(b.dataset.id);
+        if (i < 0) state[s.key].push(b.dataset.id); else state[s.key].splice(i, 1);
+        render();
+      } else {
+        state[s.key] = b.dataset.id;
+        /* 男性のときは、女性限定のお悩みが消えるので選び直していただく */
+        if (s.key === 'gender') state.concerns = state.concerns.filter(
+          (id) => forSex(DATA.concerns.find((c) => c.id === id) || {}));
+        state.step++;
+        render();
+      }
+      return;
+    }
+    if (e.target.id === 'next') {
+      if (!state.concerns.length) { alert('1つ以上お選びください。'); return; }
+      state.step++; render(); return;
+    }
+    if (e.target.id === 'back') { state.step--; render(); return; }
+    if (e.target.id === 'again') { location.reload(); }
+  });
+
+  async function finish() {
+    q.innerHTML = '<p class="loading">おすすめを組み立てています…</p>';
+    const r = await post('/api/diagnosis', {
+      answers: { gender: state.gender, concerns: state.concerns,
+                 budget: state.budget, pace: state.pace }
+    });
+    if (!r || !r.ok) {
+      q.innerHTML = '<p class="warn">うまくいきませんでした。もう一度お試しください。</p>';
+      return;
+    }
+
+    const cards = r.results.map((c) =>
+      '<article class="card">' +
+      '<div class="row1">' +
+      (c.badge ? '<span class="badge">' + c.badge + '</span>' : '') +
+      '<span class="cat">' + c.cat + '</span>' +
+      '<span class="rate">おすすめ度 ' + c.rate + '%</span></div>' +
+      '<h3>' + c.name + '</h3>' +
+      '<p class="price"><b>' + yen(c.price) + '</b>' +
+      (c.reg ? '<s>' + yen(c.reg) + '</s>' : '') +
+      (c.min ? '<span class="min">' + c.min + '分</span>' : '') + '</p>' +
+      '<p class="desc">' + c.desc + '</p>' +
+      (c.hits.length ? '<ul class="hits">' + c.hits.map((h) => '<li>' + h + '</li>').join('') + '</ul>' : '') +
+      '</article>').join('');
+
+    q.innerHTML =
+      '<section class="result"><h2>お客様におすすめのコース</h2>' +
+      (r.overBudget
+        ? '<p class="warn">ご予算内にぴったりのコースがありませんでした。' +
+          '条件の近いものを、お安い順にご案内します。</p>' : '') +
+      (r.mensVioNote ? '<p class="warn">' + r.mensVioNote + '</p>' : '') +
+      (cards || '<p class="note">条件に合うコースが見つかりませんでした。</p>') +
+      (r.saved
+        ? '<p class="saved">診断の結果をお預かりしました。' +
+          '空き枠のお知らせを、お客様のお悩みに合わせてお送りできます。</p>' : '') +
+      '<div class="cta">' +
+      (DATA.bookingUrl
+        ? '<a class="go" href="' + DATA.bookingUrl + '" target="_blank" rel="noopener">ご予約に進む</a>' : '') +
+      '<a class="sub" href="/app/slot">空き枠のお知らせを受け取る</a>' +
+      '<button type="button" class="sub" id="again">もう一度診断する</button>' +
+      '</div></section>';
+  }
+
+  render();
+`;
+
+/* ------------------------------------------------------------------ *
+ * メニュー・料金
+ * ------------------------------------------------------------------ */
+
+function menuBody() {
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>メニュー・料金</h1>
+      <p class="lead">表示はすべて<b>新規（初回）価格</b>です。
+      取り消し線は2回目以降の通常価格です。</p>
+    </header>
+    <div id="mine"></div>
+    <div class="chips" id="chips"></div>
+    <div id="list"></div>`;
+}
+
+const menuJs = `
+  let filter = null;
+  const cats = [...new Set(DATA.courses.map((c) => c.cat))];
+
+  function card(c) {
+    return '<article class="card">' +
+      '<div class="row1">' +
+      (c.badge ? '<span class="badge">' + c.badge + '</span>' : '') +
+      '<span class="cat">' + c.cat + '</span></div>' +
+      '<h3>' + c.name + '</h3>' +
+      '<p class="price"><b>' + yen(c.price) + '</b>' +
+      (c.reg ? '<s>' + yen(c.reg) + '</s>' : '') +
+      (c.min ? '<span class="min">' + c.min + '分</span>' : '') + '</p>' +
+      '<p class="desc">' + c.desc + '</p></article>';
+  }
+
+  function render() {
+    document.getElementById('chips').innerHTML =
+      '<button type="button" class="chip' + (filter ? '' : ' on') + '" data-cat="">すべて</button>' +
+      cats.map((c) => '<button type="button" class="chip' + (filter === c ? ' on' : '') +
+        '" data-cat="' + c + '">' + c + '</button>').join('');
+
+    const list = DATA.courses.filter((c) => !filter || c.cat === filter);
+    document.getElementById('list').innerHTML =
+      '<section>' + list.map(card).join('') + '</section>' +
+      (DATA.bookingUrl
+        ? '<div class="cta"><a class="go" href="' + DATA.bookingUrl +
+          '" target="_blank" rel="noopener">ご予約に進む</a></div>' : '');
+  }
+
+  document.getElementById('chips').addEventListener('click', (e) => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    filter = b.dataset.cat || null;
+    render();
+  });
+
+  /* 診断をお受けになっていれば、そのお悩みに関わるものを先にお見せする */
+  async function mine() {
+    const me = await post('/api/me', {});
+    if (!me || !me.concerns || !me.concerns.length) return;
+    const hit = DATA.courses.filter((c) => c.concerns.some((x) => me.concerns.includes(x)));
+    if (!hit.length) return;
+    const names = me.concerns
+      .map((id) => (DATA.concerns.find((c) => c.id === id) || {}).label).filter(Boolean);
+    document.getElementById('mine').innerHTML =
+      '<section class="mine"><h2>お客様のお悩みに合うメニュー</h2>' +
+      '<p class="note">コース診断で「' + names.join('・') + '」をお選びいただきました。</p>' +
+      hit.slice(0, 4).map(card).join('') + '</section>';
+  }
+
+  render();
+  mine();
+`;
+
+/* ------------------------------------------------------------------ *
+ * 問診表
+ * ------------------------------------------------------------------ */
+
+function intakeBody() {
+  const fields = INTAKE_FIELDS.map((f) => {
+    const note = f.note ? `<small>${appEsc(f.note)}</small>` : '';
+    if (f.type === 'yesno') {
+      return `<div class="field">
+        <label>${appEsc(f.label)}${f.id === 'pregnant' ? '<em>該当する方のみ</em>' : ''}${note}</label>
+        <div class="yesno">
+          <button type="button" class="opt" data-f="${appEsc(f.id)}" data-v="なし">なし</button>
+          <button type="button" class="opt" data-f="${appEsc(f.id)}" data-v="あり">あり</button>
+        </div>
+        ${f.detail ? `<input type="text" data-f="${appEsc(f.id)}_detail" placeholder="${appEsc(f.detail)}">` : ''}
+      </div>`;
+    }
+    return `<div class="field">
+      <label>${appEsc(f.label)}${f.required ? '<em>必須</em>' : ''}${note}</label>
+      <input type="text" data-f="${appEsc(f.id)}">
+    </div>`;
+  }).join('');
+
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>問診表</h1>
+      <p class="lead">ご来店前にご記入いただくと、当日のお時間が短くなります。</p>
+    </header>
+
+    <div class="privacy">
+      <b>お預かりする内容について</b>
+      <ul>
+        <li>安全に施術を行うためだけに使います</li>
+        <li>スタッフが確認してカルテに転記したあと、<b>${INTAKE_KEEP_DAYS}日で自動的に消去</b>します</li>
+        <li>LINEのトークには内容を残しません</li>
+      </ul>
+    </div>
+
+    <form id="f">${fields}
+      <label class="consent">
+        <input type="checkbox" id="consent">
+        <span>上記に同意して送信します</span>
+      </label>
+      <button type="submit" class="go">送信する</button>
+    </form>
+    <p class="msg" id="msg"></p>`;
+}
+
+const intakeJs = `
+  const form = {};
+
+  document.getElementById('f').addEventListener('click', (e) => {
+    const b = e.target.closest('.opt');
+    if (!b) return;
+    form[b.dataset.f] = b.dataset.v;
+    b.parentElement.querySelectorAll('.opt').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+  });
+
+  document.getElementById('f').addEventListener('input', (e) => {
+    if (e.target.dataset.f) form[e.target.dataset.f] = e.target.value;
+  });
+
+  document.getElementById('f').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('msg');
+    if (!document.getElementById('consent').checked) {
+      msg.textContent = 'ご同意のチェックをお願いします。'; return;
+    }
+    if (!form.name) { msg.textContent = 'お名前をご記入ください。'; return; }
+
+    /* 「あり」で内容を書いていただいた場合は、ひとつにまとめて送る */
+    const out = {};
+    for (const k of Object.keys(form)) {
+      if (k.endsWith('_detail')) continue;
+      const d = form[k + '_detail'];
+      out[k] = d ? form[k] + '（' + d + '）' : form[k];
+    }
+
+    msg.textContent = '送信しています…';
+    const r = await post('/api/intake', { consent: true, form: out });
+    if (r && r.ok) {
+      document.getElementById('f').style.display = 'none';
+      msg.innerHTML = '<b>ありがとうございました。</b><br>' +
+        'ご来店をお待ちしております。内容はスタッフが確認いたします。';
+    } else {
+      msg.textContent = (r && r.error) || '送信できませんでした。もう一度お試しください。';
+    }
+  });
+`;
+
+/* ------------------------------------------------------------------ *
+ * アクセス・営業時間
+ * ------------------------------------------------------------------ */
+
+function accessBody() {
+  const map = 'https://www.google.com/maps/search/?api=1&query=' +
+    encodeURIComponent(SALON.address);
+
+  const row = (label, value) =>
+    has(value) ? `<div class="row"><dt>${appEsc(label)}</dt><dd>${appEsc(value)}</dd></div>` : '';
+
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>アクセス・営業時間</h1>
+    </header>
+
+    <dl class="info">
+      ${row('店舗名', SALON.name)}
+      ${row('住所', SALON.postal + ' ' + SALON.address)}
+      ${row('アクセス', SALON.access)}
+      ${row('駐車場', SALON.parking)}
+      ${row('営業時間', SALON.hours)}
+      ${row('定休日', SALON.closed)}
+      ${row('ご予約', SALON.reservation + (has(SALON.reservationNote) ? '（' + SALON.reservationNote + '）' : ''))}
+      ${row('お支払い', SALON.payment)}
+    </dl>
+
+    <div class="cta">
+      <a class="go" href="${appEsc(map)}" target="_blank" rel="noopener">地図で見る</a>
+      ${has(SALON.tel) ? `<a class="sub" href="tel:${appEsc(SALON.tel.replace(/-/g, ''))}">電話をかける（${appEsc(SALON.tel)}）</a>` : ''}
+      ${has(SALON.bookingUrl) ? `<a class="sub" href="${appEsc(SALON.bookingUrl)}" target="_blank" rel="noopener">ご予約に進む</a>` : ''}
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * 空き枠のお知らせの受け取り設定
+ * ------------------------------------------------------------------ */
+
+function slotBody() {
+  const rooms = ROOMS.map(
+    (r) => `<label class="check">
+      <input type="checkbox" data-room="${appEsc(r.id)}">
+      <span>${appEsc(r.label)}<small>${appEsc(r.note)}</small></span>
+    </label>`
+  ).join('');
+
+  return `
+    <header class="head">
+      <p class="eyebrow">${appEsc(SALON.shortName)}</p>
+      <h1>空き枠のお知らせ</h1>
+      <p class="lead">急なお席が空いたときに、LINEでお知らせします。
+      Instagram に出すより<b>30分早く</b>お届けしています。</p>
+    </header>
+
+    <div class="toggle">
+      <button type="button" class="opt" id="on">受け取る</button>
+      <button type="button" class="opt" id="off">受け取らない</button>
+    </div>
+
+    <section id="detail" hidden>
+      <h2>どちらのお席をご希望ですか</h2>
+      <p class="note">選んでいただくと、関係のないお知らせは届かなくなります。</p>
+      ${rooms}
+      <p class="note" id="hint"></p>
+    </section>
+
+    <button type="button" class="go" id="save">この内容で登録する</button>
+    <p class="msg" id="msg"></p>
+
+    <p class="foot">お知らせは多くても週に2〜3回までです。
+    いつでもこの画面から止められます。</p>`;
+}
+
+const slotJs = `
+  let wants = false;
+  const rooms = new Set();
+
+  function paint() {
+    document.getElementById('on').classList.toggle('on', wants);
+    document.getElementById('off').classList.toggle('on', !wants);
+    document.getElementById('detail').hidden = !wants;
+    document.querySelectorAll('[data-room]').forEach((b) => { b.checked = rooms.has(b.dataset.room); });
+    document.getElementById('hint').textContent =
+      rooms.size ? '' : '選ばれていないときは、どちらのお席もお知らせします。';
+  }
+
+  document.getElementById('on').addEventListener('click', () => { wants = true; paint(); });
+  document.getElementById('off').addEventListener('click', () => { wants = false; paint(); });
+  document.addEventListener('change', (e) => {
+    if (!e.target.dataset.room) return;
+    e.target.checked ? rooms.add(e.target.dataset.room) : rooms.delete(e.target.dataset.room);
+    paint();
+  });
+
+  document.getElementById('save').addEventListener('click', async () => {
+    const msg = document.getElementById('msg');
+    msg.textContent = '登録しています…';
+    const r = await post('/api/prefs', { openSlot: wants, rooms: [...rooms] });
+    msg.textContent = r && r.ok
+      ? (wants ? '登録しました。空きが出ましたらお知らせします。' : 'お知らせを止めました。')
+      : ((r && r.error) || '登録できませんでした。');
+  });
+
+  (async () => {
+    const me = await post('/api/me', {});
+    if (me && !me.error) {
+      wants = !!me.openSlot;
+      (me.rooms || []).forEach((r) => rooms.add(r));
+    }
+    paint();
+  })();
+`;
+
+/* ------------------------------------------------------------------ *
+ * 共通の枠組み
+ * ------------------------------------------------------------------ */
+
+/* ページに渡すデータ。お客様に見えて困るものは入れない */
+const appData = () => ({
+  genders: GENDERS,
+  concerns: CONCERNS,
+  budgets: BUDGETS.map((b) => ({ ...b, cap: b.cap === Infinity ? null : b.cap })),
+  paces: PACES,
+  courses: COURSES.map((c) => ({
+    id: c.id, name: c.name, price: c.price, reg: c.reg ?? null, min: c.min,
+    cat: c.cat, badge: c.badge, desc: c.desc, concerns: c.concerns
+  })),
+  rooms: ROOMS.map((r) => ({ id: r.id, label: r.label })),
+  bookingUrl: has(SALON.bookingUrl) ? SALON.bookingUrl : null,
+  mensVio:
+    '※ メンズのVIO脱毛は、セラピストによる施術は行っておりません。' +
+    'セルフ脱毛でのご対応となります（ブースをご用意しています）。'
+});
+
+/* LIFF の準備。IDトークンが取れなければ、そのまま「どなたか分からない」で進みます。
+   （LINEの外でブラウザから開かれたときや、デモのとき） */
+const APP_BOOT = `
+  const DATA = window.__APP_DATA__;
+  const CONF = window.__APP_CONF__;
+  let idToken = null;
+
+  const yen = (n) => '¥' + Number(n).toLocaleString('ja-JP');
+
+  async function boot() {
+    if (!CONF.ready || typeof liff === 'undefined') return;
+    try {
+      await liff.init({ liffId: CONF.liffId });
+      if (liff.isLoggedIn()) idToken = liff.getIDToken();
+    } catch (e) {
+      /* 開けなくても、ページそのものは読めるようにしておく */
+    }
+  }
+
+  async function post(path, body) {
+    try {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, idToken })
+      });
+      return await res.json();
+    } catch (e) {
+      return { error: '通信できませんでした' };
+    }
+  }
+`;
+
+function appPage(env, title, body, pageJs) {
+  const conf = liffConfig(env);
+  return new Response(
+    `<!doctype html><html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>${appEsc(title)}｜${appEsc(SALON.shortName)}</title>
+<style>${APP_CSS}</style>
+</head><body>
+<div class="app">${body}</div>
+${conf.ready ? '<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"><\/script>' : ''}
+<script>
+window.__APP_DATA__ = ${JSON.stringify(appData())};
+window.__APP_CONF__ = ${JSON.stringify(conf)};
+${APP_BOOT}
+boot().then(() => { ${pageJs} });
+<\/script>
+</body></html>`,
+    { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+
+const APP_CSS = `
+  :root{--bg:#FAF7F5;--card:#fff;--ink:#2B2724;--sub:#8B7F79;--line:#E7DBD4;
+        --accent:#98543F;--wash:#F7EBE5;--warn:#8E6415;--warn-bg:#F7EFDF}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#1B1817;--card:#242020;--ink:#EFE8E4;--sub:#9C8F89;--line:#3A3331;
+          --accent:#D9967C;--wash:#33241F;--warn:#DEAC57;--warn-bg:#2E2619}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.75;
+       font-family:"Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif}
+  .app{max-width:560px;margin:0 auto;padding:22px 16px 64px}
+  .head{margin-bottom:18px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.18em;color:var(--accent);margin:0 0 8px}
+  h1{font-size:22px;margin:0 0 8px;line-height:1.35}
+  h2{font-size:16px;margin:0 0 10px}
+  h3{font-size:15.5px;margin:0 0 6px;line-height:1.5}
+  .lead{font-size:13.5px;color:var(--sub);margin:0}
+  .note{font-size:12.5px;color:var(--sub);margin:0 0 12px}
+  .warn{font-size:12.5px;color:var(--warn);background:var(--warn-bg);
+        border-radius:9px;padding:10px 12px;margin:0 0 14px}
+  .bar{height:3px;background:var(--line);border-radius:99px;margin:0 0 22px;overflow:hidden}
+  .bar span{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+  .opts{display:grid;gap:8px;margin-bottom:16px}
+  .opt{display:flex;gap:11px;align-items:center;text-align:left;width:100%;
+       padding:14px 15px;border:1px solid var(--line);border-radius:12px;
+       background:var(--card);color:inherit;font:inherit}
+  .opt.on{border-color:var(--accent);border-width:2px;padding:13px 14px;background:var(--wash)}
+  .opt .em{font-size:20px;line-height:1}
+  .opt .t{font-size:14.5px}
+  .opt small{display:block;font-size:11.5px;color:var(--sub)}
+  .nav{display:flex;gap:8px}
+  .back{padding:12px 18px;border:1px solid var(--line);border-radius:10px;
+        background:none;color:var(--sub);font:inherit}
+  .go{flex:1;display:block;text-align:center;padding:14px;border:0;border-radius:11px;
+      background:var(--accent);color:#fff;font:inherit;font-weight:700;text-decoration:none}
+  .sub{display:block;text-align:center;padding:13px;border:1px solid var(--line);
+       border-radius:11px;background:var(--card);color:var(--accent);font:inherit;
+       text-decoration:none;margin-top:8px;width:100%}
+  .cta{margin-top:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;
+        padding:15px 16px;margin-bottom:10px}
+  .row1{display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
+  .badge{font-size:10.5px;font-weight:700;color:#fff;background:var(--accent);
+         border-radius:99px;padding:2px 9px}
+  .cat{font-size:11px;color:var(--sub)}
+  .rate{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--accent)}
+  .price{margin:0 0 7px;display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
+  .price b{font-size:19px;font-variant-numeric:tabular-nums}
+  .price s{font-size:12.5px;color:var(--sub)}
+  .price .min{font-size:12px;color:var(--sub)}
+  .desc{font-size:13px;color:var(--sub);margin:0}
+  .hits{list-style:none;padding:0;margin:9px 0 0;display:flex;gap:6px;flex-wrap:wrap}
+  .hits li{font-size:11px;background:var(--wash);color:var(--accent);
+           border-radius:99px;padding:3px 10px}
+  .saved{font-size:12.5px;color:var(--accent);background:var(--wash);
+         border-radius:9px;padding:11px 13px;margin:14px 0 0}
+  .loading{color:var(--sub);font-size:14px;text-align:center;padding:40px 0}
+  .chips{display:flex;gap:7px;overflow-x:auto;padding:0 0 12px;margin-bottom:4px}
+  .chip{flex:0 0 auto;padding:7px 14px;border:1px solid var(--line);border-radius:99px;
+        background:var(--card);color:var(--sub);font:inherit;font-size:12.5px}
+  .chip.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+  .mine{background:var(--wash);border-radius:14px;padding:15px 14px 6px;margin-bottom:20px}
+  .mine h2{color:var(--accent)}
+  .info{margin:0 0 8px;padding:0;border:1px solid var(--line);border-radius:13px;
+        background:var(--card);overflow:hidden}
+  .info .row{display:flex;gap:0;border-bottom:1px solid var(--line)}
+  .info .row:last-child{border-bottom:0}
+  .info dt{flex:0 0 92px;padding:11px 13px;font-size:12px;color:var(--sub)}
+  .info dd{flex:1;margin:0;padding:11px 13px;font-size:13.5px}
+  .privacy{background:var(--card);border:1px solid var(--line);border-radius:13px;
+           padding:14px 16px;margin-bottom:20px;font-size:12.5px;color:var(--sub)}
+  .privacy b{color:var(--ink);display:block;margin-bottom:6px;font-size:13.5px}
+  .privacy ul{margin:0;padding-left:18px}
+  .privacy li{margin-bottom:4px}
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:13.5px;margin-bottom:6px}
+  .field label em{font-style:normal;font-size:10.5px;color:var(--accent);margin-left:7px}
+  .field label small{display:block;font-size:11.5px;color:var(--sub);margin-top:2px}
+  .field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;
+               font:inherit;background:var(--card);color:inherit}
+  .yesno{display:flex;gap:8px;margin-bottom:7px}
+  .yesno .opt{justify-content:center}
+  .consent{display:flex;gap:10px;align-items:center;margin:20px 0 14px;font-size:13.5px}
+  .toggle{display:flex;gap:8px;margin-bottom:20px}
+  .toggle .opt{justify-content:center;font-weight:700}
+  .check{display:flex;gap:10px;align-items:flex-start;background:var(--card);
+         border:1px solid var(--line);border-radius:11px;padding:13px 14px;margin-bottom:8px}
+  .check small{display:block;font-size:11.5px;color:var(--sub)}
+  .hub{display:grid;gap:9px}
+  .hubitem{display:block;padding:15px 17px;border:1px solid var(--line);border-radius:12px;
+           background:var(--card);text-decoration:none;color:inherit}
+  .hubitem b{display:block;font-size:15px;color:var(--accent)}
+  .hubitem small{display:block;font-size:12px;color:var(--sub);margin-top:2px}
+  .msg{font-size:13px;color:var(--accent);margin:12px 0 0}
+  .foot{font-size:11.5px;color:var(--sub);margin-top:22px}
+  a{color:var(--accent)}
+`;
+
+function appEsc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 
 const $ = (id) => document.getElementById(id);
 const esc2 = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1926,6 +3294,20 @@ function renderLineSetup() {
   const pos = ['左上','中上','右上','左下','中下','右下'];
   const posFor = (i) => layout.rows === 1 ? `左から${i + 1}番目` : (pos[i] ?? `${i + 1}番目`);
 
+  /* 管理画面に貼る内容。LIFFのページは liff.line.me のURLになる */
+  const setupTarget = (c) => {
+    if (c.link === 'booking') {
+      return SALON.bookingUrl
+        ? '<code>' + esc2(SALON.bookingUrl) + '</code>'
+        : '<span class="off">予約システムのURLが未設定です</span>';
+    }
+    if (c.link && c.link.startsWith('/app/')) {
+      return '<code>https://liff.line.me/＜LIFF ID＞/' + esc2(c.link.slice(5)) + '</code>';
+    }
+    if (c.link) return esc2(c.link);
+    return c.keyword ? '<code>' + esc2(c.keyword) + '</code>' : '—';
+  };
+
   $('lineSetup').innerHTML = `
     <h4 style="font-family:var(--f-display);font-size:14px;margin:0 0 8px">
       1. トークルーム管理 → 応答設定</h4>
@@ -1957,13 +3339,16 @@ function renderLineSetup() {
             <td>${esc2(posFor(i))}</td>
             <td>${esc2(c.label)}</td>
             <td>${c.link ? 'リンク' : (c.keyword ? 'テキスト' : '設定しない')}</td>
-            <td>${c.link ? esc2(c.link) : (c.keyword ? '<code>' + esc2(c.keyword) + '</code>' : '—')}</td>
+            <td>${setupTarget(c)}</td>
           </tr>`).join('')}
       </tbody>
     </table></div>
     <p class="note">
-      ポストバックは管理画面から選べないため、すべて「テキスト」で受けています。
-      押すとそのテキストがお客様の発言として送られ、システムが自動で返信します。
+      <b style="color:var(--ink-soft)">LIFF のページは「リンク」で設定します。</b>
+      <code>https://liff.line.me/＜LIFF ID＞/menu</code> の形で、
+      LIFF ID を発行したあとに置き換えてください。
+      ポストバックは管理画面から選べないため、テキストで受けるボタンは
+      押すとその言葉がお客様の発言として送られ、システムが自動で返信します。
     </p>
 
     <h4 style="font-family:var(--f-display);font-size:14px;margin:24px 0 8px">
