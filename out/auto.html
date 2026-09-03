@@ -107,6 +107,10 @@
   .callout p:last-child{margin:0}
   code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:var(--sunk);
        padding:2px 6px;border-radius:5px}
+  /* 説明書。見た目が混ざらないよう、別の枠に入れて読み込む */
+  .doc{border:1px solid var(--rule);border-radius:15px;overflow:hidden;background:var(--surface)}
+  .doc iframe{display:block;width:100%;border:0;height:900px;background:var(--ground)}
+
   footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
 </style>
@@ -204,8 +208,1030 @@
   </p>
 </div>
 
+<h2>5. 運用ガイド（説明書）</h2>
+<p class="sub">
+  ここから下は説明書です。オーナー様向け・スタッフの皆さま向け・設定される方向けに分かれています。
+  同じ内容を1枚で配れるよう、このページの中に入れてあります。
+</p>
+
+<div class="doc">
+  <iframe id="guideFrame" title="運用ガイド" loading="lazy"></iframe>
+</div>
+
+<script type="text/plain" id="guideDoc">
+<title>ミエーレ LINE 運用ガイド</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#FAF7F5; --surface:#FFFFFF; --sunk:#F3EDE9;
+    --ink:#2B2724; --ink-soft:#574D48; --muted:#8B7F79;
+    --rule:#E7DBD4; --rule-hard:#D6C6BD;
+    --accent:#98543F; --accent-wash:#F7EBE5;
+    --ok:#1F7A4C; --ok-wash:#E8F3EC;
+    --warn:#8E6415; --warn-wash:#F7EFDF;
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+    --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic Medium",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+      --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+      --rule:#3A3331; --rule-hard:#4C4340;
+      --accent:#D9967C; --accent-wash:#33241F;
+      --ok:#5CC98C; --ok-wash:#1C2C24;
+      --warn:#DEAC57; --warn-wash:#2E2619;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#1B1817; --surface:#242020; --sunk:#2C2726;
+    --ink:#EFE8E4; --ink-soft:#CDC2BC; --muted:#9C8F89;
+    --rule:#3A3331; --rule-hard:#4C4340;
+    --accent:#D9967C; --accent-wash:#33241F;
+    --ok:#5CC98C; --ok-wash:#1C2C24;
+    --warn:#DEAC57; --warn-wash:#2E2619;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);
+       font-size:15.5px;line-height:1.95;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px 100px}
+
+  /* 表紙 */
+  .cover{padding:64px 0 32px;border-bottom:2px solid var(--accent)}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.22em;color:var(--accent);margin:0 0 14px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,5.4vw,38px);
+     line-height:1.3;margin:0 0 16px;text-wrap:balance}
+  .cover p{color:var(--ink-soft);margin:0 0 8px;max-width:60ch}
+
+  /* もくじ */
+  .toc{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+       padding:20px 24px;margin:28px 0 0}
+  .toc h2{font-family:var(--f-display);font-size:13px;letter-spacing:.1em;color:var(--muted);
+          margin:0 0 12px;font-weight:700}
+  .toc ol{margin:0;padding-left:20px}
+  .toc li{margin-bottom:6px;font-size:14px}
+  .toc a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+  .toc a:hover{border-bottom-color:var(--accent)}
+  .toc .who{font-size:11.5px;color:var(--muted);margin-left:8px}
+
+  /* 部 */
+  .part{margin-top:64px;padding-top:28px;border-top:1px solid var(--rule)}
+  .part-label{display:inline-block;font-family:var(--f-display);font-size:11.5px;font-weight:700;
+              letter-spacing:.14em;color:#fff;background:var(--accent);border-radius:99px;
+              padding:4px 14px;margin-bottom:16px}
+  .part > h2{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1.35;
+             margin:0 0 10px;text-wrap:balance}
+  .part > p.sub{color:var(--muted);font-size:14px;margin:0 0 8px}
+
+  h3{font-family:var(--f-display);font-weight:700;font-size:19px;line-height:1.45;
+     margin:44px 0 12px;text-wrap:balance}
+  h4{font-family:var(--f-display);font-weight:700;font-size:15.5px;margin:26px 0 8px}
+  p{margin:0 0 18px}
+  strong{font-weight:500;color:var(--ink);background:linear-gradient(transparent 62%,var(--accent-wash) 62%)}
+  a{color:var(--accent)}
+
+  ul,ol{margin:0 0 20px;padding-left:22px}
+  li{margin-bottom:9px}
+  li::marker{color:var(--accent)}
+
+  /* 手順 */
+  ol.steps{list-style:none;padding:0;counter-reset:s;margin:0 0 24px}
+  ol.steps > li{counter-increment:s;position:relative;padding:0 0 0 52px;margin-bottom:22px}
+  ol.steps > li::before{content:counter(s);position:absolute;left:0;top:0;width:34px;height:34px;
+    border-radius:99px;background:var(--accent);color:#fff;font-family:var(--f-display);
+    font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  ol.steps b{display:block;font-family:var(--f-display);font-size:16.5px;font-weight:700;
+             margin-bottom:2px}
+  ol.steps p{margin:0;font-size:14.5px;color:var(--ink-soft)}
+
+  /* カード */
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+        padding:20px 24px;margin:0 0 20px}
+  .card h4{margin-top:0}
+  .card p:last-child,.card ul:last-child{margin-bottom:0}
+
+  .callout{border-left:4px solid var(--accent);background:var(--accent-wash);
+           border-radius:0 12px 12px 0;padding:16px 22px;margin:0 0 22px}
+  .callout p:last-child{margin-bottom:0}
+  .callout--ok{border-left-color:var(--ok);background:var(--ok-wash)}
+  .callout--warn{border-left-color:var(--warn);background:var(--warn-wash)}
+
+  /* 表 */
+  .scroll{overflow-x:auto;margin:0 0 22px}
+  table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.75;min-width:400px}
+  th,td{text-align:left;padding:11px 16px 11px 0;border-bottom:1px solid var(--rule);
+        vertical-align:top}
+  thead th{font-size:11.5px;letter-spacing:.08em;color:var(--muted);font-weight:700;
+           border-bottom:1px solid var(--rule-hard);padding-bottom:8px}
+  td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+
+  /* Q&A */
+  .qa{border-top:1px solid var(--rule);padding:18px 0}
+  .qa:last-of-type{border-bottom:1px solid var(--rule)}
+  .qa h4{margin:0 0 6px;display:flex;gap:10px;align-items:baseline}
+  .qa h4::before{content:"Q";font-family:var(--f-display);color:var(--accent);font-size:13px;
+                 flex:0 0 auto}
+  .qa p{margin:0;font-size:14.5px;color:var(--ink-soft);padding-left:23px}
+
+  /* 図 */
+  figure{margin:0 0 26px}
+  figure svg{display:block;width:100%;height:auto}
+  figcaption{font-size:13px;color:var(--muted);margin-top:12px;line-height:1.8}
+
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
+        background:var(--sunk);padding:2px 6px;border-radius:5px;word-break:break-all}
+
+  .big{font-family:var(--f-display);font-weight:700;font-size:19px;
+       font-variant-numeric:tabular-nums}
+
+  footer{margin-top:72px;padding-top:24px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--muted);line-height:1.9}
+
+  @media print{
+    body{background:#fff;color:#000;font-size:11pt}
+    .toc,footer{page-break-inside:avoid}
+    .part{page-break-before:always}
+    .card,.callout,figure{page-break-inside:avoid}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="cover">
+  <p class="eyebrow">トータル・ビューティー・サロン ミエーレ</p>
+  <h1>LINE 運用ガイド</h1>
+  <p>空き枠のお知らせと、LINEの中で開く6つのページのご説明です。</p>
+  <p>オーナー様とスタッフの皆さまで知りたいことが違うため、4部に分けています。
+     ご自身に関係のある部分だけお読みいただければ大丈夫です。</p>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <ol>
+    <li><a href="#owner">導入のご判断に</a><span class="who">オーナー様</span></li>
+    <li><a href="#what">何をするしくみか</a></li>
+    <li><a href="#cost">かかる費用のすべて</a></li>
+    <li><a href="#care">お客様に嫌がられないための工夫</a></li>
+    <li><a href="#privacy">お客様の情報の扱い</a></li>
+    <li><a href="#staff">毎日の使い方</a><span class="who">スタッフの皆さま</span></li>
+    <li><a href="#regular">月曜と木曜に起きること</a></li>
+    <li><a href="#calendar-rule">カレンダーが約束事になります</a></li>
+    <li><a href="#sudden">急な空きが出たとき</a></li>
+    <li><a href="#menu">メニューについて</a></li>
+    <li><a href="#qa">よくある質問</a></li>
+    <li><a href="#setup">LINE公式アカウント側の設定</a><span class="who">設定される方</span></li>
+    <li><a href="#config">つなぎこみの手順</a><span class="who">設定される方</span></li>
+    <li><a href="#booking-url">予約システムのURLを入れる</a></li>
+    <li><a href="#gcal">Googleカレンダーをつなぐ</a></li>
+    <li><a href="#social">Instagram と Google への自動投稿</a></li>
+    <li><a href="#liff">LIFFとLINEミニアプリ・審査について</a></li>
+  </ol>
+</nav>
+
+<!-- ================= 第1部 ================= -->
+
+<section class="part" id="owner">
+  <span class="part-label">第1部　オーナー様へ</span>
+  <h2>導入のご判断に</h2>
+  <p class="sub">何ができて、いくらかかり、何に気をつけるか</p>
+
+  <p>
+    いまLINEでつながっているお客様は<strong>318名</strong>、Instagramのフォロワーは
+    <strong>1,019名</strong>です。このしくみは、その方々に向けて
+    <strong>空いてしまった枠をお知らせし、当日・数日先の予約を埋めるためのもの</strong>です。
+  </p>
+
+  <h3 id="what">何をするしくみか</h3>
+
+  <figure>
+    <svg viewBox="0 0 720 250" role="img"
+         aria-label="月曜と木曜の朝、カレンダーの空きからシステムが枠を決め、希望された方にだけLINEで届き、30分後にInstagramとGoogleへ出す">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+                orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="8"   y="30" width="150" height="66" rx="10"/>
+        <rect x="208" y="30" width="150" height="66" rx="10"/>
+        <rect x="408" y="8"  width="150" height="66" rx="10" stroke="#98543F" stroke-width="2.5"/>
+        <rect x="408" y="112" width="150" height="66" rx="10"/>
+        <line x1="158" y1="63" x2="200" y2="63" marker-end="url(#ar)"/>
+        <line x1="358" y1="55" x2="400" y2="41" marker-end="url(#ar)"/>
+        <line x1="358" y1="75" x2="400" y2="145" marker-end="url(#ar)"/>
+      </g>
+      <g font-family="'Noto Sans JP',sans-serif" fill="currentColor">
+        <text x="83"  y="58"  font-size="13" font-weight="500" text-anchor="middle">カレンダーの空き</text>
+        <text x="83"  y="80"  font-size="11" text-anchor="middle" opacity=".7">スタッフが入れた予定から</text>
+        <text x="283" y="58"  font-size="13" font-weight="500" text-anchor="middle">システムが枠を決める</text>
+        <text x="283" y="80"  font-size="11" text-anchor="middle" opacity=".7">空きから3枠まで・メニュー付き</text>
+        <text x="483" y="36"  font-size="13" font-weight="500" text-anchor="middle" fill="#98543F">LINE</text>
+        <text x="483" y="56"  font-size="11" text-anchor="middle" fill="#98543F">お知らせを希望された方だけ</text>
+        <text x="483" y="140" font-size="13" font-weight="500" text-anchor="middle">Instagram ストーリーズ</text>
+        <text x="483" y="160" font-size="11" text-anchor="middle" opacity=".7">30分あけてから</text>
+        <text x="380" y="118" font-size="11" text-anchor="middle" opacity=".7">30分</text>
+        <text x="360" y="215" font-size="12" text-anchor="middle" opacity=".85">
+          「LINEの方には30分前にお知らせ済みです」と書き添える
+        </text>
+        <text x="360" y="234" font-size="12" text-anchor="middle" opacity=".85">
+          ＝ LINEに登録していただく理由になる
+        </text>
+      </g>
+    </svg>
+    <figcaption>
+      月曜と木曜の朝10時、人が触らずにここまで進みます。
+      Instagramを先に出すと、LINEに登録する理由がなくなります。順番と30分の差が、このしくみの要です。
+    </figcaption>
+  </figure>
+
+  <div class="card">
+    <h4>1. 空きを、欲しい方にだけお届けする</h4>
+    <p>
+      全員には送りません。<strong>リッチメニューから「空き枠のお知らせを受け取る」を
+      押してくださった方だけ</strong>にお送りします。さらに、セルフブースと施術ルームの
+      どちらを希望されたかで分けるので、関係のないお知らせは届きません。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>2. Googleカレンダーから空きを拾う</h4>
+    <p>
+      月曜と木曜の朝10時、セラピストの皆さまのカレンダーを見て、空いている時間を拾います。
+      日付や時間を打ち込む必要はありません。
+    </p>
+    <p>
+      読むのは<strong>「その時間に予定が入っているかどうか」だけ</strong>です。
+      予定のタイトルも、お客様のお名前も、こちらには届きません。
+      共有設定で「予定の表示（時間のみ）」を選ぶので、そもそも中身が渡らない仕組みです。
+    </p>
+    <p>
+      セラピストが2人いても施術ルームが1室であれば、どちらかに予定が入っている時間は
+      「埋まっている」と判定します。部屋数は設定で変えられます。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>3. そのままLINEに送り、30分あけて外へ出す</h4>
+    <p>
+      <strong>送信の操作は要りません。</strong>拾った空きから3枠までを選び、
+      その時間に入るメニューを載せて、受け取りを希望された方にお送りします。
+      30分あけてから Instagram のストーリーズと Google の最新情報に出ます。
+    </p>
+    <p>
+      順番を守るのは、<strong>「LINEの方が30分早い」という事実</strong>をつくるためです。
+      これがLINEに登録していただく理由になります。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>4. Instagram と Google にも、ひとりでに出る</h4>
+    <p>
+      LINEに送って30分後、<strong>Instagram のストーリーズ</strong>と
+      <strong>Google ビジネスプロフィールの最新情報</strong>に自動で出ます。
+      画像づくりも文面書きも要りません。
+    </p>
+    <p>
+      Google の投稿には「予約」ボタンが付き、店名と場所も添えます。
+      Googleマップの検索から来られた方に向けた文面になっています。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>5. LINEの中で開くページ（6つのボタン）</h4>
+    <p>
+      リッチメニューの各ボタンから、LINEを離れずに開けるページです。
+      <strong>コース診断・メニュー料金・ご予約・問診表・空き枠の設定・アクセス</strong>の6つで、
+      それぞれがつながっています。
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>ボタン</th><th>中身</th><th>つながり</th></tr></thead>
+        <tbody>
+          <tr><td>コース診断</td><td>4つの質問でおすすめをご提案</td>
+              <td><strong>お答えがタグになり、空き枠の絞り込みに効きます</strong></td></tr>
+          <tr><td>メニュー・料金</td><td>掲載メニューを新規価格で一覧</td>
+              <td>診断済みの方には「お悩みに合うメニュー」が上に出ます</td></tr>
+          <tr><td>ご予約</td><td>お使いの予約システムへ</td>
+              <td>独自フォームは作りません（二重予約を防ぐため）</td></tr>
+          <tr><td>問診表</td><td>ご来店前のご記入</td>
+              <td>スタッフに届き、<strong>14日で自動消去</strong></td></tr>
+          <tr><td>空き枠のお知らせ</td><td>受け取り設定</td>
+              <td>お客様ご自身でいつでも止められます</td></tr>
+          <tr><td>アクセス・営業時間</td><td>店舗情報・地図・お電話</td>
+              <td>店舗情報の1か所から出ています</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      メニューの内容は<strong>1か所にまとめてあります</strong>。
+      料金が変わったときに直すのは1回で、診断・料金ページ・空き枠のメニュー候補の
+      すべてに反映されます。3か所に書き写す作業はありません。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>6. Instagram の文面と画像まで作る</h4>
+    <p>
+      枠を入れると、ストーリーズ用の画像（1080×1920）がその場で出来上がります。
+      ダウンロードして投稿するだけです。文字入れの手間はありません。
+    </p>
+  </div>
+
+  <h3 id="cost">かかる費用のすべて</h3>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>項目</th><th>内容</th><th class="n">月額</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>LINE公式アカウント</td><td>ライトプラン（すでにご契約中）</td><td class="n">¥5,000</td></tr>
+        <tr><td>システムの動作費用</td><td>Cloudflare Workers ＋ D1（無料の範囲で収まります）</td><td class="n">¥0</td></tr>
+        <tr><td>Googleカレンダー</td><td>読み取りのみ。審査も費用もありません</td><td class="n">¥0</td></tr>
+        <tr><td>Instagram</td><td>ストーリーズへ自動投稿</td><td class="n">¥0</td></tr>
+        <tr><td>Google ビジネスプロフィール</td><td>最新情報へ自動投稿</td><td class="n">¥0</td></tr>
+        <tr><td>ストーリーズ画像の置き場</td><td>Vercel（無料の範囲で収まります）</td><td class="n">¥0</td></tr>
+        <tr><td><strong>追加でかかる費用</strong></td><td>ありません</td><td class="n"><strong>¥0</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>通数について</h4>
+
+  <p>
+    ライトプランは<strong>5,000通/月で、追加購入ができません</strong>。
+    使い切ると月末まで一切送れなくなります。そのため送信の前に必ず残数を確かめ、
+    <strong>予備の500通は常に残す</strong>ようにしています。
+  </p>
+
+  <p>
+    通数を使うのは<strong>空き枠のお知らせ</strong>と<strong>朝のスタッフへの声かけ</strong>だけです。
+    自動応答・あいさつメッセージ・LINEチャットでのやりとりは、何通でも無料です。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>送るもの</th><th>頻度</th><th class="n">月の目安</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>空き枠のお知らせ</td><td>週2回・希望された方へ（仮に50名）</td><td class="n">400通</td></tr>
+        <tr><td>朝のスタッフへの声かけ</td><td>月・木の朝・1人1通</td><td class="n">8通</td></tr>
+        <tr><td>受け取り申込への返信</td><td>自動応答のため無料</td><td class="n">0通</td></tr>
+        <tr><td><strong>合計</strong></td><td></td><td class="n"><strong>約410通</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    5,000通に対して十分な余裕があります。新メニューやキャンペーンの一斉配信をなさる場合も、
+    残数を圧迫しません。
+  </p>
+
+  <h3 id="care">お客様に嫌がられないための工夫</h3>
+
+  <div class="callout callout--warn">
+    <p>
+      空き枠のお知らせは、やりすぎると<strong>「いつも空いている店」</strong>という印象になり、
+      かえって予約が後回しにされます。歯止めを2つ入れています。
+    </p>
+  </div>
+
+  <ul>
+    <li><strong>同じお部屋のお知らせは、直近7日で3回まで</strong>。
+      定期の2回に、突発の1回ぶんの余地を足した回数です。
+      超えると画面に警告が出ます（セルフブースと施術ルームは送り先が別なので、別々に数えます）</li>
+    <li><strong>「キャンセル」という言葉を使いません</strong>。
+      文面は「空き枠のお知らせ」で統一しています。理由は次のとおりです</li>
+  </ul>
+
+  <div class="card">
+    <h4>キャンセルされたご本人にも届いてしまう問題</h4>
+    <p>
+      LINEの表示名はニックネームのことが多く、サロンボードの予約者と突き合わせられません。
+      つまり「その枠をキャンセルされた方だけを外して送る」ことは技術的にできません。
+    </p>
+    <p>
+      そこで文面から「キャンセル」の語を外しました。
+      <strong>ご本人に届いても、ご自身のことだとは分かりません。</strong>
+      外せない機能を無理に作るより、届いても角が立たない文面にするほうが確実です。
+    </p>
+  </div>
+
+  <h3 id="privacy">お客様の情報の扱い</h3>
+
+  <p>
+    保存するのは<strong>LINEのユーザーIDと表示名だけ</strong>です。
+    氏名・電話番号・住所・施術履歴は保存しません。予約の情報はサロンボード側に置いたままです。
+  </p>
+
+  <p>
+    お客様が「受け取りをやめる」を押されたら、その場でお知らせが止まります。
+    ブロックされた場合も自動で対象から外れます。
+  </p>
+
+  <h4>コース診断について</h4>
+
+  <p>
+    診断で残すのは<strong>選んでいただいた選択肢だけ</strong>です
+    （お悩み・ご予算・通い方・性別）。自由に入力していただく欄はありません。
+    もう一度診断されると、前回のタグは消えて新しいものに置き換わります。
+    お悩みが変わった方に、古い案内が届き続けないようにするためです。
+  </p>
+
+  <h4>問診表について — ここだけ扱いが違います</h4>
+
+  <div class="callout callout--warn">
+    <p>
+      問診表は、アレルギー・お薬・妊娠といった<strong>健康に関わる内容</strong>をお預かりします。
+      ほかの機能とは扱いを分けています。
+    </p>
+  </div>
+
+  <ul>
+    <li><strong>ご同意のチェックが無ければ受け取りません</strong>。何を何のためにお預かりするかを、
+      記入していただく前に画面でお示しします</li>
+    <li><strong>14日で自動的に消去します</strong>。スタッフがカルテに転記したあとは、こちらには残りません</li>
+    <li><strong>LINEのトークには内容を残しません</strong>。スタッフには「届きました」とだけ通知し、
+      中身はスタッフ用ページでご確認いただきます</li>
+  </ul>
+
+  <p>
+    問診表を使わないという選択もできます。その場合はリッチメニューからボタンを外すだけで、
+    お預かりする情報は<strong>LINEのIDと表示名だけ</strong>に戻ります。
+  </p>
+</section>
+
+<!-- ================= 第2部 ================= -->
+
+<section class="part" id="staff">
+  <span class="part-label">第2部　スタッフの皆さまへ</span>
+  <h2>毎日の使い方</h2>
+  <p class="sub">月曜と木曜の朝、自動で動きます</p>
+
+  <div class="callout">
+    <p>
+      <strong>送信の操作はありません。</strong>
+      月曜と木曜の朝10時、システムがカレンダーを見て、そのまま送ります。
+      スタッフの皆さまにお願いするのは
+      <strong>「カレンダーを正しく入れる」</strong>ことだけです。
+    </p>
+  </div>
+
+  <h3 id="regular">月曜と木曜に起きること</h3>
+
+  <div class="callout callout--ok">
+    <p>
+      <strong>スタッフの皆さまがすることは、ありません。</strong>
+      月曜と木曜の朝、システムがひとりでに動きます。
+      下は「裏側で何が起きているか」のご説明です。操作は不要です。
+    </p>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <b>10:00　カレンダーを見る</b>
+      <p>セラピストの皆さまのカレンダーから、2〜3日先の空いている時間を拾います。</p>
+    </li>
+    <li>
+      <b>10:00　出す枠を決める</b>
+      <p>空きの中から<strong>3枠まで</strong>を選び、その時間に入るメニューを載せます。
+         セルフブースと施術ルームは別々に判断します。</p>
+    </li>
+    <li>
+      <b>10:00　LINEに送る</b>
+      <p>空き枠のお知らせを希望された方だけに届きます。
+         お部屋の希望を選ばれている方には、そのお部屋の枠だけが届きます。</p>
+    </li>
+    <li>
+      <b>10:30　Instagram と Google に出す</b>
+      <p>ストーリーズ用の画像も自動で作られます。文面には
+         「LINEの方には30分前にお知らせ済みです」と入ります。</p>
+    </li>
+  </ol>
+
+  <h3 id="calendar-rule">そのかわり、カレンダーが約束事になります</h3>
+
+  <div class="callout callout--warn">
+    <p>
+      <strong>出したくない時間は、カレンダーに予定として入れておいてください。</strong>
+      移動・休憩・あえて残している枠を空けたままにすると、
+      <strong>空きとしてお客様にお知らせしてしまいます。</strong>
+    </p>
+    <p>
+      これが、人の確認を挟まないことと引き換えの、たったひとつのお願いです。
+    </p>
+  </div>
+
+  <p>
+    予定の名前は何でも構いません。「移動」「休憩」「ブロック」など、
+    分かるように入れておいていただければ大丈夫です。中身はこちらには届きません。
+  </p>
+
+  <h3 id="check">ちゃんと出たか確かめたいとき</h3>
+
+  <p>
+    スタッフ用ページを開くと、その週に何回出したかが分かります。
+    ご自身のLINEで受け取りを希望しておいていただくと、
+    <strong>お客様と同じものが届く</strong>ので、いちばん確実です。
+  </p>
+
+  <h3 id="sudden">急な空きが出たとき</h3>
+
+  <p>
+    自動で動くのは月曜と木曜だけです。当日のキャンセルなど、
+    <strong>その場ですぐお知らせしたいときは、スタッフ用ページから手で出せます。</strong>
+    カレンダーから空きを取り込むボタンもあるので、入力は最小限です。
+  </p>
+
+  <ol class="steps">
+    <li><b>お部屋を選ぶ</b><p>セルフブースか施術ルームか。</p></li>
+    <li><b>「Googleカレンダーから空きを取り込む」を押す</b>
+      <p>空いている時間が並びます。<strong>出したくない枠は「消す」で外してください。</strong></p></li>
+    <li><b>メニューのチェックを確認する</b>
+      <p>機材の不調や材料切れのものは、チェックを外してください。</p></li>
+    <li><b>確認して送信する</b>
+      <p>お送りする人数・残り通数・実際に届く文面が出ます。おかしければ戻れます。</p></li>
+  </ol>
+
+  <div class="callout callout--warn">
+    <p>
+      ただし<strong>直近7日で3回を超えると警告が出ます</strong>。
+      自動で出したぶんも数に入ります。
+      その週にすでに何度も出している場合は、見送っていただくのが無難です。
+    </p>
+  </div>
+
+  <h3 id="menu">メニューについて</h3>
+
+  <p>
+    自動で出すときは、<strong>その枠の長さに入るメニューが3つまで自動で載ります</strong>。
+    60分の枠なら、60分ちょうどのメニューが優先されます。
+  </p>
+
+  <div class="callout callout--warn">
+    <p>
+      <strong>機材が不調のとき・材料が切れているときは、ご注意ください。</strong>
+      自動送信はその事情を知らないため、そのメニューを載せてしまいます。
+      しばらく使えないものがある場合は、お知らせください。
+      掲載メニューから一時的に外す（<code>src/courses.js</code> の1か所）ことができます。
+      手で出すときは、その場でチェックを外せます。
+    </p>
+  </div>
+
+  <p>
+    枠の長さを短くすると、入らなくなったメニューは自動で外れます。
+    60分の枠を30分に変えれば、60分のメニューは候補から消えます。
+  </p>
+
+  <div class="callout callout--ok">
+    <p>
+      メニューを複数チェックすると、文面は
+      「<strong>いずれかをお選びいただけます</strong>」という書き方になります。
+      お客様がその場で決められなくても大丈夫なように、
+      「メニューはご来店時に決めていただいても大丈夫です」と添えてあります。
+    </p>
+  </div>
+
+  <h3 id="qa">よくある質問</h3>
+
+  <div class="qa">
+    <h4>カレンダーへの入力が漏れていたら</h4>
+    <p>埋まっている枠を「空き」としてお知らせしてしまいます。
+       これが完全自動でいちばん気をつけていただきたい点です。
+       ご予約が入ったら、これまでどおり<strong>その日のうちにカレンダーへ</strong>お願いします。</p>
+  </div>
+
+  <div class="qa">
+    <h4>変な枠が出てしまったら</h4>
+    <p>送信済みのLINEは取り消せません。LINEチャットで訂正をお送りください。
+       Instagram と Google は30分後に出るので、
+       <strong>その前に気づけば止められます</strong>（ご連絡ください）。</p>
+  </div>
+
+  <div class="qa">
+    <h4>しばらく自動送信を止めたいのですが</h4>
+    <p>できます。止めている間も、スタッフ用ページから手で出すことはできます。
+       お知らせください。</p>
+  </div>
+
+  <div class="qa">
+    <h4>予約が入ったら、システムに入力するのですか</h4>
+    <p>いいえ。これまでどおり予約システムとカレンダーに入れてください。
+       このしくみは<strong>お知らせを出すだけ</strong>で、予約は管理しません。</p>
+  </div>
+
+  <div class="qa">
+    <h4>LINEのトークで返信が来たら</h4>
+    <p>これまでどおり、LINEチャットからお答えください。送受信は何通でも無料です。
+       予約・営業時間・アクセスなど、よくあるご質問には自動で返信が出ます。
+       答えられない内容には<strong>あえて返信しません</strong>。
+       間違った案内を出すより、直接お答えするほうが確実だからです。</p>
+  </div>
+
+  <div class="qa">
+    <h4>間違った枠を送ってしまいました</h4>
+    <p>送信済みのメッセージは取り消せません。LINEチャットで訂正をお送りください。
+       送信前の確認画面で、必ず文面をお読みいただくようお願いします。</p>
+  </div>
+
+  <div class="qa">
+    <h4>お知らせを希望される方がまだいません</h4>
+    <p>稼働の初日は0名です。リッチメニューの「空き枠のお知らせ」ボタンと、
+       友だち追加時のあいさつメッセージから増えていきます。
+       どうしても最初に呼び水が必要な場合は「希望していない方にも送る」
+       というチェック欄がありますが、<strong>ブロックされやすくなります</strong>。
+       稼働の直後だけにしてください。</p>
+  </div>
+</section>
+
+<!-- ================= 第3部 ================= -->
+
+<section class="part" id="setup">
+  <span class="part-label">第3部　設定される方へ</span>
+  <h2>LINE公式アカウント側の設定</h2>
+  <p class="sub">システム側だけでは完結しません。管理画面での設定が3つあります</p>
+
+  <h3>1. リッチメニュー</h3>
+
+  <p>
+    LINE公式アカウント管理画面の <strong>ホーム ▸ リッチメニュー</strong> で作成します。
+    画像は 2500×1686 のものをご用意しています。
+  </p>
+
+  <div class="callout callout--warn">
+    <p>
+      管理画面でボタンに設定できる種類は、<strong>リンク／クーポン／テキスト／ショップカード／
+      設定しない</strong> の5つだけです。開発者向けの postback は選べません。
+    </p>
+    <p>
+      そのため空き枠のボタンは <strong>「テキスト」</strong> にしてください。
+      お客様が押すと決まった言葉が送信され、システムがそれを拾って
+      「受け取りますか」のボタンをお返しします。ここは自動応答なので通数は0通です。
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>ボタン</th><th>種類</th><th>設定する内容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>空き枠のお知らせ</td><td>テキスト</td><td><code>空き枠のお知らせ</code></td></tr>
+        <tr><td>ご予約・ご相談</td><td>テキスト</td><td><code>予約したい</code></td></tr>
+        <tr><td>メニュー・料金</td><td>テキスト</td><td><code>メニューを知りたい</code></td></tr>
+        <tr><td>コース診断</td><td>リンク</td><td>診断ツールのURL（発行後）</td></tr>
+        <tr><td>アクセス</td><td>テキスト</td><td><code>場所はどこ</code></td></tr>
+        <tr><td>営業時間</td><td>テキスト</td><td><code>営業時間</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    文言やボタンの数は、デモの編集ページで変えられます。
+    変えた内容がそのまま設定手順に反映されるので、画面を見ながら管理画面に写してください。
+  </p>
+
+  <h3>2. あいさつメッセージ</h3>
+
+  <p>
+    <strong>ホーム ▸ あいさつメッセージ</strong> をオンにしてください。通数は無料です。
+    ここに「空き枠のお知らせを受け取れます」の一文を入れておくと、
+    友だち追加のたびに希望者が増えていきます。文面はオーナー様・スタッフの皆さまで
+    自由に編集していただけます。
+  </p>
+
+  <h3>3. 応答メッセージ</h3>
+
+  <p>
+    <strong>ホーム ▸ 応答設定</strong> で、応答メッセージを<strong>オフ</strong>、
+    Webhookを<strong>オン</strong>にしてください。
+    両方オンにすると、同じ質問に二重で返信してしまいます。
+  </p>
+
+  <div class="callout">
+    <p>
+      LINEチャット（手動での返信）は、これまでどおりお使いいただけます。
+      Webhookをオンにしても、スタッフの返信が妨げられることはありません。
+    </p>
+  </div>
+</section>
+
+<!-- ================= 第4部 ================= -->
+
+<section class="part" id="config">
+  <span class="part-label">第4部　設定される方へ</span>
+  <h2>つなぎこみの手順</h2>
+  <p class="sub">予約システム・Googleカレンダー・自動投稿・LIFF の4つです</p>
+
+  <h3 id="booking-url">1. 予約システムのURLを入れる</h3>
+
+  <p>
+    ご予約の入口は <code>src/salon.js</code> の <code>bookingUrl</code> <strong>1か所だけ</strong>です。
+    ここを書き換えると、自動応答・リッチメニュー・空き枠のご案内のすべてが同じ入口を指します。
+    書き写す場所はほかにありません。
+  </p>
+
+  <div class="card">
+    <h4>書き方</h4>
+    <p><code>bookingUrl: 'https://＜予約システムのURL＞',</code></p>
+    <p>
+      クーポンのページが別にある場合は <code>couponUrl</code> にも入れてください。
+      <strong><code>null</code> にすると、URLを出さずに「お電話・LINEで承ります」に変わります。</strong>
+      間違ったURLをご案内するより、そのほうが安全です。
+    </p>
+  </div>
+
+  <div class="callout">
+    <p>
+      <strong>ご予約フォームはこちらでは作りません。</strong>
+      独自のフォームを作ると、予約が予約システムに入らず、
+      同じ枠が二重に売れてしまいます。すでにお使いのシステムへお通しするのが確実です。
+    </p>
+  </div>
+
+  <h3 id="gcal">2. Googleカレンダーをつなぐ</h3>
+
+  <div class="callout callout--ok">
+    <p>
+      <strong>Googleの審査はありません。</strong>
+      お客様にGoogleへログインしていただく作りであれば審査が必要になりますが、
+      このしくみは<strong>サービスアカウント</strong>という、システム専用の利用者を1つ作って
+      カレンダーを共有していただく方式です。同意画面が出ないため、審査の対象になりません。
+      <strong>費用も0円</strong>です。
+    </p>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <b>Google Cloud でプロジェクトを作る</b>
+      <p><a href="https://console.cloud.google.com/">console.cloud.google.com</a> で
+         新しいプロジェクトを作り、「Google Calendar API」を有効にします。無料です。</p>
+    </li>
+    <li>
+      <b>サービスアカウントを作り、鍵を作る</b>
+      <p>「IAMと管理 ▸ サービスアカウント」で1つ作成し、「鍵」タブから
+         <strong>JSON形式の鍵</strong>を作ります。ダウンロードされたファイルの中に
+         <code>client_email</code> と <code>private_key</code> が入っています。</p>
+    </li>
+    <li>
+      <b>各セラピストのカレンダーを共有する</b>
+      <p>Googleカレンダーの「設定と共有 ▸ 特定のユーザーとの共有」で、
+         <code>client_email</code> のアドレスを追加し、権限を
+         <strong>「予定の表示（時間のみ、詳細は非表示）」</strong>にします。
+         これで予定の中身は渡らず、空いているかどうかだけが読めるようになります。</p>
+    </li>
+    <li>
+      <b>Workers に登録する</b>
+      <p>次の5つを登録します。鍵はコードには書きません。</p>
+    </li>
+  </ol>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>名前</th><th>入れるもの</th></tr></thead>
+      <tbody>
+        <tr><td><code>GOOGLE_SA_EMAIL</code></td><td>鍵ファイルの <code>client_email</code></td></tr>
+        <tr><td><code>GOOGLE_SA_KEY</code></td><td>鍵ファイルの <code>private_key</code>（BEGIN から END まで丸ごと）</td></tr>
+        <tr><td><code>GOOGLE_CALENDARS</code></td><td>どのカレンダーがどの部屋か。<br>
+          <code>[{"id":"a@…","room":"room","label":"Aさん"},{"id":"self@…","room":"self","label":"セルフ"}]</code></td></tr>
+        <tr><td><code>ROOM_CAPACITY</code></td><td>同時に施術できる数。<code>{"room":1,"self":1}</code><br>
+          セラピストが2人いても施術ルームが1室なら <code>room</code> は <code>1</code> です</td></tr>
+        <tr><td><code>SLOT_BUFFER_MIN</code></td><td>予定の前後にあける時間（片付けなど）。既定は 0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout--warn">
+    <p>
+      <strong>出したくない時間は、カレンダーに予定として入れておいてください。</strong>
+      移動・休憩・あえて残している枠は、何も入っていなければ「空き」として拾われます。
+      ブロックしておけば、候補にも出ません。
+    </p>
+  </div>
+
+  <p>
+    設定が済むまでは、スタッフ用ページは<strong>手入力のまま動きます</strong>。
+    つなぎこみを待たずに運用を始めていただけます。
+  </p>
+
+  <h3 id="social">3. Instagram と Google への自動投稿</h3>
+
+  <div class="callout callout--warn">
+    <p>
+      ここは<strong>オーナー様の作業</strong>です。お店のアカウントの持ち主でないと、
+      許可を出せないためです。取れた値をお知らせいただければ、あとはこちらで登録します。
+    </p>
+  </div>
+
+  <h4>Instagram</h4>
+
+  <p>
+    <strong>Facebookページは不要です。</strong>
+    「Instagram API with Instagram Login」という、Instagramだけで完結する方式を使います。
+  </p>
+
+  <ol class="steps">
+    <li>
+      <b>プロアカウント（ビジネス）にする</b>
+      <p>ストーリーズのAPI投稿は<strong>ビジネスアカウント限定</strong>です。
+         「クリエイター」では投稿できません。</p>
+    </li>
+    <li>
+      <b>Meta で アプリを作り、Instagram を連携する</b>
+      <p>必要な権限は <code>instagram_business_basic</code> と
+         <code>instagram_business_content_publish</code> の2つです。</p>
+    </li>
+    <li>
+      <b>アクセストークンとユーザーIDを控える</b>
+      <p><code>IG_ACCESS_TOKEN</code> と <code>IG_USER_ID</code> になります。
+         トークンには期限があるので、切れたら入れ替えが必要です。</p>
+    </li>
+  </ol>
+
+  <h4>ストーリーズ画像の置き場（Vercel）</h4>
+
+  <div class="callout">
+    <p>
+      Instagram は<strong>「公開URLにあるJPEG」しか受け取りません</strong>。
+      Cloudflare には絵を描く仕組みがないため、画像を作る部分だけ外に置いています。
+    </p>
+  </div>
+
+  <p>
+    GitHub のリポジトリに <code>renderer/</code> というフォルダが入っています。
+    Vercel から同じリポジトリを選び、<strong>ルートディレクトリに <code>renderer</code></strong>
+    を指定してデプロイしてください。発行されたURL
+    （<code>https://＜アプリ名＞.vercel.app/api/story</code>）が
+    <code>STORY_IMAGE_URL</code> になります。無料の範囲で収まります。
+  </p>
+
+  <p>
+    <strong>設定しなくても止まりません。</strong>
+    その場合は Instagram だけ見送り、Google には文面で投稿します。
+  </p>
+
+  <h4>Google ビジネスプロフィール</h4>
+
+  <p>
+    投稿APIの利用申請は<strong>承認済み</strong>とのことなので、あとは許可を出すだけです。
+    カレンダーと違い、<strong>サービスアカウントは使えません。</strong>
+    店舗を管理しているGoogleアカウントで、一度だけ許可を出していただく必要があります。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>名前</th><th>取るところ</th></tr></thead>
+      <tbody>
+        <tr><td><code>GOOGLE_OAUTH_CLIENT_ID</code><br><code>GOOGLE_OAUTH_CLIENT_SECRET</code></td>
+            <td>Google Cloud の「OAuth クライアント ID」</td></tr>
+        <tr><td><code>GBP_REFRESH_TOKEN</code></td>
+            <td>店舗を管理しているアカウントで一度だけ許可を出すと取れます。
+                権限は <code>business.manage</code></td></tr>
+        <tr><td><code>GBP_ACCOUNT_ID</code><br><code>GBP_LOCATION_ID</code></td>
+            <td>ビジネスプロフィールのアカウントと店舗のID</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    投稿は「最新情報」として出ます。<strong>「予約」ボタン</strong>が付き、
+    文面には店名と場所も入ります。Googleマップの検索から来られた方に向けた形です。
+  </p>
+
+  <h3 id="liff">4. LIFF と LINEミニアプリ・審査について</h3>
+
+  <p>
+    コース診断やメニュー表を「LINEの中で開くページ」にする仕組みが <strong>LIFF</strong> です。
+    これには現在、<strong>審査はありません</strong>。チャネルを作ってLIFF IDを発行すれば使えます。
+  </p>
+
+  <h4>LIFF の設定</h4>
+
+  <ol class="steps">
+    <li>
+      <b>LINE Developers で LIFF アプリを追加する</b>
+      <p>Messaging API のチャネルに「LIFF」タブがあります。
+         エンドポイントURLは <code>https://miele-line.＜サブドメイン＞.workers.dev/app/</code>（末尾のスラッシュまで）、
+         サイズは <strong>Full</strong>、<strong>「ボットリンク機能」はオン</strong>にします。</p>
+    </li>
+    <li>
+      <b>スコープを選ぶ</b>
+      <p><code>profile</code> と <code>openid</code> にチェックを入れます。
+         これで、どなたが診断をお受けになったかが分かり、タグを付けられるようになります。</p>
+    </li>
+    <li>
+      <b>Workers に登録する</b>
+      <p><code>LIFF_ID</code> に発行された LIFF ID、
+         <code>LIFF_CHANNEL_ID</code> にそのチャネルのチャネルIDを登録します。
+         この2つが揃うまで、ページは「どなたか分からない」状態で開き、
+         診断の結果は出ますがタグは残りません。</p>
+    </li>
+    <li>
+      <b>リッチメニューに割りつける</b>
+      <p>各ボタンを「リンク」にして
+         <code>https://liff.line.me/＜LIFF ID＞/diagnosis</code> の形で入れます。
+         後ろを <code>menu</code> <code>intake</code> <code>slot</code> <code>access</code> に変えると、
+         それぞれのページに飛びます。</p>
+    </li>
+  </ol>
+
+  <div class="card">
+    <h4>LINEミニアプリへの統合について</h4>
+    <p>
+      LINEヤフー株式会社は、<strong>LIFF と LINEミニアプリのブランド統合</strong>を予定しており、
+      <strong>LIFF は LINEミニアプリに統合される</strong>と公式に案内しています
+      （2025年2月12日のお知らせ）。公式ドキュメントにも
+      <strong>「新規にLIFFアプリを作成する場合は、LINEミニアプリとして作成することを推奨」</strong>
+      と書かれています。
+    </p>
+    <p>
+      ただし<strong>「この日でLIFFが使えなくなる」という期日は、現時点では公表されていません。</strong>
+      いま作ったものがすぐ使えなくなることはありませんが、
+      新しく作るなら最初からミニアプリとして作っておくほうが、あとの手間が減ります。
+    </p>
+  </div>
+
+  <h4>審査があるもの・ないもの</h4>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th></th><th>審査</th><th>見え方・できること</th></tr></thead>
+      <tbody>
+        <tr><td>LIFF</td><td><strong>なし</strong></td><td>いますぐ使えます</td></tr>
+        <tr><td>未認証ミニアプリ</td><td><strong>なし</strong></td>
+            <td>どなたでも作れます。ヘッダーにタイトルとURLのドメイン名が出ます。一部機能に制限</td></tr>
+        <tr><td>認証済ミニアプリ</td><td><strong>あり</strong></td>
+            <td>認証バッジが付き、<strong>LINEアプリ内の検索に載ります</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <p>
+      <strong>ミエーレの場合、まずは審査の要らない範囲で十分です。</strong>
+      診断・メニュー表・アクセスは、未認証のままで問題なく動きます。
+      「LINEの検索から新しいお客様に見つけてほしい」となった段階で、認証を取りにいくのが順番として自然です。
+    </p>
+  </div>
+
+  <h4>認証済ミニアプリの審査を受けるときの手順</h4>
+
+  <ol class="steps">
+    <li>
+      <b>準備する</b>
+      <p>チャネルの基本情報、権限設定、アプリの説明文、
+         <strong>利用規約とプライバシーポリシーのURL</strong> をそろえます。
+         ガイドライン（アイコン・読み込み中の表示・動作速度など）への適合も確認します。</p>
+    </li>
+    <li>
+      <b>ご予約を含む場合はテスト手順を用意する</b>
+      <p>「予約・決済・注文」を扱うサービスは、<strong>審査担当者が実際に試すための
+         テストシナリオの提出が求められます。</strong>ミエーレでご予約への導線を入れる場合は、ここが該当します。</p>
+    </li>
+    <li>
+      <b>LINE Developers コンソールから申請する</b>
+      <p>「審査申請」タブに必要事項を入力して申請します。</p>
+    </li>
+    <li>
+      <b>結果を待つ</b>
+      <p><strong>通常1〜2週間</strong>です。差し戻しがあると、修正して再申請するぶんの日数が加わります。
+         結果はメールとコンソールの通知で届きます。</p>
+    </li>
+    <li>
+      <b>通ったら公開する</b>
+      <p>初回は「検索可能にする」ボタンを押すと、LINEアプリ内の検索に載ります。
+         更新の場合は「変更を公開」を押します。
+         <strong>押さないままでも、31日目の朝9時に自動で公開されます。</strong></p>
+    </li>
+  </ol>
+
+  <div class="callout callout--warn">
+    <p>
+      審査を受ける前に、<strong>利用規約とプライバシーポリシーをご用意ください。</strong>
+      問診表を入れる場合は、そこに「何を、何のために、どのくらいの期間お預かりするか」を
+      書いておく必要があります。
+    </p>
+  </div>
+</section>
+
 <footer>
-  トータル・ビューティー・サロン ミエーレ ／ 空き枠の自動お知らせ デモ<br>
+  トータル・ビューティー・サロン ミエーレ ／ LINE 運用ガイド<br>
+  〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分<br>
+  ご不明な点は店内でお尋ねください。内容は運用に合わせて更新します。
+</footer>
+
+</div>
+</script>
+
+<footer>
+  トータル・ビューティー・サロン ミエーレ ／ 空き枠の自動お知らせ デモ ＋ 運用ガイド<br>
   〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分
 </footer>
 
@@ -4266,4 +5292,30 @@ document.getElementById('reset').addEventListener('click', () => location.reload
 const storyCtx = document.getElementById('story').getContext('2d');
 const { drawStory } = makeStory();
 paintCal();
+
+/* ---------- 説明書を読み込む ---------- */
+
+/* 別の枠に入れているのは、説明書とデモで同じ名前の飾りを使っているためです。
+   中身の高さに合わせて枠を伸ばし、ページ全体が1本の流れになるようにします。 */
+(() => {
+  const frame = document.getElementById('guideFrame');
+  const doc = document.getElementById('guideDoc');
+  if (!frame || !doc) return;
+
+  frame.addEventListener('load', () => {
+    const fit = () => {
+      try {
+        const h = frame.contentDocument.documentElement.scrollHeight;
+        if (h > 200) frame.style.height = h + 'px';
+      } catch (e) {
+        /* 中を読めない開き方のときは、そのままの高さで中をスクロールしていただく */
+      }
+    };
+    fit();
+    setTimeout(fit, 300);
+    window.addEventListener('resize', fit);
+  });
+
+  frame.srcdoc = doc.textContent;
+})();
 </script>

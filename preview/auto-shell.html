@@ -107,6 +107,10 @@
   .callout p:last-child{margin:0}
   code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:var(--sunk);
        padding:2px 6px;border-radius:5px}
+  /* 説明書。見た目が混ざらないよう、別の枠に入れて読み込む */
+  .doc{border:1px solid var(--rule);border-radius:15px;overflow:hidden;background:var(--surface)}
+  .doc iframe{display:block;width:100%;border:0;height:900px;background:var(--ground)}
+
   footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
 </style>
@@ -204,8 +208,22 @@
   </p>
 </div>
 
+<h2>5. 運用ガイド（説明書）</h2>
+<p class="sub">
+  ここから下は説明書です。オーナー様向け・スタッフの皆さま向け・設定される方向けに分かれています。
+  同じ内容を1枚で配れるよう、このページの中に入れてあります。
+</p>
+
+<div class="doc">
+  <iframe id="guideFrame" title="運用ガイド" loading="lazy"></iframe>
+</div>
+
+<script type="text/plain" id="guideDoc">
+/*__GUIDE__*/
+</script>
+
 <footer>
-  トータル・ビューティー・サロン ミエーレ ／ 空き枠の自動お知らせ デモ<br>
+  トータル・ビューティー・サロン ミエーレ ／ 空き枠の自動お知らせ デモ ＋ 運用ガイド<br>
   〒306-0023 茨城県古河市本町3丁目19-1 Anesisビル ／ JR古河駅から徒歩8分
 </footer>
 
@@ -503,4 +521,30 @@ document.getElementById('reset').addEventListener('click', () => location.reload
 const storyCtx = document.getElementById('story').getContext('2d');
 const { drawStory } = makeStory();
 paintCal();
+
+/* ---------- 説明書を読み込む ---------- */
+
+/* 別の枠に入れているのは、説明書とデモで同じ名前の飾りを使っているためです。
+   中身の高さに合わせて枠を伸ばし、ページ全体が1本の流れになるようにします。 */
+(() => {
+  const frame = document.getElementById('guideFrame');
+  const doc = document.getElementById('guideDoc');
+  if (!frame || !doc) return;
+
+  frame.addEventListener('load', () => {
+    const fit = () => {
+      try {
+        const h = frame.contentDocument.documentElement.scrollHeight;
+        if (h > 200) frame.style.height = h + 'px';
+      } catch (e) {
+        /* 中を読めない開き方のときは、そのままの高さで中をスクロールしていただく */
+      }
+    };
+    fit();
+    setTimeout(fit, 300);
+    window.addEventListener('resize', fit);
+  });
+
+  frame.srcdoc = doc.textContent;
+})();
 </script>

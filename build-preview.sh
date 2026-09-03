@@ -102,8 +102,9 @@ check_dupes preview/app.html
 echo "built: out/app.html"
 
 # 空き枠が自動で出るまで（カレンダー→LINE→30分後にInstagram・Google）
-awk -v file="$TMP" '
+awk -v file="$TMP" -v guide="preview/guide.html" '
   /\/\*__MODULES__\*\// { while ((getline line < file) > 0) print line; next }
+  /\/\*__GUIDE__\*\//   { while ((getline l < guide) > 0) print l; next }
   { print }
 ' preview/auto-shell.html > preview/auto.html
 cp preview/auto.html out/auto.html

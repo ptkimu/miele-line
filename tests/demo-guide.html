@@ -1,0 +1,57 @@
+<!doctype html><meta charset="utf-8"><body>
+<!-- デモの下に説明書が入っているかを確かめる。run-tests.sh は不要。 -->
+<iframe id="host" src="../out/auto.html" style="width:1200px;height:1400px"></iframe>
+<script>
+const log = [];
+const ok = (c, m) => log.push((c ? 'PASS  ' : 'FAIL  ') + m);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+(async () => {
+  const host = document.getElementById('host');
+  await new Promise((r) => { host.onload = r; });
+  await wait(600);
+  const D = host.contentDocument;
+
+  /* デモの部分がこれまでどおり動いていること */
+  ok(D.querySelectorAll('#cal button').length === 20, 'デモのカレンダーは変わらず出る');
+  ok(!!D.getElementById('run'), '「朝10時にする」ボタンがある');
+
+  /* 説明書 */
+  const frame = D.getElementById('guideFrame');
+  ok(!!frame, '説明書の枠がある');
+
+  for (let i = 0; i < 60 && !frame.contentDocument?.querySelector('.part'); i++) await wait(100);
+  const g = frame.contentDocument;
+  ok(!!g, '説明書の中を読める');
+  ok(g.querySelectorAll('.part').length === 4, '4部そろっている');
+  ok(g.querySelectorAll('.toc a').length > 10, 'もくじが出ている');
+  ok(g.body.textContent.includes('スタッフの皆さまがすることは、ありません'),
+     '完全自動の説明になっている');
+  ok(g.body.textContent.includes('出したくない時間は、カレンダーに予定として入れておいてください'),
+     'カレンダーの約束事が書いてある');
+  ok(g.body.textContent.includes('Instagram API with Instagram Login'),
+     'Instagramの設定手順が入っている');
+  ok(g.body.textContent.includes('GBP_REFRESH_TOKEN'), 'Googleの設定手順が入っている');
+  ok(!g.body.textContent.includes('枠を自動で送ることはしません'),
+     '古い「自動では送らない」という説明が残っていない');
+
+  /* 枠が中身の高さまで伸びていること */
+  await wait(600);
+  const h = parseInt(frame.style.height || '0', 10);
+  ok(h > 3000, '説明書の高さに合わせて枠が伸びる（' + h + 'px）');
+
+  /* デモ側の飾りが説明書に混ざっていないこと */
+  const demoPanel = D.querySelector('.panel');
+  const guidePanel = g.querySelector('.panel');
+  ok(!!demoPanel && !guidePanel, 'デモと説明書で見た目が混ざっていない');
+
+  const pre = document.createElement('pre'); pre.id = 'TESTOUT';
+  pre.textContent = log.join('\n') + '\n----\n' +
+    log.filter((l) => l.startsWith('FAIL')).length + ' 件の失敗 / ' + log.length + ' 件中';
+  document.body.appendChild(pre);
+})().catch((e) => {
+  const pre = document.createElement('pre'); pre.id = 'TESTOUT';
+  pre.textContent = log.join('\n') + '\nERROR ' + (e && e.stack ? e.stack : e);
+  document.body.appendChild(pre);
+});
+</script>
