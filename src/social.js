@@ -21,7 +21,7 @@
 
 import { SALON, has } from './salon.js';
 import { todayJst, nowIso } from './handlers.js';
-import { buildInstagramText, INSTAGRAM_DELAY_MIN } from './openslot.js';
+import { formatDate, INSTAGRAM_DELAY_MIN } from './openslot.js';
 
 const IG_HOST = 'https://graph.instagram.com';
 const GBP_HOST = 'https://mybusiness.googleapis.com/v4';
@@ -314,13 +314,45 @@ export async function postGbp(env, { summary, imageUrl = null }) {
 
 /**
  * Googleに出す文面。
- * Instagram と違い、Googleは検索から来た方が読むので、
- * どこの店の何の話かが分かるように、店名と場所を添えます。
+ *
+ * Instagram の文面をそのまま使うことはしません。読む方が違うためです。
+ *   Instagram … すでにフォローしている方。「DMで」が通じる
+ *   Google    … 検索やマップから初めて来た方。DMは通じないし、
+ *               どこの何という店の話かも分からない
+ *
+ * そこで、店名と場所を添え、行き先は投稿に付く「予約」ボタンに寄せます。
+ * 「LINEのほうが早い」ことは、こちらにも書きます。
+ * それを見て登録してくださる方が、いちばん増えてほしい層だからです。
  */
 export function buildGbpText(slots) {
-  const lines = [buildInstagramText(slots)];
-  lines.push('', SALON.name, SALON.access);
-  if (has(SALON.tel)) lines.push('TEL ' + SALON.tel);
+  const list = [...(slots ?? [])].sort(
+    (a, b) => String(a.date + a.time).localeCompare(String(b.date + b.time))
+  );
+  if (!list.length) return '';
+
+  const when = [];
+  const seen = new Map();
+  for (const s of list) seen.set(s.date, [...(seen.get(s.date) ?? []), s.time]);
+  for (const [date, times] of seen) when.push(`${formatDate(date)}　${times.join(' / ')}`);
+
+  const lines = [
+    `${SALON.name}です。`,
+    'お席に空きが出ましたので、ご案内します。',
+    '',
+    ...when,
+    '',
+    `LINEにご登録の方には、${INSTAGRAM_DELAY_MIN}分前にお知らせしています。`,
+    ''
+  ];
+
+  lines.push(
+    has(SALON.bookingUrl)
+      ? '下の「予約」ボタンからお進みください。'
+      : 'お電話でご連絡ください。'
+  );
+  if (has(SALON.tel)) lines.push(`TEL ${SALON.tel}`);
+  lines.push('', SALON.access);
+
   return lines.join('\n');
 }
 

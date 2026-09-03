@@ -1,0 +1,71 @@
+<!doctype html><meta charset="utf-8"><body>
+<!-- drop/app.html の下に足した「空き枠の自動投稿について」を確かめる。 -->
+<iframe id="host" src="../drop/app.html" style="width:1200px;height:1400px"></iframe>
+<script>
+const log = [];
+const ok = (c, m) => log.push((c ? 'PASS  ' : 'FAIL  ') + m);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+(async () => {
+  const host = document.getElementById('host');
+  await new Promise((r) => { host.onload = r; });
+  await wait(600);
+  const D = host.contentDocument;
+
+  /* 上半分（これまでのデモ）が壊れていないこと */
+  ok(D.querySelectorAll('#rich button').length === 6, 'リッチメニューは変わらず6つ');
+  ok(!!D.getElementById('frame'), '端末の画面が残っている');
+
+  /* 流れ */
+  ok(D.querySelectorAll('ol.tl li').length === 4, '流れが4段で出る');
+  const tl = D.querySelector('ol.tl').textContent;
+  ok(tl.includes('10:00') && tl.includes('10:30'), '時刻が入っている');
+  ok(tl.includes('カレンダーを見る'), 'カレンダーから始まると書いてある');
+
+  /* 実際に出るもの3つ */
+  const line = D.getElementById('exLine').textContent;
+  ok(line.length > 40, 'LINEの文面が生成されている');
+  ok(/\d{1,2}:\d{2}/.test(line), '時刻が入っている');
+  ok(!line.includes('キャンセル'), '「キャンセル」の語は使っていない');
+  ok(line.includes('／'), '1枠に複数メニューが載る（／でつなぐ）');
+
+  const gbp = D.getElementById('exGbp').textContent;
+  ok(gbp.includes('トータル・ビューティー・サロン ミエーレ'), 'Googleの文面に店名が入る');
+  ok(gbp.includes('JR古河駅から徒歩8分'), '場所も入る');
+  ok(gbp.includes('30分前にお知らせしています'), 'LINEが先だと書いてある');
+  ok(!gbp.includes('DM'), 'Googleの文面にDMの案内は入れない');
+  ok(gbp.includes('「予約」ボタン'), 'Googleでは予約ボタンへ誘導する');
+
+  const cv = D.getElementById('exStory');
+  const px = cv.getContext('2d').getImageData(540, 60, 1, 1).data;
+  ok(px[3] === 255, 'ストーリーズの画像が描かれている');
+
+  /* 歯止めの表 */
+  const g = D.getElementById('guardTable').textContent;
+  ok(D.querySelectorAll('#guardTable tr').length === 5, '歯止めが5つ並ぶ');
+  ok(g.includes('3回まで'), '週の上限が数字で出る');
+  ok(g.includes('500通'), '予備枠の通数が数字で出る');
+
+  /* 設定の表 */
+  const s = D.getElementById('setupTable').textContent;
+  ok(D.querySelectorAll('#setupTable tr').length === 5, '必要な設定が5つ並ぶ');
+  ok(s.includes('Facebookページは不要'), 'Instagramの前提が書いてある');
+  ok(s.includes('STORY_IMAGE_URL'), '画像の置き場の名前が出る');
+  ok(s.includes('審査はありません'), 'カレンダーに審査が無いと書いてある');
+
+  /* 正直に書いた部分 */
+  const body = D.body.textContent;
+  ok(body.includes('機材の不調・材料切れは分かりません'), 'できないことが書いてある');
+  ok(body.includes('送信済みのLINEは取り消せません'), '取り消せないことが書いてある');
+  ok(body.includes('出したくない時間も、予定として入れておく'), 'カレンダーの約束事が書いてある');
+
+  const pre = document.createElement('pre'); pre.id = 'TESTOUT';
+  pre.textContent = log.join('\n') + '\n----\n' +
+    log.filter((l) => l.startsWith('FAIL')).length + ' 件の失敗 / ' + log.length + ' 件中';
+  document.body.appendChild(pre);
+})().catch((e) => {
+  const pre = document.createElement('pre'); pre.id = 'TESTOUT';
+  pre.textContent = log.join('\n') + '\nERROR ' + (e && e.stack ? e.stack : e);
+  document.body.appendChild(pre);
+});
+</script>

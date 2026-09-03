@@ -88,6 +88,38 @@
          color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer}
   code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:var(--sunk);
        padding:2px 6px;border-radius:5px;word-break:break-all}
+  /* 自動投稿の説明 */
+  h3.sec{font-family:var(--f-display);font-size:17px;color:var(--ink);margin:36px 0 6px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start}
+  @media (max-width:880px){ .two,.three{grid-template-columns:1fr} }
+
+  ol.tl{list-style:none;padding:0;margin:0}
+  ol.tl li{display:flex;gap:16px;padding:13px 0;border-bottom:1px solid var(--rule)}
+  ol.tl li:last-child{border-bottom:0;padding-bottom:0}
+  .tm{flex:0 0 68px;font-family:var(--f-display);font-size:12.5px;font-weight:700;
+      color:var(--accent);line-height:1.5;font-variant-numeric:tabular-nums}
+  .td{flex:1;font-size:13.5px;color:var(--ink-soft)}
+  .td b{display:block;color:var(--ink);font-size:14.5px;margin-bottom:2px}
+
+  .cap{font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.75}
+  .panel canvas{width:100%;max-width:180px;height:auto;border-radius:9px;
+                border:1px solid var(--rule);display:block;background:#FAF7F5}
+
+  table.tbl{width:100%;border-collapse:collapse;font-size:13px;line-height:1.75}
+  table.tbl th,table.tbl td{text-align:left;padding:10px 14px 10px 0;
+    border-bottom:1px solid var(--rule);vertical-align:top}
+  table.tbl tr:last-child td{border-bottom:0}
+  table.tbl td:first-child{font-weight:500;white-space:nowrap;color:var(--ink)}
+  table.tbl small{display:block;color:var(--muted);font-size:11.5px;white-space:normal}
+  table.tbl code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;
+    background:var(--sunk);padding:1px 6px;border-radius:5px;white-space:nowrap}
+
+  ul.bul{margin:0;padding-left:19px;font-size:13.5px;color:var(--ink-soft)}
+  ul.bul li{margin-bottom:10px}
+  ul.bul li:last-child{margin-bottom:0}
+  ul.bul small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+
   footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--rule);
          font-size:12.5px;color:var(--muted);line-height:1.9}
 </style>
@@ -150,6 +182,118 @@
 <h2>ボタンごとの中身</h2>
 <p class="sub">6つのボタンは、それぞれ次のページにつながります。</p>
 <div class="panel" id="guide"></div>
+
+<!-- ================= 空き枠の自動投稿 ================= -->
+
+<h2>空き枠の自動投稿について</h2>
+<p class="sub">
+  上の「空き枠のお知らせ」ボタンで受け取りを登録された方に、
+  <b class="hl">人が触らずに</b>お知らせが届くしくみです。ここから下がその詳細です。
+</p>
+
+<div class="panel">
+  <h3>いつ、何が起きるか</h3>
+  <ol class="tl">
+    <li><span class="tm">月・木<br>10:00</span>
+      <span class="td"><b>カレンダーを見る</b>
+      セラピストの皆さまのカレンダーから、2〜3日先の空いている時間を拾います。
+      読むのは「予定が入っているかどうか」だけで、予定の中身は届きません。</span></li>
+    <li><span class="tm">10:00</span>
+      <span class="td"><b>出す枠を決める</b>
+      空きの中から3枠までを選び、その長さに入るメニューを3つまで載せます。
+      セルフブースと施術ルームは別々に判断します。</span></li>
+    <li><span class="tm">10:00</span>
+      <span class="td"><b>LINEに送る</b>
+      受け取りを希望された方だけに届きます。お部屋の希望を選ばれている方には、
+      そのお部屋の枠だけが届きます。</span></li>
+    <li><span class="tm">10:30</span>
+      <span class="td"><b>Instagram と Google に出す</b>
+      30分あけるのは、<b class="hl">「LINEの方が早い」という事実</b>をつくるためです。
+      これが登録していただく理由になります。</span></li>
+  </ol>
+</div>
+
+<h3 class="sec">実際に出るもの</h3>
+<p class="sub">下は作例ではありません。本番と同じコードが、いまこの場で作ったものです。</p>
+
+<div class="three">
+  <div class="panel">
+    <h3>① LINE（10:00）</h3>
+    <p class="box" id="exLine"></p>
+    <p class="cap">受け取りを希望された方だけ。枠そのものをお伝えします。</p>
+  </div>
+  <div class="panel">
+    <h3>② Instagram ストーリーズ（10:30）</h3>
+    <canvas id="exStory" width="1080" height="1920"></canvas>
+    <p class="cap">画像も自動で作られます。文字入れの手間はありません。</p>
+  </div>
+  <div class="panel">
+    <h3>③ Google 最新情報（10:30）</h3>
+    <p class="box" id="exGbp"></p>
+    <p class="cap" id="exCta"></p>
+  </div>
+</div>
+
+<div class="panel">
+  <h3>なぜ Instagram に枠を出すのに、LINEが必要なのか</h3>
+  <p>
+    Instagram の文面には <b class="hl">「LINEの方には30分前にお知らせ済みです」</b> と入ります。
+    枠は載せますが、<b>先に知れるのはLINEだけ</b>という事実を毎回お伝えする形です。
+  </p>
+  <p>
+    順番を逆にすると、LINEに登録する理由がなくなります。
+    30分という差は、そのためだけにあります。
+  </p>
+</div>
+
+<h3 class="sec">勝手に増やさないための歯止め</h3>
+<p class="sub">
+  カレンダー任せにすると出しすぎてしまい、「いつも空いている店」という印象になります。
+  次のどれかに当たると、システムは黙って止まります。
+</p>
+
+<div class="panel">
+  <table class="tbl" id="guardTable"></table>
+</div>
+
+<div class="two">
+  <div class="panel">
+    <h3>スタッフにお願いすること</h3>
+    <p><b>カレンダーを正しく入れる。それだけです。</b></p>
+    <ul class="bul">
+      <li>ご予約が入ったら、これまでどおりカレンダーに入れる</li>
+      <li><b class="hl">出したくない時間も、予定として入れておく</b><br>
+        <small>移動・休憩・あえて残す枠。空けたままだと、空きとして出てしまいます</small></li>
+      <li>送信の操作は要りません</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h3>正直に申し上げておくこと</h3>
+    <ul class="bul">
+      <li><b>機材の不調・材料切れは分かりません。</b>
+        <small>しばらく使えないものがある場合は、掲載メニューから一時的に外す必要があります</small></li>
+      <li><b>カレンダーへの入力漏れは、そのまま出ます。</b>
+        <small>埋まっている枠を「空き」としてお知らせしてしまいます</small></li>
+      <li><b>送信済みのLINEは取り消せません。</b>
+        <small>Instagram と Google は30分後なので、その前なら止められます</small></li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="sec">動かすために必要なもの</h3>
+<p class="sub">
+  下の設定が済むまでは、その部分だけ動きません。全部そろわなくても、
+  <b class="hl">できるところから動きます</b>（たとえば Instagram だけ未設定なら、Google には出ます）。
+</p>
+
+<div class="panel">
+  <table class="tbl" id="setupTable"></table>
+  <p class="cap" style="margin-top:14px">
+    追加の月額費用はありません。Cloudflare・Google・Vercel はいずれも無料の範囲で収まります。
+    LINEは、いまお使いのライトプラン（¥5,000/月・5,000通）のままです。
+  </p>
+</div>
 
 <footer>
   トータル・ビューティー・サロン ミエーレ ／ LINEアプリ デモ<br>
@@ -390,4 +534,63 @@ document.getElementById('guide').innerHTML = [
 
 paint();
 open('/app/diagnosis');
+
+/* ------------------------------------------------------------------ *
+ * 空き枠の自動投稿の説明
+ *
+ * 文面と画像は、本番と同じコードにその場で作らせています。
+ * 作例を手で書くと、本物と食い違ったまま古くなるためです。
+ * ------------------------------------------------------------------ */
+
+(() => {
+  const day = '2026-09-10';
+  /* 長さの違う枠を2つ。枠の長さでメニューが変わることも見えるように */
+  const sample = [
+    { date: day, time: '13:00', minutes: 60, menus: defaultMenusFor('room', 60) },
+    { date: day, time: '16:30', minutes: 30, menus: defaultMenusFor('room', 30) }
+  ];
+
+  document.getElementById('exLine').textContent = buildLineMessage(sample);
+  document.getElementById('exGbp').textContent = buildGbpText(sample);
+  document.getElementById('exCta').textContent =
+    SALON.bookingUrl
+      ? '「予約」ボタンが付き、ご予約ページに進めます。'
+      : 'ご予約のURLが未設定のため、いまは「電話」ボタンになります。';
+
+  const { drawStory: drawSample } = makeStory();
+  drawSample(document.getElementById('exStory').getContext('2d'), sample,
+             { delayMinutes: INSTAGRAM_DELAY_MIN });
+
+  const row = (a, b, note) =>
+    '<tr><td>' + esc3(a) + '</td><td>' + b +
+    (note ? '<small>' + esc3(note) + '</small>' : '') + '</td></tr>';
+
+  document.getElementById('guardTable').innerHTML =
+    row('送信日だけ', '月曜と木曜の朝だけ動きます',
+        '急な空きは、スタッフ用ページから手で出せます') +
+    row('週に' + MAX_PER_WEEK + '回まで', '同じお部屋は直近7日で' + MAX_PER_WEEK + '回まで',
+        'セルフブースと施術ルームは送り先が別なので、別々に数えます') +
+    row('1回に' + AUTO_MAX_SLOTS + '枠まで', '空きが多くても、載せるのは' + AUTO_MAX_SLOTS + '枠まで',
+        '並べすぎると、かえって選びにくくなります') +
+    row('通数の予備枠', '予備の' + RESERVE + '通を割り込むなら送りません',
+        'ライトプランは追加購入ができないため、使い切ると月末まで送れません') +
+    row('希望者がいなければ', '受け取りを希望された方が0名なら、何もしません',
+        '頼まれていない方には送りません');
+
+  const need = (name, what, key) =>
+    '<tr><td>' + esc3(name) + '</td><td>' + esc3(what) +
+    (key ? '<small><code>' + esc3(key) + '</code></small>' : '') + '</td></tr>';
+
+  document.getElementById('setupTable').innerHTML =
+    need('Googleカレンダー', 'サービスアカウントを作り、各カレンダーを共有していただきます。審査はありません',
+         'GOOGLE_SA_EMAIL / GOOGLE_CALENDARS') +
+    need('Instagram', 'プロ（ビジネス）アカウントにして、トークンを発行。Facebookページは不要です',
+         'IG_USER_ID / IG_ACCESS_TOKEN') +
+    need('ストーリーズの画像', 'Vercel に画像を作る置き場を1つ。未設定なら Instagram だけ見送ります',
+         'STORY_IMAGE_URL') +
+    need('Google ビジネスプロフィール', '店舗を管理しているアカウントで、一度だけ許可を出していただきます',
+         'GBP_REFRESH_TOKEN / GBP_LOCATION_ID') +
+    need('ご予約のURL', 'お使いの予約システムのURL。ここを入れると全部の導線がつながります',
+         'src/salon.js の bookingUrl');
+})();
 </script>

@@ -178,6 +178,8 @@ ok((await postGbp({}, { summary: 'x' })).error.includes('未設定'), 'Googleも
 const gt = buildGbpText(SLOTS);
 ok(gt.includes('トータル・ビューティー・サロン ミエーレ'), '検索から来た方に店名が分かる');
 ok(gt.includes('JR古河駅から徒歩8分'), '場所も添える');
+ok(!gt.includes('DM'), 'Googleの文面にDMの案内は入れない（読む人が違う）');
+ok(gt.includes('「予約」ボタン'), 'Googleでは投稿に付く予約ボタンへ誘導する');
 ok(!gt.includes('キャンセル'), '「キャンセル」の語は使わない');
 
 /* --- 8. 完全自動で動かす --------------------------------------------- */
